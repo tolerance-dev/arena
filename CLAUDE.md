@@ -30,8 +30,9 @@ overrides the superpowers skills and any default habits:
   would trip up the next session.
 - **Git: only through pull requests.** Pushing to `main` is blocked on GitHub (branch protection,
   admins included, since 2026-10-19). Work on a branch (`git fetch && git checkout -b <name> origin/main`),
-  push it, open a PR with `gh pr create`, merge with `gh pr merge --squash --delete-branch` (no review is
-  required). Never try to push to `main` or weaken the protection.
+  push it, open a PR with `gh pr create` and stop there: **never merge a PR yourself** (no `gh pr merge`,
+  no auto-merge) — the user reviews and merges. Give the PR link in the reply. Never try to push to `main` or
+  weaken the protection.
 
 ## What this is
 
