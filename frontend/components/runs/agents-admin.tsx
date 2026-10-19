@@ -18,7 +18,7 @@ import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { RunTable, ScoreBadge, usePoll, type RT } from './bits'
 
-const field = 'h-10 w-full rounded-[9px] border border-input bg-card px-3 text-sm'
+const field = 'h-10 w-full rounded-[9px] border border-input bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50'
 
 export function AgentsAdmin() {
   const t = useT(runsMessages)
@@ -106,7 +106,7 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="bundle">{t('agentBundle')}</Label>
           <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
-            className="block w-full rounded-[9px] border border-input bg-card text-sm file:mr-3 file:h-10 file:border-0 file:bg-muted file:px-4 file:font-semibold" />
+            className="block w-full rounded-[9px] border border-input bg-card text-sm file:mr-3 file:h-10 file:border-0 file:bg-muted file:px-4 file:font-semibold disabled:cursor-not-allowed disabled:opacity-50" />
           <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
