@@ -1,164 +1,281 @@
-"""Generates the shared mock data of the tasks into catalog/<task>/data (deterministic: same seed, same files).
+"""Generates every task's data/*.json and task.json (the checks' expected values come from the reference
+implementations below, so they are exact). Deterministic: python3 gen_data.py rewrites the same files.
 
-Usage: python3 backend/internal/tasks/gen_data.py backend/internal/tasks/catalog
-IDs and counts are referenced by task.json checks and judge.md: re-check those after changing anything here.
+task.json is generated: change titles, limits and checks here, not in the JSON.
 """
-import json, random, sys, os, datetime
+import heapq
+import json
+import os
+import random
+from collections import deque
 
-out = sys.argv[1]
-R = random.Random(20261019)
+HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog")
+TIME_LIMIT_S = 600
+TOKEN_BUDGET = 400_000
 
-def dump(task, name, obj):
-    d = os.path.join(out, task, "data")
-    os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, name), "w") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
+
+def write(slug, name, obj, compact=False):
+    p = os.path.join(HERE, slug, name)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "w") as f:
+        if compact:
+            json.dump(obj, f, separators=(",", ": "))
+        else:
+            json.dump(obj, f, indent=2, ensure_ascii=False)
         f.write("\n")
 
-FIRST = ["Anna", "Boris", "Clara", "David", "Elena", "Felix", "Greta", "Hugo", "Iris", "Jonas", "Kira", "Leo"]
-LAST = ["Ivanova", "Petrov", "Smith", "Novak", "Garcia", "Muller", "Rossi", "Kowalski", "Berg", "Silva"]
 
-def users(n, extra=None):
-    res = []
-    for i in range(1, n + 1):
-        f, l = FIRST[(i - 1) % len(FIRST)], LAST[(i * 3) % len(LAST)]
-        u = {"id": f"u{i}", "name": f"{f} {l}", "email": f"{f.lower()}.{l.lower()}@example.com", "password": f"pass{i:03d}"}
-        if extra:
-            u.update(extra(i))
-        res.append(u)
-    return res
+def task_json(slug, order, title, tagline, checks):
+    out = {"order": order, "title": title, "tagline": tagline,
+           "time_limit_s": TIME_LIMIT_S, "token_budget": TOKEN_BUDGET, "checks": checks}
+    p = os.path.join(HERE, slug, "task.json")
+    with open(p, "w") as f:
+        f.write("{\n")
+        keys = list(out)
+        for i, k in enumerate(keys):
+            if k == "checks":
+                f.write('  "checks": [\n')
+                f.write(",\n".join("    " + json.dumps(c, ensure_ascii=False) for c in checks))
+                f.write("\n  ]")
+            else:
+                f.write(f"  {json.dumps(k)}: {json.dumps(out[k], ensure_ascii=False)}")
+            f.write(",\n" if i < len(keys) - 1 else "\n")
+        f.write("}\n")
 
-# ---------- marketplace ----------
-cats = [
-    ("electronics", "Electronics", ["Wireless Earbuds", "Smart Watch", "Bluetooth Speaker", "USB-C Hub", "Mechanical Keyboard", "4K Monitor", "Webcam", "Power Bank", "Gaming Mouse", "Noise-Cancelling Headphones"]),
-    ("home", "Home & Kitchen", ["Espresso Maker", "Cast Iron Skillet", "Chef Knife", "Air Fryer", "Linen Bedding Set", "Ceramic Mug Set", "Desk Lamp", "Electric Kettle", "Bamboo Cutting Board", "Scented Candle"]),
-    ("fashion", "Fashion", ["Merino Sweater", "Denim Jacket", "Leather Sneakers", "Canvas Backpack", "Wool Scarf", "Rain Coat", "Chino Trousers", "Linen Shirt", "Leather Belt", "Baseball Cap"]),
-    ("sports", "Sports & Outdoors", ["Yoga Mat", "Trail Running Shoes", "Insulated Bottle", "Camping Tent", "Resistance Bands", "Cycling Helmet", "Dumbbell Pair", "Hiking Poles", "Sleeping Bag", "Jump Rope"]),
-    ("books", "Books", ["The Pragmatic Builder", "Designing Data Systems", "A Short History of Cities", "The Quiet Garden", "Learning to Cook", "Night Train to Lisbon", "Mountains of the Mind", "The Art of Tea", "Small Habits", "Stars and Atoms"]),
-    ("toys", "Toys & Games", ["Wooden Puzzle", "Building Blocks Set", "Board Game: Harbors", "Plush Fox", "RC Car", "Card Game: Sprites", "Kite", "Science Kit", "Watercolor Set", "Marble Run"]),
+
+def check(name, method, path, status=None, status_in=None, body=None, expect=None):
+    c = {"name": name, "method": method, "path": path}
+    if body is not None:
+        c["body"] = body
+    if status_in:
+        c["status_in"] = status_in
+    else:
+        c["status"] = status or 200
+    if expect:
+        c["expect"] = expect
+    return c
+
+
+def eq(path, v):
+    return {"path": path, "equals": json.loads(json.dumps(v))}  # a copy: the reference lists keep changing
+
+
+# ---------- rbtree: only the key set matters for the checks (the tree shape is checked by its invariants) ----------
+
+R = random.Random(20261019)
+keys = R.sample(range(1, 1000), 40)
+write("rbtree", "data/keys.json", keys, compact=True)
+
+tree = set(keys)
+ascending = list(range(2000, 2200))
+gone = R.sample(keys, 30) + ascending[::2] + [5000]  # 30 seed keys, every other ascending key, one missing key
+checks = [
+    check("seed: 40 keys, valid red-black tree", "GET", "/api/tree",
+          expect=[eq("size", 40), {"path": "root", "rbtree": True}]),
+    check("in-order keys", "GET", "/api/tree/keys", expect=[eq("", sorted(tree))]),
+    check("search finds a key", "GET", f"/api/tree/search?key={keys[7]}", expect=[eq("key", keys[7])]),
+    check("search misses → 404", "GET", "/api/tree/search?key=4242", status=404),
+    check("insert skips duplicates", "POST", "/api/tree/insert", body={"keys": [keys[0], 1000, 1001]},
+          expect=[eq("inserted", 2), eq("size", 42)]),
 ]
-brands = ["Northwind", "Acme", "Lumen", "Tidal", "Oakline", "Vertex", "Kestrel", "Polar", "Mosaic", "Juniper"]
-sellers = [{"id": f"s{i}", "name": n, "rating": round(R.uniform(3.8, 5.0), 1)} for i, n in enumerate(["Gadget Garage", "Casa Bella", "Urban Thread", "Peak Outfitters", "Paper Lantern", "Little Wonders", "Daily Goods"], 1)]
-products = []
-pid = 0
-for slug, cname, names in cats:
-    for n in names:
-        pid += 1
-        price = round(R.choice([9, 14, 19, 24, 29, 39, 49, 59, 79, 99, 129, 149, 199, 249, 349]) + R.choice([0, 0.5, 0.99]), 2)
-        stock = R.choice([0, 0, 1, 2, 3, 5, 8, 12, 20, 35, 50])
-        products.append({
-            "id": f"p{pid}",
-            "title": f"{R.choice(brands)} {n}",
-            "category": slug,
-            "price": price,
-            "currency": "USD",
-            "old_price": round(price * R.choice([1.15, 1.25, 1.4]), 2) if R.random() < 0.25 else None,
-            "rating": round(R.uniform(3.1, 5.0), 1),
-            "reviews_count": R.randint(0, 2400),
-            "stock": stock,
-            "seller_id": R.choice(sellers)["id"],
-            "description": f"{n} by {R.choice(brands)}. " + R.choice([
-                "Built to last, designed for everyday use.",
-                "A customer favourite with a clean, minimal look.",
-                "Lightweight, durable and easy to care for.",
-                "Thoughtfully made with premium materials.",
-                "Great value and a two-year warranty.",
-            ]),
-            "image": f"https://picsum.photos/seed/tolerance-p{pid}/600/600",
-            "tags": R.sample(["new", "bestseller", "eco", "gift", "sale", "limited"], R.randint(0, 2)),
-        })
-dump("marketplace", "categories.json", [{"id": s, "name": n} for s, n, _ in cats])
-dump("marketplace", "products.json", products)
-dump("marketplace", "sellers.json", sellers)
-dump("marketplace", "users.json", users(8, lambda i: {"address": f"{10 + i} Market Street, Springfield"}))
-reviews = []
-for i in range(1, 121):
-    p = R.choice(products)
-    reviews.append({"id": f"r{i}", "product_id": p["id"], "user_id": f"u{R.randint(1, 8)}", "rating": R.randint(2, 5),
-                    "text": R.choice(["Exactly as described.", "Fast delivery, works great.", "Good quality for the price.", "Would buy again.", "A bit smaller than expected.", "Love it!"]),
-                    "created_at": f"2026-0{R.randint(1, 9)}-{R.randint(10, 28)}T12:00:00Z"})
-dump("marketplace", "reviews.json", reviews)
+tree |= {1000, 1001}
+tree |= set(ascending)
+checks += [
+    check("insert 200 ascending keys", "POST", "/api/tree/insert", body={"keys": ascending},
+          expect=[eq("inserted", 200), eq("size", len(tree))]),
+    check("still a red-black tree after inserts", "GET", "/api/tree",
+          expect=[eq("size", len(tree)), {"path": "root", "rbtree": True}]),
+]
+deleted = len([k for k in gone if k in tree])
+tree -= set(gone)
+checks += [
+    check("delete skips missing keys", "POST", "/api/tree/delete", body={"keys": gone},
+          expect=[eq("deleted", deleted), eq("size", len(tree))]),
+    check("still a red-black tree after deletes", "GET", "/api/tree",
+          expect=[eq("size", len(tree)), {"path": "root", "rbtree": True}]),
+    check("in-order keys after deletes", "GET", "/api/tree/keys", expect=[eq("", sorted(tree))]),
+    check("bad body → 400", "POST", "/api/tree/insert", body={"keys": "seven"}, status=400),
+    check("delete everything", "POST", "/api/tree/delete", body={"keys": sorted(tree)},
+          expect=[eq("deleted", len(tree)), eq("size", 0)]),
+    check("empty tree has no root", "GET", "/api/tree", expect=[eq("size", 0), eq("root", None)]),
+    check("first key becomes a black root", "POST", "/api/tree/insert", body={"keys": [17]}, expect=[eq("size", 1)]),
+    check("root is black", "GET", "/api/tree", expect=[eq("root.key", 17), eq("root.color", "black")]),
+]
+task_json("rbtree", 1, {"en": "Red-black tree", "ru": "Красно-чёрное дерево"},
+          {"en": "A balanced binary search tree behind a small JSON API: insert, delete, search.",
+           "ru": "Сбалансированное дерево поиска за маленьким JSON API: вставка, удаление, поиск."}, checks)
 
-# ---------- hotels ----------
-cities = ["Lisbon", "Barcelona", "Prague", "Vienna", "Istanbul", "Tbilisi"]
-hotel_names = ["Grand {c} Palace", "{c} Harbour Inn", "Old Town Suites", "Riverside Boutique", "The Lantern House", "Hostel Nomad", "Hotel Aurora", "Garden Court", "Skyline Tower", "Casa Azul", "The Orchard", "Stone Bridge Hotel"]
-room_types = [("single", 1, 1.0), ("double", 2, 1.4), ("twin", 2, 1.4), ("family", 4, 2.1), ("suite", 3, 3.0)]
-amen = ["wifi", "breakfast", "pool", "parking", "gym", "spa", "pets", "air_conditioning", "airport_shuttle", "kitchen"]
-hotels, rooms = [], []
-hid = rid = 0
-for c in cities:
-    for name in R.sample(hotel_names, 4):
-        hid += 1
-        stars = R.choice([2, 3, 3, 4, 4, 5])
-        base = {2: 45, 3: 70, 4: 110, 5: 210}[stars] * R.uniform(0.85, 1.25)
-        hotels.append({
-            "id": f"h{hid}", "name": name.format(c=c), "city": c, "stars": stars,
-            "rating": round(R.uniform(6.8, 9.7), 1), "reviews_count": R.randint(12, 3100),
-            "address": f"{R.randint(1, 180)} {R.choice(['Main', 'River', 'Market', 'Castle', 'Harbour'])} Street, {c}",
-            "distance_to_center_km": round(R.uniform(0.2, 7.5), 1),
-            "amenities": sorted(R.sample(amen, R.randint(2, 6))),
-            "description": R.choice(["Bright rooms a short walk from the old town.", "Quiet, friendly and great for families.", "Rooftop views and an excellent breakfast.", "Modern design in a historic building.", "Budget-friendly with everything you need."]),
-            "photos": [f"https://picsum.photos/seed/tolerance-h{hid}-{k}/1000/700" for k in range(1, 4)],
-            "check_in_from": "14:00", "check_out_until": "11:00",
-            "free_cancellation_days": R.choice([0, 1, 3, 7]),
-        })
-        for t, cap, mult in R.sample(room_types, R.randint(2, 4)):
-            rid += 1
-            rooms.append({"id": f"r{rid}", "hotel_id": f"h{hid}", "type": t, "capacity": cap,
-                          "price_per_night": round(base * mult), "currency": "EUR", "inventory": R.randint(1, 5),
-                          "beds": {"single": "1 single", "double": "1 double", "twin": "2 singles", "family": "1 double + 2 singles", "suite": "1 king + sofa bed"}[t]})
-dump("hotels", "hotels.json", hotels)
-dump("hotels", "rooms.json", rooms)
-hotel_users = users(8)
-dump("hotels", "users.json", hotel_users)
-bookings = []
-start = datetime.date(2026, 11, 1)
-for i in range(1, 61):
-    r = R.choice(rooms)
-    ci = start + datetime.timedelta(days=R.randint(0, 50))
-    co = ci + datetime.timedelta(days=R.randint(1, 6))
-    bookings.append({"id": f"b{i}", "room_id": r["id"], "hotel_id": r["hotel_id"], "user_id": f"u{R.randint(1, 8)}",
-                     "check_in": ci.isoformat(), "check_out": co.isoformat(), "guests": R.randint(1, r["capacity"]), "status": "confirmed"})
-# A fully booked room for the whole first week of December (a known conflict the judge can probe).
-full = next(r for r in rooms if r["inventory"] == 1)
-for k in range(1):
-    bookings.append({"id": "b-full", "room_id": full["id"], "hotel_id": full["hotel_id"], "user_id": "u1",
-                     "check_in": "2026-12-01", "check_out": "2026-12-08", "guests": 1, "status": "confirmed"})
-dump("hotels", "bookings.json", bookings)
+# ---------- linked-list ----------
 
-# ---------- cinema ----------
-genres = ["drama", "comedy", "thriller", "sci-fi", "animation", "documentary", "romance", "adventure", "horror", "crime"]
-words1 = ["Silent", "Last", "Golden", "Hidden", "Broken", "Northern", "Electric", "Midnight", "Paper", "Endless", "Crimson", "Little"]
-words2 = ["Harbor", "Signal", "Garden", "Frontier", "Echo", "Kingdom", "Orbit", "River", "Machine", "Summer", "Winter", "Letters"]
-directors = ["Mira Holm", "Jun Park", "Alba Ruiz", "Tomasz Wolny", "Ines Moreau", "Kofi Mensah", "Sara Lind", "Omar Haddad"]
-actors = ["Lena Ford", "Max Ortega", "Yuki Tanaka", "Ravi Shah", "Nora Quinn", "Ethan Cole", "Zoe Adler", "Ivan Sokolov", "Ada Brooks", "Luca Bianchi", "Mei Chen", "Sam Okafor"]
-movies = []
-seen = set()
-for i in range(1, 49):
-    while True:
-        t = f"The {R.choice(words1)} {R.choice(words2)}"
-        if t not in seen:
-            seen.add(t)
-            break
-    kind = "series" if i % 8 == 0 else "movie"
-    m = {
-        "id": f"m{i}", "title": t, "type": kind, "year": R.randint(1988, 2026),
-        "genres": R.sample(genres, R.randint(1, 3)), "rating": round(R.uniform(5.2, 9.1), 1),
-        "age_rating": R.choice(["0+", "6+", "12+", "16+", "18+"]),
-        "duration_min": R.randint(82, 165) if kind == "movie" else None,
-        "seasons": [{"number": s, "episodes": [{"number": e, "title": f"Episode {e}", "duration_min": R.randint(38, 58)} for e in range(1, R.randint(6, 10))]} for s in range(1, R.randint(2, 4))] if kind == "series" else None,
-        "director": R.choice(directors), "cast": R.sample(actors, 3),
-        "description": R.choice(["A quiet story about choices that echo for years.", "Two strangers race against time across a city that never sleeps.", "An unlikely team sets out to fix what everyone else gave up on.", "A coming-of-age tale told over one unforgettable summer.", "A gripping investigation that turns personal."]),
-        "poster": f"https://picsum.photos/seed/tolerance-m{i}/400/600",
-        "backdrop": f"https://picsum.photos/seed/tolerance-mb{i}/1280/720",
-        "stream_url": f"/media/{'m' + str(i)}.m3u8",
-        "premium": R.random() < 0.35,
-        "added_at": f"2026-{R.randint(1, 10):02d}-{R.randint(10, 28)}",
-    }
-    movies.append(m)
-dump("cinema", "movies.json", movies)
-dump("cinema", "genres.json", [{"id": g, "name": g.replace("-", " ").title()} for g in genres])
-dump("cinema", "plans.json", [{"id": "free", "name": "Free", "price_month": 0, "includes_premium": False},
-                               {"id": "premium", "name": "Premium", "price_month": 9.99, "includes_premium": True}])
-dump("cinema", "users.json", users(8, lambda i: {"plan": "premium" if i % 2 == 0 else "free"}))
-print("ok", len(products), len(hotels), len(rooms), len(movies))
+items = ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew", "kiwi", "lemon", "mango",
+         "nectarine"]
+write("linked-list", "data/items.json", items)
+
+L = list(items)
+checks = [
+    check("seed, head to tail", "GET", "/api/list", expect=[eq("size", 12), eq("items", L)]),
+    check("seed, tail to head", "GET", "/api/list/backward", expect=[eq("items", L[::-1])]),
+]
+L.insert(0, "alpha")
+checks.append(check("push-front", "POST", "/api/list/push-front", body={"value": "alpha"}, status_in=[200, 201],
+                    expect=[eq("size", len(L))]))
+L.append("omega")
+checks.append(check("push-back", "POST", "/api/list/push-back", body={"value": "omega"}, status_in=[200, 201],
+                    expect=[eq("size", len(L))]))
+L.insert(3, "middle")
+checks += [
+    check("insert at index 3", "POST", "/api/list/insert", body={"index": 3, "value": "middle"}, status_in=[200, 201],
+          expect=[eq("size", len(L))]),
+    check("insert past the end → 400", "POST", "/api/list/insert", body={"index": 99, "value": "x"}, status=400),
+    check("insert keeps both directions", "GET", "/api/list/backward", expect=[eq("items", L[::-1])]),
+]
+v = L.pop(0)
+checks.append(check("delete index 0", "DELETE", "/api/list/items/0", expect=[eq("value", v)]))
+v = L.pop(5)
+checks += [
+    check("delete index 5", "DELETE", "/api/list/items/5", expect=[eq("value", v)]),
+    check("delete out of range → 404", "DELETE", "/api/list/items/99", status=404),
+]
+v = L.pop()
+checks.append(check("pop-back", "POST", "/api/list/pop-back", expect=[eq("value", v)]))
+v = L.pop(0)
+checks.append(check("pop-front", "POST", "/api/list/pop-front", expect=[eq("value", v)]))
+L.reverse()
+checks += [
+    check("reverse", "POST", "/api/list/reverse", expect=[eq("items", L)]),
+    check("reversed, head to tail", "GET", "/api/list", expect=[eq("size", len(L)), eq("items", L)]),
+    check("reversed, tail to head", "GET", "/api/list/backward", expect=[eq("items", L[::-1])]),
+    check("non-string value → 400", "POST", "/api/list/push-back", body={"value": 42}, status=400),
+    check("clear", "POST", "/api/list/clear", expect=[eq("size", 0)]),
+    check("pop-front on empty → 409", "POST", "/api/list/pop-front", status=409),
+    check("pop-back on empty → 409", "POST", "/api/list/pop-back", status=409),
+    check("push-back on empty", "POST", "/api/list/push-back", body={"value": "solo"}, status_in=[200, 201],
+          expect=[eq("size", 1)]),
+    check("one item, both ways", "GET", "/api/list/backward", expect=[eq("items", ["solo"])]),
+]
+task_json("linked-list", 2, {"en": "Doubly linked list", "ru": "Двусвязный список"},
+          {"en": "Nodes with prev and next behind a small JSON API: push, pop, insert, delete, reverse.",
+           "ru": "Узлы с prev и next за маленьким JSON API: push, pop, вставка, удаление, разворот."}, checks)
+
+# ---------- digraph ----------
+
+NODES = list("abcdefghijkl")
+
+
+def make_graph(seed):
+    g = random.Random(seed)
+    edges = {}
+    for i, u in enumerate(NODES[:-1]):  # a chain-ish DAG: every edge goes to a later letter
+        for v in g.sample(NODES[i + 1:], min(2, len(NODES) - i - 1)):
+            edges[(u, v)] = g.randint(1, 9)
+    return edges
+
+
+def dijkstra(edges, s, t):
+    adj = {}
+    for (u, v), w in edges.items():
+        adj.setdefault(u, []).append((v, w))
+    dist, ways, prev = {s: 0}, {s: 1}, {}
+    pq = [(0, s)]
+    done = set()
+    while pq:
+        d, u = heapq.heappop(pq)
+        if u in done:
+            continue
+        done.add(u)
+        for v, w in adj.get(u, []):
+            nd = d + w
+            if v not in dist or nd < dist[v]:
+                dist[v], ways[v], prev[v] = nd, ways[u], u
+                heapq.heappush(pq, (nd, v))
+            elif nd == dist[v]:
+                ways[v] += ways[u]
+    if t not in dist:
+        return None, None, 0
+    path = [t]
+    while path[-1] != s:
+        path.append(prev[path[-1]])
+    return path[::-1], dist[t], ways[t]
+
+
+def bfs(nodes, edges, s):
+    adj = {n: sorted(v for (u, v) in edges if u == n) for n in nodes}
+    seen, order, q = {s}, [], deque([s])
+    while q:
+        u = q.popleft()
+        order.append(u)
+        for v in adj[u]:
+            if v not in seen:
+                seen.add(v)
+                q.append(v)
+    return order
+
+
+def topo(nodes, edges):
+    indeg = {n: 0 for n in nodes}
+    for (_, v) in edges:
+        indeg[v] += 1
+    heap = [n for n in nodes if indeg[n] == 0]
+    heapq.heapify(heap)
+    order = []
+    while heap:
+        u = heapq.heappop(heap)
+        order.append(u)
+        for (x, v) in sorted(edges):
+            if x == u:
+                indeg[v] -= 1
+                if indeg[v] == 0:
+                    heapq.heappush(heap, v)
+    return order if len(order) == len(nodes) else None
+
+
+seed = 7
+while True:
+    E = make_graph(seed)
+    path_al, dist_al, ways = dijkstra(E, "a", "l")
+    E2 = dict(E)
+    E2[("l", "m")] = 1
+    path_am, dist_am, ways_am = dijkstra(E2, "a", "m")
+    if path_al and ways == 1 and ways_am == 1 and len(path_al) >= 4:
+        break
+    seed += 1
+
+edges_json = [{"from": u, "to": v, "weight": w} for (u, v), w in sorted(E.items())]
+write("digraph", "data/graph.json", {"nodes": NODES, "edges": edges_json})
+some_edge = sorted(E)[3]
+c_reaches_l = "l" in bfs(NODES, E, "c")
+assert c_reaches_l, "the cycle check needs c → … → l"
+nodes_m = NODES + ["m"]
+E3 = dict(E2)
+E3[("m", "c")] = 2
+assert topo(nodes_m, E3) is None
+checks = [
+    check("seed graph", "GET", "/api/graph", expect=[{"path": "nodes", "len": 12}, {"path": "edges", "len": len(E)}]),
+    check("bfs from a", "GET", "/api/bfs?from=a", expect=[eq("order", bfs(NODES, E, "a"))]),
+    check("bfs from d", "GET", "/api/bfs?from=d", expect=[eq("order", bfs(NODES, E, "d"))]),
+    check("bfs from an unknown node → 404", "GET", "/api/bfs?from=zz", status=404),
+    check("topological order", "GET", "/api/topo", expect=[eq("order", topo(NODES, E))]),
+    check("shortest path a → l", "GET", "/api/path?from=a&to=l", expect=[eq("distance", dist_al), eq("path", path_al)]),
+    check("no path l → a → 404", "GET", "/api/path?from=l&to=a", status=404),
+    check("edge to an unknown node → 404", "POST", "/api/edges", body={"from": "a", "to": "zz", "weight": 1}, status=404),
+    check("duplicate edge → 409", "POST", "/api/edges",
+          body={"from": some_edge[0], "to": some_edge[1], "weight": 5}, status=409),
+    check("self-loop → 400", "POST", "/api/edges", body={"from": "b", "to": "b", "weight": 1}, status=400),
+    check("add node m", "POST", "/api/nodes", body={"id": "m"}, status_in=[200, 201]),
+    check("duplicate node → 409", "POST", "/api/nodes", body={"id": "m"}, status=409),
+    check("add edge l → m", "POST", "/api/edges", body={"from": "l", "to": "m", "weight": 1}, status_in=[200, 201]),
+    check("shortest path a → m", "GET", "/api/path?from=a&to=m", expect=[eq("distance", dist_am), eq("path", path_am)]),
+    check("add edge m → c (makes a cycle)", "POST", "/api/edges", body={"from": "m", "to": "c", "weight": 2},
+          status_in=[200, 201]),
+    check("topological order with a cycle → 409", "GET", "/api/topo", status=409),
+    check("delete edge m → c", "DELETE", "/api/edges/m/c", status_in=[200, 204]),
+    check("topological order again", "GET", "/api/topo", expect=[eq("order", topo(nodes_m, E2))]),
+    check("delete a missing edge → 404", "DELETE", "/api/edges/m/c", status=404),
+    check("delete node m", "DELETE", "/api/nodes/m", status_in=[200, 204]),
+    check("its edges are gone", "GET", "/api/graph", expect=[{"path": "nodes", "len": 12}, {"path": "edges", "len": len(E)}]),
+    check("delete a missing node → 404", "DELETE", "/api/nodes/m", status=404),
+]
+task_json("digraph", 3, {"en": "Directed graph", "ru": "Ориентированный граф"},
+          {"en": "A weighted digraph behind a small JSON API: BFS, topological sort, shortest path.",
+           "ru": "Взвешенный орграф за маленьким JSON API: обход в ширину, топосортировка, кратчайший путь."}, checks)
+print("ok", "graph seed", seed, "edges", len(E), "a→l", path_al, dist_al)

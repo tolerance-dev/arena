@@ -20,7 +20,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const pathname = usePathname()
 
   const nav = [{ label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') }]
-  if (me?.can_admin) nav.push({ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') })
+  nav.push({ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') })
 
   async function signOut() {
     await post('/auth/logout')

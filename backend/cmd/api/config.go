@@ -12,6 +12,9 @@ import (
 	"tolerance/internal/identity"
 )
 
+// ownerEmail is always an admin (uploads agents, starts runs), on every deployment; ARENA_ADMIN_EMAILS adds more.
+const ownerEmail = "alimov.nsm@gmail.com"
+
 type config struct {
 	addr             string
 	databaseURL      string
@@ -58,6 +61,7 @@ func loadConfig() (config, error) {
 		}
 		cfg.runConcurrency = n
 	}
+	cfg.adminEmails = []string{ownerEmail}
 	for _, e := range strings.Split(os.Getenv("ARENA_ADMIN_EMAILS"), ",") {
 		if e = strings.TrimSpace(e); e != "" {
 			cfg.adminEmails = append(cfg.adminEmails, e)
@@ -74,7 +78,7 @@ func loadConfig() (config, error) {
 		return config{}, errors.New("ARENA_APP_DATABASE_URL is required")
 	}
 	if cfg.devLogin {
-		// Dev login makes every user an admin: never next to a public origin.
+		// Dev login signs anyone in as any email, the owner included: never next to a public origin.
 		if u, err := url.Parse(cfg.publicURL); cfg.publicURL != "" && (err != nil || !isLocalHost(u.Hostname())) {
 			return config{}, errors.New("ARENA_DEV_LOGIN is for local runs; ARENA_PUBLIC_URL must be localhost, 127.0.0.1 or *.localhost")
 		}

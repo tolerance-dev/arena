@@ -62,7 +62,7 @@ type Criterion struct {
 }
 
 type Judge struct {
-	Status   string      `json:"status"` // ok | skipped | error
+	Status   string      `json:"status"` // ok | skipped | error | off (the task has no judge)
 	Score    int         `json:"score"`
 	Summary  string      `json:"summary,omitempty"`
 	Criteria []Criterion `json:"criteria,omitempty"`
@@ -156,7 +156,7 @@ func PreviewHost(runID string) string { return strings.TrimPrefix(runID, "run_")
 func ImageFor(runID string) string { return "arena-run:" + PreviewHost(runID) }
 
 func (s *Service) withPreview(r *Run) {
-	if s.PreviewURL != "" && r.Status == "done" && r.AppStarted {
+	if t := tasks.BySlug(r.Task); s.PreviewURL != "" && r.Status == "done" && r.AppStarted && t != nil && t.UI {
 		r.PreviewURL = strings.ReplaceAll(s.PreviewURL, "{id}", PreviewHost(r.ID))
 	}
 }

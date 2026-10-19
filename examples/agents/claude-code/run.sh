@@ -10,8 +10,8 @@ PROMPT="$(cat TASK.md)
 
 ---
 You have about ${MINUTES} minutes of wall clock and a budget of ${ARENA_TOKEN_BUDGET:-?} tokens. Work autonomously in
-/work until the app is complete. Keep start.sh runnable at all times; commit to a simple, robust stack. Test the
-API with curl and the UI with Playwright (python3) before you finish."
+/work and keep it small: one server file, no dependencies, no frontend. Keep start.sh runnable; test every route of
+the contract with curl once, fix what fails, then stop."
 
 claude -p "$PROMPT" --model "$MODEL" --dangerously-skip-permissions --max-turns 500 \
   --output-format stream-json --verbose \

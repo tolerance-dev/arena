@@ -388,13 +388,16 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return fmt.Errorf("count sources: %w", err)
 	}
 
-	judgeToken, err := w.issueToken(ctx, c.id, "judge", checkTimeout+5*time.Minute)
-	if err != nil {
-		return err
+	var judge map[string]any // nil = the task has no judge
+	if task.Judge != "" {
+		judgeToken, err := w.issueToken(ctx, c.id, "judge", checkTimeout+5*time.Minute)
+		if err != nil {
+			return err
+		}
+		judge = map[string]any{"base_url": sandbox.GatewayURL + "/anthropic", "token": judgeToken, "model": w.cfg.JudgeModel}
 	}
 	spec, err := json.Marshal(map[string]any{
-		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge,
-		"judge": map[string]any{"base_url": sandbox.GatewayURL + "/anthropic", "token": judgeToken, "model": w.cfg.JudgeModel},
+		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "judge": judge,
 	})
 	if err != nil {
 		return err

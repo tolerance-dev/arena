@@ -31,7 +31,7 @@ export function RunView({ id }: { id: string }) {
       )}
       <Metrics run={run} t={t} />
       {done && <Preview run={run} t={t} />}
-      {done && run.judge && <JudgeCard run={run} t={t} />}
+      {done && run.judge && run.judge.status !== 'off' && <JudgeCard run={run} t={t} />}
       {done && <Checks run={run} t={t} />}
       <Logs run={run} t={t} />
     </div>

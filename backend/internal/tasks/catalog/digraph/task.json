@@ -1,0 +1,31 @@
+{
+  "order": 3,
+  "title": {"en": "Directed graph", "ru": "Ориентированный граф"},
+  "tagline": {"en": "A weighted digraph behind a small JSON API: BFS, topological sort, shortest path.", "ru": "Взвешенный орграф за маленьким JSON API: обход в ширину, топосортировка, кратчайший путь."},
+  "time_limit_s": 600,
+  "token_budget": 400000,
+  "checks": [
+    {"name": "seed graph", "method": "GET", "path": "/api/graph", "status": 200, "expect": [{"path": "nodes", "len": 12}, {"path": "edges", "len": 21}]},
+    {"name": "bfs from a", "method": "GET", "path": "/api/bfs?from=a", "status": 200, "expect": [{"path": "order", "equals": ["a", "d", "g", "h", "k", "l", "i", "j"]}]},
+    {"name": "bfs from d", "method": "GET", "path": "/api/bfs?from=d", "status": 200, "expect": [{"path": "order", "equals": ["d", "h", "k", "i", "l", "j"]}]},
+    {"name": "bfs from an unknown node → 404", "method": "GET", "path": "/api/bfs?from=zz", "status": 404},
+    {"name": "topological order", "method": "GET", "path": "/api/topo", "status": 200, "expect": [{"path": "order", "equals": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]}]},
+    {"name": "shortest path a → l", "method": "GET", "path": "/api/path?from=a&to=l", "status": 200, "expect": [{"path": "distance", "equals": 5}, {"path": "path", "equals": ["a", "d", "k", "l"]}]},
+    {"name": "no path l → a → 404", "method": "GET", "path": "/api/path?from=l&to=a", "status": 404},
+    {"name": "edge to an unknown node → 404", "method": "POST", "path": "/api/edges", "body": {"from": "a", "to": "zz", "weight": 1}, "status": 404},
+    {"name": "duplicate edge → 409", "method": "POST", "path": "/api/edges", "body": {"from": "b", "to": "k", "weight": 5}, "status": 409},
+    {"name": "self-loop → 400", "method": "POST", "path": "/api/edges", "body": {"from": "b", "to": "b", "weight": 1}, "status": 400},
+    {"name": "add node m", "method": "POST", "path": "/api/nodes", "body": {"id": "m"}, "status_in": [200, 201]},
+    {"name": "duplicate node → 409", "method": "POST", "path": "/api/nodes", "body": {"id": "m"}, "status": 409},
+    {"name": "add edge l → m", "method": "POST", "path": "/api/edges", "body": {"from": "l", "to": "m", "weight": 1}, "status_in": [200, 201]},
+    {"name": "shortest path a → m", "method": "GET", "path": "/api/path?from=a&to=m", "status": 200, "expect": [{"path": "distance", "equals": 6}, {"path": "path", "equals": ["a", "d", "k", "l", "m"]}]},
+    {"name": "add edge m → c (makes a cycle)", "method": "POST", "path": "/api/edges", "body": {"from": "m", "to": "c", "weight": 2}, "status_in": [200, 201]},
+    {"name": "topological order with a cycle → 409", "method": "GET", "path": "/api/topo", "status": 409},
+    {"name": "delete edge m → c", "method": "DELETE", "path": "/api/edges/m/c", "status_in": [200, 204]},
+    {"name": "topological order again", "method": "GET", "path": "/api/topo", "status": 200, "expect": [{"path": "order", "equals": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]}]},
+    {"name": "delete a missing edge → 404", "method": "DELETE", "path": "/api/edges/m/c", "status": 404},
+    {"name": "delete node m", "method": "DELETE", "path": "/api/nodes/m", "status_in": [200, 204]},
+    {"name": "its edges are gone", "method": "GET", "path": "/api/graph", "status": 200, "expect": [{"path": "nodes", "len": 12}, {"path": "edges", "len": 21}]},
+    {"name": "delete a missing node → 404", "method": "DELETE", "path": "/api/nodes/m", "status": 404}
+  ]
+}

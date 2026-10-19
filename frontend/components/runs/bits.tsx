@@ -81,14 +81,15 @@ export function exitLabel(t: RT, exit: string | null) {
 
 export function taskTitle(slug: string, locale: 'en' | 'ru') {
   const titles: Record<string, [string, string]> = {
-    marketplace: ['Marketplace', 'Маркетплейс'], hotels: ['Hotel booking', 'Бронирование отелей'], cinema: ['Online cinema', 'Онлайн-кинотеатр'],
+    rbtree: ['Red-black tree', 'Красно-чёрное дерево'], 'linked-list': ['Doubly linked list', 'Двусвязный список'],
+    digraph: ['Directed graph', 'Ориентированный граф'],
   }
   const p = titles[slug]
   return p ? p[locale === 'ru' ? 1 : 0] : slug
 }
 
 // One accent per task, used for the poster cards and small markers.
-export const TASK_ACCENT: Record<string, string> = { marketplace: 'var(--pop-1)', hotels: 'var(--pop-4)', cinema: 'var(--pop-2)' }
+export const TASK_ACCENT: Record<string, string> = { rbtree: 'var(--pop-1)', 'linked-list': 'var(--pop-4)', digraph: 'var(--pop-2)' }
 
 function passed(r: Run) {
   return { ok: r.checks.filter((c) => c.passed).length, all: r.checks.length }

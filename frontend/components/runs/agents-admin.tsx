@@ -25,7 +25,7 @@ export function AgentsAdmin() {
   const { me, loading } = useMe()
   const agents = usePoll<{ items: Agent[] }>(me?.can_admin ? '/admin/agents' : null, 30_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
-  const runs = usePoll<{ items: Run[] }>(me?.can_admin ? '/runs?limit=20' : null, 4_000)
+  const runs = usePoll<{ items: Run[] }>(me ? '/runs?limit=20' : null, 4_000)
 
   if (loading) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />
   if (!me) {
@@ -36,16 +36,16 @@ export function AgentsAdmin() {
       </div>
     )
   }
-  if (!me.can_admin) return <p className="text-muted-foreground">{t('adminOnly')}</p>
-
+  // Everyone signed in sees the same page; only admins (for now the owner) can upload and start runs.
+  const canUpload = !!me.can_admin
   const refresh = () => { void agents.reload(); void runs.reload() }
   return (
     <div className="space-y-12">
       <PageHeader title={t('adminTitle')}>{t('adminLead')}</PageHeader>
-      <NewAgent t={t} onDone={refresh} />
+      <NewAgent t={t} onDone={refresh} disabled={!canUpload} />
       <section>
         <SectionTitle>{t('yourAgents')}</SectionTitle>
-        {agents.data?.items.length === 0 && (
+        {(!canUpload || agents.data?.items.length === 0) && (
           <p className="rounded-xl border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noAgents')}</p>
         )}
         <div className="space-y-4">
@@ -60,7 +60,7 @@ export function AgentsAdmin() {
   )
 }
 
-function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
+function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled: boolean }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -82,6 +82,7 @@ function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-7">
       <h2 className="heading mb-5 text-lg">{t('newAgent')}</h2>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
+        <fieldset disabled={disabled} className="contents">
         <div className="space-y-1.5">
           <Label htmlFor="name">{t('agentName')}</Label>
           <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5" />
@@ -109,9 +110,11 @@ function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
           <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy}><Upload /> {busy ? t('uploading') : t('upload')}</Button>
+          <Button type="submit" disabled={busy || disabled}><Upload /> {busy ? t('uploading') : t('upload')}</Button>
+          {disabled && <span className="text-sm font-semibold text-muted-foreground">{t('inDevelopment')}</span>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
+        </fieldset>
       </form>
     </section>
   )
