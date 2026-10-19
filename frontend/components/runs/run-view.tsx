@@ -30,8 +30,9 @@ export function RunView({ id }: { id: string }) {
         <p className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
       )}
       <Metrics run={run} t={t} />
-      {done && <Preview run={run} t={t} />}
-      {done && run.judge && <JudgeCard run={run} t={t} />}
+      {/* API-only tasks have no preview or screenshots: nothing to show once the app started. */}
+      {done && (!run.app_started || run.preview_url || run.has_shot) && <Preview run={run} t={t} />}
+      {done && run.judge && run.judge.status !== 'off' && <JudgeCard run={run} t={t} />}
       {done && <Checks run={run} t={t} />}
       <Logs run={run} t={t} />
     </div>

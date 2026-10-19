@@ -1,8 +1,9 @@
 """Checks an agent's app inside its snapshot container (run by internal/runs/worker.go as root).
 
 1. starts /work/start.sh as uid 1001 (the app can't read /verify: the checklist and the judge token live there);
-2. runs the task's API checks in order; 3. screenshots / on desktop and mobile;
-4. lets the judge model use the app (browser + API + code) and score it against the hidden checklist.
+2. runs the task's API checks in order; 3. screenshots / on desktop and mobile (tasks with "ui" only);
+4. lets the judge model use the app (browser + API + code) and score it against the hidden checklist (tasks with a
+   judge only; spec "judge" is null otherwise).
 
 Writes /verify/out/result.json (+ shot.jpg, shot-mobile.jpg). Logs go to stdout.
 """
@@ -147,6 +148,46 @@ def same(a, b):
     return a == b
 
 
+def rbtree_problem(root):
+    """Why root is not a valid red-black tree, or "" when it is (BST order, black root, no red-red, equal black
+    heights)."""
+    if root is None:
+        return ""
+    if not isinstance(root, dict):
+        return "the root is not an object"
+    if root.get("color") != "black":
+        return "the root is not black"
+
+    def walk(n, lo, hi, parent_red):
+        if n is None:
+            return 1
+        if not isinstance(n, dict):
+            raise ValueError("a node is not an object")
+        k, color = n.get("key"), n.get("color")
+        if not isinstance(k, (int, float)) or isinstance(k, bool):
+            raise ValueError(f"node key {json.dumps(k)[:30]} is not a number")
+        if color not in ("red", "black"):
+            raise ValueError(f"node {k}: color {json.dumps(color)[:30]}")
+        if (lo is not None and k <= lo) or (hi is not None and k >= hi):
+            raise ValueError(f"node {k} breaks the search-tree order")
+        red = color == "red"
+        if red and parent_red:
+            raise ValueError(f"red node {k} has a red parent")
+        left = walk(n.get("left"), lo, k, red)
+        right = walk(n.get("right"), k, hi, red)
+        if left != right:
+            raise ValueError(f"black heights differ under {k}: {left} vs {right}")
+        return left + (0 if red else 1)
+
+    try:
+        walk(root, None, None, False)
+    except ValueError as ex:
+        return str(ex)
+    except RecursionError:
+        return "the tree is too deep"
+    return ""
+
+
 def expect_ok(doc, e):
     v = resolve(doc, e.get("path", ""))
     where = e.get("path") or "body"
@@ -159,6 +200,9 @@ def expect_ok(doc, e):
     if "len" in e:
         n = len(v) if isinstance(v, (list, str, dict)) else -1
         return (n == e["len"], f"len({where}) = {n}, want {e['len']}")
+    if e.get("rbtree"):
+        why = rbtree_problem(v)
+        return (not why, why)
     if e.get("exists"):
         return (v is not None, f"{where} is null")
     if "sorted_by" in e:
@@ -176,10 +220,11 @@ def expect_ok(doc, e):
 
 def run_checks():
     checks = []
-    status, headers, body = http("GET", "/")
-    ctype = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
-    checks.append({"name": "home page serves HTML", "passed": status == 200 and "html" in ctype,
-                   "detail": "" if status == 200 and "html" in ctype else f"GET / → {status} {ctype}"})
+    if SPEC.get("ui"):
+        status, headers, body = http("GET", "/")
+        ctype = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+        checks.append({"name": "home page serves HTML", "passed": status == 200 and "html" in ctype,
+                       "detail": "" if status == 200 and "html" in ctype else f"GET / → {status} {ctype}"})
     saved = {}
     for c in SPEC["checks"]:
         name = c["name"]
@@ -464,7 +509,7 @@ at most half of the item. Crashes, 500s, broken layouts and data that ignores th
 
 
 def run_judge(auto_checks):
-    j = SPEC.get("judge") or {}
+    j = SPEC["judge"]
     try:
         import anthropic
     except ImportError:
@@ -554,12 +599,16 @@ def main():
         if not ok:
             log("app did not start:", result["start"]["error"])
             log("app log:\n" + app_log_tail())
-            result["judge"] = {"status": "skipped", "error": "the app did not start"}
+            result["judge"] = {"status": "skipped", "error": "the app did not start"} if SPEC.get("judge") else {"status": "off"}
             return
         result["checks"] = run_checks()
         save()
-        screenshots()
-        save()
+        if SPEC.get("ui"):
+            screenshots()
+            save()
+        if not SPEC.get("judge"):
+            result["judge"] = {"status": "off"}
+            return
         try:
             result["judge"] = run_judge([{"name": "app starts with start.sh", "passed": True}] + result["checks"])
         except Exception as ex:

@@ -30,11 +30,11 @@ type deps struct {
 }
 
 // newHandler is ALL the routing. Reads are public; uploading agents and starting runs is for admins only (for now
-// only the platform owner uploads agents).
+// only the platform owner, ownerEmail; the dev login doesn't change that).
 func newHandler(cfg config, d deps) http.Handler {
 	owner := http.NewServeMux()
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
-		return map[string]any{"can_admin": identity.CanAdmin(cfg.devLogin, identity.MustFromContext(ctx).Role)}, nil
+		return map[string]any{"can_admin": identity.MustFromContext(ctx).Role == "admin"}, nil
 	})
 
 	admin := http.NewServeMux()
@@ -51,7 +51,7 @@ func newHandler(cfg config, d deps) http.Handler {
 		Providers: d.providers, PublicURL: cfg.publicURL, DevLogin: cfg.devLogin, Secure: cfg.secureCookies, TrustProxy: cfg.trustProxy,
 	})
 	api.Handle("/api/v1/me", session(owner))
-	api.Handle("/api/v1/admin/", session(adminOrDev(cfg.devLogin)(admin)))
+	api.Handle("/api/v1/admin/", session(identity.RequireAdmin(admin)))
 	api.Handle("/api/v1/tasks", public)
 	api.Handle("/api/v1/tasks/", public)
 	api.Handle("/api/v1/runs", public)
@@ -121,15 +121,4 @@ func withMiddleware(next http.Handler, log *slog.Logger, trustProxy bool) http.H
 		}
 		log.Info("request", fields...)
 	})
-}
-
-// adminOrDev lets a request through when its user is an admin, or always when dev is true (ARENA_DEV_LOGIN,
-// which is refused next to secure cookies, so it never applies to production).
-func adminOrDev(dev bool) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		if dev {
-			return next
-		}
-		return identity.RequireAdmin(next)
-	}
 }

@@ -18,7 +18,7 @@ export interface Tokens { in: number; out: number; cache_read: number; cache_wri
 export interface Check { name: string; passed: boolean; detail?: string }
 export interface Criterion { title: string; max: number; points: number; note?: string }
 export interface Judge {
-  status: 'ok' | 'skipped' | 'error'; score: number; summary?: string; criteria?: Criterion[]
+  status: 'ok' | 'skipped' | 'error' | 'off'; score: number; summary?: string; criteria?: Criterion[]
   error?: string; steps?: number; model?: string
 }
 
