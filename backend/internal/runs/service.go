@@ -13,10 +13,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/httpx"
-	"tolerance/internal/platform/idgen"
-	"tolerance/internal/tasks"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/httpx"
+	"dopamine/internal/platform/idgen"
+	"dopamine/internal/tasks"
 )
 
 type Service struct {

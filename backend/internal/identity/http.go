@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"tolerance/internal/platform/clientip"
-	"tolerance/internal/platform/httpx"
-	"tolerance/internal/platform/ratelimit"
+	"dopamine/internal/platform/clientip"
+	"dopamine/internal/platform/httpx"
+	"dopamine/internal/platform/ratelimit"
 )
 
 // clientIP resolves the address to rate-limit on. See clientip.FromRequest

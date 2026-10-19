@@ -36,7 +36,8 @@ overrides the superpowers skills and any default habits:
 
 ## What this is
 
-**tolerance** (site https://tolerance.cc; env vars are `ARENA_*`, the database is `arena`). Since 2026-10-19 it
+**dopamine** (renamed from tolerance on 2026-10-20; the site is still https://tolerance.cc and `deploy/` +
+`deploy.yml` still use the old name; env vars are `ARENA_*`, the database is `arena`). Since 2026-10-19 it
 is an **agent arena for whole apps**: an admin uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM
 key; a run puts the agent in a sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and
 frontend; the platform measures and judges the result. Everything older (daily task, tanks, build challenges,
@@ -71,7 +72,7 @@ uploads open to everyone). Example agents: `examples/agents/{claude-code,demo}`.
 Prod (`deploy/`) is NOT adapted yet: it has no gateway service, no `arena-runtime` image, no
 `arena-agents` network and no `*.preview` DNS/TLS. Don't press deploy until that is done.
 
-Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks to the backend over HTTP only).
+Monorepo: `backend/` (Go module `dopamine`) and `frontend/` (Next.js, talks to the backend over HTTP only).
 
 ## Commands
 

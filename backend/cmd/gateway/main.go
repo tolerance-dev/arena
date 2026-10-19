@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"tolerance/internal/gateway"
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/secretbox"
+	"dopamine/internal/gateway"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/secretbox"
 )
 
 func env(k, def string) string {

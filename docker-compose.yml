@@ -28,7 +28,7 @@ services:
 
   migrate:
     build: ./backend
-    image: tolerance-backend:local
+    image: dopamine-backend:local
     command: ["migrate"]
     restart: "no"
     environment:
@@ -40,7 +40,7 @@ services:
 
   api:
     build: ./backend
-    image: tolerance-backend:local
+    image: dopamine-backend:local
     restart: unless-stopped
     environment:
       ARENA_ADDR: 0.0.0.0:8080
@@ -69,7 +69,7 @@ services:
 
   gateway:
     build: ./backend
-    image: tolerance-backend:local
+    image: dopamine-backend:local
     command: ["gateway"]
     restart: unless-stopped
     environment:
@@ -99,7 +99,7 @@ services:
       context: ./frontend
       args:
         API_URL: http://api:8080
-    image: tolerance-web:local
+    image: dopamine-web:local
     restart: unless-stopped
     environment:
       # Read at runtime by server components (share metadata and images).

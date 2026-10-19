@@ -20,11 +20,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/agents"
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/sanitize"
-	"tolerance/internal/sandbox"
-	"tolerance/internal/tasks"
+	"dopamine/internal/agents"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/sanitize"
+	"dopamine/internal/sandbox"
+	"dopamine/internal/tasks"
 )
 
 //go:embed verify.py

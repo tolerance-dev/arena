@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"tolerance/internal/platform/db"
+	"dopamine/internal/platform/db"
 )
 
 func main() {

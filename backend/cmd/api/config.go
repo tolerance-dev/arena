@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"tolerance/internal/identity"
+	"dopamine/internal/identity"
 )
 
 type config struct {

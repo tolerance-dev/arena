@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"tolerance/internal/platform/httpx"
+	"dopamine/internal/platform/httpx"
 )
 
 // CanAdmin reports whether a signed-in caller of the given role may use admin features: an admin, or anyone on a

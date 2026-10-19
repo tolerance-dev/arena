@@ -1,4 +1,4 @@
-// Command api is the tolerance backend: the HTTP API plus the runs worker (agents build apps in sandboxes, the
+// Command api is the dopamine backend: the HTTP API plus the runs worker (agents build apps in sandboxes, the
 // platform checks and judges them), one process. The gateway (cmd/gateway) is a separate container.
 package main
 
@@ -14,13 +14,13 @@ import (
 	"syscall"
 	"time"
 
-	"tolerance/internal/agents"
-	"tolerance/internal/identity"
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/ratelimit"
-	"tolerance/internal/platform/secretbox"
-	"tolerance/internal/runs"
-	"tolerance/internal/tasks"
+	"dopamine/internal/agents"
+	"dopamine/internal/identity"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/ratelimit"
+	"dopamine/internal/platform/secretbox"
+	"dopamine/internal/runs"
+	"dopamine/internal/tasks"
 )
 
 func main() {

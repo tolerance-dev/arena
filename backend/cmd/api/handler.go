@@ -9,14 +9,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/agents"
-	"tolerance/internal/identity"
-	"tolerance/internal/platform/clientip"
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/httpx"
-	"tolerance/internal/platform/idgen"
-	"tolerance/internal/platform/ratelimit"
-	"tolerance/internal/runs"
+	"dopamine/internal/agents"
+	"dopamine/internal/identity"
+	"dopamine/internal/platform/clientip"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/httpx"
+	"dopamine/internal/platform/idgen"
+	"dopamine/internal/platform/ratelimit"
+	"dopamine/internal/runs"
 )
 
 type deps struct {

@@ -10,9 +10,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/httpx"
-	"tolerance/internal/platform/idgen"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/httpx"
+	"dopamine/internal/platform/idgen"
 )
 
 type User struct {

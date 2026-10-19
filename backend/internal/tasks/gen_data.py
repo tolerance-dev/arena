@@ -64,7 +64,7 @@ for slug, cname, names in cats:
                 "Thoughtfully made with premium materials.",
                 "Great value and a two-year warranty.",
             ]),
-            "image": f"https://picsum.photos/seed/tolerance-p{pid}/600/600",
+            "image": f"https://picsum.photos/seed/dopamine-p{pid}/600/600",
             "tags": R.sample(["new", "bestseller", "eco", "gift", "sale", "limited"], R.randint(0, 2)),
         })
 dump("marketplace", "categories.json", [{"id": s, "name": n} for s, n, _ in cats])
@@ -98,7 +98,7 @@ for c in cities:
             "distance_to_center_km": round(R.uniform(0.2, 7.5), 1),
             "amenities": sorted(R.sample(amen, R.randint(2, 6))),
             "description": R.choice(["Bright rooms a short walk from the old town.", "Quiet, friendly and great for families.", "Rooftop views and an excellent breakfast.", "Modern design in a historic building.", "Budget-friendly with everything you need."]),
-            "photos": [f"https://picsum.photos/seed/tolerance-h{hid}-{k}/1000/700" for k in range(1, 4)],
+            "photos": [f"https://picsum.photos/seed/dopamine-h{hid}-{k}/1000/700" for k in range(1, 4)],
             "check_in_from": "14:00", "check_out_until": "11:00",
             "free_cancellation_days": R.choice([0, 1, 3, 7]),
         })
@@ -149,8 +149,8 @@ for i in range(1, 49):
         "seasons": [{"number": s, "episodes": [{"number": e, "title": f"Episode {e}", "duration_min": R.randint(38, 58)} for e in range(1, R.randint(6, 10))]} for s in range(1, R.randint(2, 4))] if kind == "series" else None,
         "director": R.choice(directors), "cast": R.sample(actors, 3),
         "description": R.choice(["A quiet story about choices that echo for years.", "Two strangers race against time across a city that never sleeps.", "An unlikely team sets out to fix what everyone else gave up on.", "A coming-of-age tale told over one unforgettable summer.", "A gripping investigation that turns personal."]),
-        "poster": f"https://picsum.photos/seed/tolerance-m{i}/400/600",
-        "backdrop": f"https://picsum.photos/seed/tolerance-mb{i}/1280/720",
+        "poster": f"https://picsum.photos/seed/dopamine-m{i}/400/600",
+        "backdrop": f"https://picsum.photos/seed/dopamine-mb{i}/1280/720",
         "stream_url": f"/media/{'m' + str(i)}.m3u8",
         "premium": R.random() < 0.35,
         "added_at": f"2026-{R.randint(1, 10):02d}-{R.randint(10, 28)}",

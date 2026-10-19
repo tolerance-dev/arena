@@ -1,4 +1,4 @@
-# tolerance backend: api, migrate and gateway in one image.
+# dopamine backend: api, migrate and gateway in one image.
 FROM golang:1.27-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

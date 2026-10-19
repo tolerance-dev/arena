@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"tolerance/internal/platform/httpx"
-	"tolerance/internal/sandbox"
-	"tolerance/internal/tasks"
+	"dopamine/internal/platform/httpx"
+	"dopamine/internal/sandbox"
+	"dopamine/internal/tasks"
 )
 
 // TaskView is a task page: the brief as the agents get it, the data files, the leaderboard and the latest runs.

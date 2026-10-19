@@ -17,9 +17,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/platform/db"
-	"tolerance/internal/runs"
-	"tolerance/internal/sandbox"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/runs"
+	"dopamine/internal/sandbox"
 )
 
 // Previews serves each finished run's app live at http://<run-hex>.<domain>/. The app is started on demand from

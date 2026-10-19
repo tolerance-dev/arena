@@ -25,9 +25,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/secretbox"
-	"tolerance/internal/runs"
+	"dopamine/internal/platform/db"
+	"dopamine/internal/platform/secretbox"
+	"dopamine/internal/runs"
 )
 
 type Config struct {

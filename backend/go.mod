@@ -1,4 +1,4 @@
-module tolerance
+module dopamine
 
 go 1.26.0
 

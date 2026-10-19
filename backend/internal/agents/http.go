@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"tolerance/internal/identity"
-	"tolerance/internal/platform/httpx"
+	"dopamine/internal/identity"
+	"dopamine/internal/platform/httpx"
 )
 
 // RegisterPublicRoutes mounts the public reads (no keys).

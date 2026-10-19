@@ -9,7 +9,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
 
-	"tolerance/migrations"
+	"dopamine/migrations"
 )
 
 // Migrate applies every pending migration using the supplied DSN, which
