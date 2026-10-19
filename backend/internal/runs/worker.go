@@ -79,6 +79,7 @@ func (w *Worker) Run(ctx context.Context) {
 	_ = w.exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
 		WHERE status IN ('agent', 'checking')`)
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
+	go w.collectImages(ctx)
 	sem := make(chan struct{}, w.cfg.Concurrency)
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -107,6 +108,49 @@ func (w *Worker) Run(ctx context.Context) {
 			defer func() { <-sem }()
 			w.process(ctx, id)
 		}()
+	}
+}
+
+// collectImages removes run snapshots nobody needs any more, hourly: everything finished more than a day ago
+// except each agent's best run per task (still on the leaderboard, so its live preview keeps working).
+func (w *Worker) collectImages(ctx context.Context) {
+	for {
+		keep := map[string]bool{}
+		err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			// By id, not the image column: a snapshot exists a moment before the column is set.
+			rows, err := tx.Query(ctx, `SELECT id FROM runs WHERE
+					status IN ('queued', 'agent', 'checking') OR finished_at IS NULL OR finished_at > now() - interval '1 day'
+					OR id IN (SELECT DISTINCT ON (agent_id, task) id FROM runs WHERE status = 'done' AND score IS NOT NULL
+						ORDER BY agent_id, task, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var id string
+				if err := rows.Scan(&id); err != nil {
+					return err
+				}
+				keep[ImageFor(id)] = true
+			}
+			return rows.Err()
+		})
+		if err == nil {
+			images, _ := sandbox.Images(ctx, "arena-run")
+			for _, img := range images {
+				if keep[img] {
+					continue
+				}
+				sandbox.RemoveImage(img)
+				_ = w.exec(ctx, `UPDATE runs SET image = NULL WHERE image = $1`, img)
+				w.log.Info("removed run snapshot", "image", img)
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Hour):
+		}
 	}
 }
 
