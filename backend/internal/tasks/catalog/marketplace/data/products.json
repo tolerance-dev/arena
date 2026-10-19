@@ -1,0 +1,1010 @@
+[
+  {
+    "id": "p1",
+    "title": "Oakline Wireless Earbuds",
+    "category": "electronics",
+    "price": 19,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.9,
+    "reviews_count": 2279,
+    "stock": 20,
+    "seller_id": "s3",
+    "description": "Wireless Earbuds by Acme. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p1/600/600",
+    "tags": [
+      "limited"
+    ]
+  },
+  {
+    "id": "p2",
+    "title": "Acme Smart Watch",
+    "category": "electronics",
+    "price": 29,
+    "currency": "USD",
+    "old_price": 36.25,
+    "rating": 3.1,
+    "reviews_count": 2269,
+    "stock": 12,
+    "seller_id": "s7",
+    "description": "Smart Watch by Vertex. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p2/600/600",
+    "tags": []
+  },
+  {
+    "id": "p3",
+    "title": "Juniper Bluetooth Speaker",
+    "category": "electronics",
+    "price": 99,
+    "currency": "USD",
+    "old_price": 138.6,
+    "rating": 3.8,
+    "reviews_count": 1450,
+    "stock": 5,
+    "seller_id": "s7",
+    "description": "Bluetooth Speaker by Vertex. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p3/600/600",
+    "tags": [
+      "limited",
+      "eco"
+    ]
+  },
+  {
+    "id": "p4",
+    "title": "Oakline USB-C Hub",
+    "category": "electronics",
+    "price": 79.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.3,
+    "reviews_count": 556,
+    "stock": 5,
+    "seller_id": "s4",
+    "description": "USB-C Hub by Polar. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p4/600/600",
+    "tags": []
+  },
+  {
+    "id": "p5",
+    "title": "Northwind Mechanical Keyboard",
+    "category": "electronics",
+    "price": 149,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.7,
+    "reviews_count": 1002,
+    "stock": 8,
+    "seller_id": "s1",
+    "description": "Mechanical Keyboard by Juniper. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p5/600/600",
+    "tags": [
+      "limited"
+    ]
+  },
+  {
+    "id": "p6",
+    "title": "Vertex 4K Monitor",
+    "category": "electronics",
+    "price": 149.5,
+    "currency": "USD",
+    "old_price": 186.88,
+    "rating": 4.4,
+    "reviews_count": 2347,
+    "stock": 0,
+    "seller_id": "s3",
+    "description": "4K Monitor by Mosaic. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p6/600/600",
+    "tags": [
+      "eco",
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p7",
+    "title": "Vertex Webcam",
+    "category": "electronics",
+    "price": 39.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.7,
+    "reviews_count": 2366,
+    "stock": 0,
+    "seller_id": "s3",
+    "description": "Webcam by Tidal. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p7/600/600",
+    "tags": [
+      "sale",
+      "gift"
+    ]
+  },
+  {
+    "id": "p8",
+    "title": "Vertex Power Bank",
+    "category": "electronics",
+    "price": 29.99,
+    "currency": "USD",
+    "old_price": 41.99,
+    "rating": 4.7,
+    "reviews_count": 2297,
+    "stock": 0,
+    "seller_id": "s6",
+    "description": "Power Bank by Polar. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p8/600/600",
+    "tags": [
+      "limited",
+      "sale"
+    ]
+  },
+  {
+    "id": "p9",
+    "title": "Oakline Gaming Mouse",
+    "category": "electronics",
+    "price": 14.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.5,
+    "reviews_count": 1083,
+    "stock": 12,
+    "seller_id": "s2",
+    "description": "Gaming Mouse by Vertex. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p9/600/600",
+    "tags": []
+  },
+  {
+    "id": "p10",
+    "title": "Acme Noise-Cancelling Headphones",
+    "category": "electronics",
+    "price": 9.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.7,
+    "reviews_count": 1031,
+    "stock": 1,
+    "seller_id": "s2",
+    "description": "Noise-Cancelling Headphones by Lumen. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p10/600/600",
+    "tags": [
+      "eco",
+      "sale"
+    ]
+  },
+  {
+    "id": "p11",
+    "title": "Polar Espresso Maker",
+    "category": "home",
+    "price": 19,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.7,
+    "reviews_count": 1945,
+    "stock": 1,
+    "seller_id": "s1",
+    "description": "Espresso Maker by Lumen. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p11/600/600",
+    "tags": [
+      "eco",
+      "limited"
+    ]
+  },
+  {
+    "id": "p12",
+    "title": "Vertex Cast Iron Skillet",
+    "category": "home",
+    "price": 199,
+    "currency": "USD",
+    "old_price": 228.85,
+    "rating": 3.2,
+    "reviews_count": 125,
+    "stock": 0,
+    "seller_id": "s1",
+    "description": "Cast Iron Skillet by Kestrel. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p12/600/600",
+    "tags": [
+      "limited",
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p13",
+    "title": "Mosaic Chef Knife",
+    "category": "home",
+    "price": 9.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.6,
+    "reviews_count": 2171,
+    "stock": 12,
+    "seller_id": "s5",
+    "description": "Chef Knife by Polar. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p13/600/600",
+    "tags": []
+  },
+  {
+    "id": "p14",
+    "title": "Lumen Air Fryer",
+    "category": "home",
+    "price": 59,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.4,
+    "reviews_count": 2250,
+    "stock": 5,
+    "seller_id": "s6",
+    "description": "Air Fryer by Juniper. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p14/600/600",
+    "tags": [
+      "limited",
+      "new"
+    ]
+  },
+  {
+    "id": "p15",
+    "title": "Juniper Linen Bedding Set",
+    "category": "home",
+    "price": 14,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.5,
+    "reviews_count": 1370,
+    "stock": 0,
+    "seller_id": "s2",
+    "description": "Linen Bedding Set by Lumen. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p15/600/600",
+    "tags": [
+      "bestseller",
+      "sale"
+    ]
+  },
+  {
+    "id": "p16",
+    "title": "Polar Ceramic Mug Set",
+    "category": "home",
+    "price": 129,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.4,
+    "reviews_count": 269,
+    "stock": 8,
+    "seller_id": "s3",
+    "description": "Ceramic Mug Set by Northwind. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p16/600/600",
+    "tags": [
+      "new",
+      "gift"
+    ]
+  },
+  {
+    "id": "p17",
+    "title": "Oakline Desk Lamp",
+    "category": "home",
+    "price": 79,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.0,
+    "reviews_count": 167,
+    "stock": 12,
+    "seller_id": "s3",
+    "description": "Desk Lamp by Kestrel. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p17/600/600",
+    "tags": [
+      "bestseller",
+      "eco"
+    ]
+  },
+  {
+    "id": "p18",
+    "title": "Oakline Electric Kettle",
+    "category": "home",
+    "price": 99.99,
+    "currency": "USD",
+    "old_price": 124.99,
+    "rating": 4.0,
+    "reviews_count": 1246,
+    "stock": 35,
+    "seller_id": "s5",
+    "description": "Electric Kettle by Vertex. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p18/600/600",
+    "tags": [
+      "sale"
+    ]
+  },
+  {
+    "id": "p19",
+    "title": "Northwind Bamboo Cutting Board",
+    "category": "home",
+    "price": 199,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.7,
+    "reviews_count": 697,
+    "stock": 2,
+    "seller_id": "s6",
+    "description": "Bamboo Cutting Board by Acme. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p19/600/600",
+    "tags": [
+      "new"
+    ]
+  },
+  {
+    "id": "p20",
+    "title": "Polar Scented Candle",
+    "category": "home",
+    "price": 199.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.2,
+    "reviews_count": 1770,
+    "stock": 5,
+    "seller_id": "s5",
+    "description": "Scented Candle by Lumen. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p20/600/600",
+    "tags": [
+      "limited",
+      "gift"
+    ]
+  },
+  {
+    "id": "p21",
+    "title": "Tidal Merino Sweater",
+    "category": "fashion",
+    "price": 39.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.3,
+    "reviews_count": 1440,
+    "stock": 0,
+    "seller_id": "s4",
+    "description": "Merino Sweater by Vertex. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p21/600/600",
+    "tags": []
+  },
+  {
+    "id": "p22",
+    "title": "Mosaic Denim Jacket",
+    "category": "fashion",
+    "price": 24.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.3,
+    "reviews_count": 2058,
+    "stock": 3,
+    "seller_id": "s2",
+    "description": "Denim Jacket by Polar. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p22/600/600",
+    "tags": [
+      "gift",
+      "eco"
+    ]
+  },
+  {
+    "id": "p23",
+    "title": "Oakline Leather Sneakers",
+    "category": "fashion",
+    "price": 9.99,
+    "currency": "USD",
+    "old_price": 11.49,
+    "rating": 3.6,
+    "reviews_count": 1932,
+    "stock": 35,
+    "seller_id": "s5",
+    "description": "Leather Sneakers by Juniper. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p23/600/600",
+    "tags": [
+      "new",
+      "limited"
+    ]
+  },
+  {
+    "id": "p24",
+    "title": "Vertex Canvas Backpack",
+    "category": "fashion",
+    "price": 129.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.3,
+    "reviews_count": 887,
+    "stock": 3,
+    "seller_id": "s4",
+    "description": "Canvas Backpack by Oakline. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p24/600/600",
+    "tags": [
+      "limited",
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p25",
+    "title": "Northwind Wool Scarf",
+    "category": "fashion",
+    "price": 49.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.8,
+    "reviews_count": 214,
+    "stock": 0,
+    "seller_id": "s7",
+    "description": "Wool Scarf by Lumen. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p25/600/600",
+    "tags": [
+      "gift"
+    ]
+  },
+  {
+    "id": "p26",
+    "title": "Lumen Rain Coat",
+    "category": "fashion",
+    "price": 49.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.4,
+    "reviews_count": 729,
+    "stock": 0,
+    "seller_id": "s5",
+    "description": "Rain Coat by Tidal. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p26/600/600",
+    "tags": [
+      "gift",
+      "eco"
+    ]
+  },
+  {
+    "id": "p27",
+    "title": "Mosaic Chino Trousers",
+    "category": "fashion",
+    "price": 249.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.9,
+    "reviews_count": 1078,
+    "stock": 2,
+    "seller_id": "s6",
+    "description": "Chino Trousers by Acme. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p27/600/600",
+    "tags": [
+      "new",
+      "limited"
+    ]
+  },
+  {
+    "id": "p28",
+    "title": "Lumen Linen Shirt",
+    "category": "fashion",
+    "price": 9,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.8,
+    "reviews_count": 2245,
+    "stock": 20,
+    "seller_id": "s1",
+    "description": "Linen Shirt by Polar. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p28/600/600",
+    "tags": [
+      "sale",
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p29",
+    "title": "Acme Leather Belt",
+    "category": "fashion",
+    "price": 199.5,
+    "currency": "USD",
+    "old_price": 279.3,
+    "rating": 3.8,
+    "reviews_count": 1777,
+    "stock": 50,
+    "seller_id": "s1",
+    "description": "Leather Belt by Oakline. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p29/600/600",
+    "tags": [
+      "limited",
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p30",
+    "title": "Tidal Baseball Cap",
+    "category": "fashion",
+    "price": 129.5,
+    "currency": "USD",
+    "old_price": 181.3,
+    "rating": 4.8,
+    "reviews_count": 1981,
+    "stock": 3,
+    "seller_id": "s3",
+    "description": "Baseball Cap by Juniper. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p30/600/600",
+    "tags": []
+  },
+  {
+    "id": "p31",
+    "title": "Tidal Yoga Mat",
+    "category": "sports",
+    "price": 39.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.9,
+    "reviews_count": 236,
+    "stock": 0,
+    "seller_id": "s3",
+    "description": "Yoga Mat by Acme. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p31/600/600",
+    "tags": [
+      "gift"
+    ]
+  },
+  {
+    "id": "p32",
+    "title": "Polar Trail Running Shoes",
+    "category": "sports",
+    "price": 39.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.9,
+    "reviews_count": 1703,
+    "stock": 2,
+    "seller_id": "s7",
+    "description": "Trail Running Shoes by Juniper. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p32/600/600",
+    "tags": [
+      "gift",
+      "sale"
+    ]
+  },
+  {
+    "id": "p33",
+    "title": "Northwind Insulated Bottle",
+    "category": "sports",
+    "price": 59,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.5,
+    "reviews_count": 682,
+    "stock": 0,
+    "seller_id": "s1",
+    "description": "Insulated Bottle by Northwind. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p33/600/600",
+    "tags": []
+  },
+  {
+    "id": "p34",
+    "title": "Kestrel Camping Tent",
+    "category": "sports",
+    "price": 249.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.7,
+    "reviews_count": 357,
+    "stock": 0,
+    "seller_id": "s3",
+    "description": "Camping Tent by Lumen. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p34/600/600",
+    "tags": [
+      "new"
+    ]
+  },
+  {
+    "id": "p35",
+    "title": "Juniper Resistance Bands",
+    "category": "sports",
+    "price": 199.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.8,
+    "reviews_count": 1667,
+    "stock": 0,
+    "seller_id": "s2",
+    "description": "Resistance Bands by Tidal. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p35/600/600",
+    "tags": [
+      "sale"
+    ]
+  },
+  {
+    "id": "p36",
+    "title": "Mosaic Cycling Helmet",
+    "category": "sports",
+    "price": 99.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.6,
+    "reviews_count": 1890,
+    "stock": 35,
+    "seller_id": "s2",
+    "description": "Cycling Helmet by Oakline. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p36/600/600",
+    "tags": []
+  },
+  {
+    "id": "p37",
+    "title": "Polar Dumbbell Pair",
+    "category": "sports",
+    "price": 9.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.9,
+    "reviews_count": 439,
+    "stock": 0,
+    "seller_id": "s4",
+    "description": "Dumbbell Pair by Oakline. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p37/600/600",
+    "tags": [
+      "limited",
+      "gift"
+    ]
+  },
+  {
+    "id": "p38",
+    "title": "Lumen Hiking Poles",
+    "category": "sports",
+    "price": 29.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.4,
+    "reviews_count": 1447,
+    "stock": 12,
+    "seller_id": "s1",
+    "description": "Hiking Poles by Juniper. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p38/600/600",
+    "tags": [
+      "limited",
+      "new"
+    ]
+  },
+  {
+    "id": "p39",
+    "title": "Lumen Sleeping Bag",
+    "category": "sports",
+    "price": 19.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.4,
+    "reviews_count": 1736,
+    "stock": 1,
+    "seller_id": "s3",
+    "description": "Sleeping Bag by Tidal. Lightweight, durable and easy to care for.",
+    "image": "https://picsum.photos/seed/tolerance-p39/600/600",
+    "tags": []
+  },
+  {
+    "id": "p40",
+    "title": "Acme Jump Rope",
+    "category": "sports",
+    "price": 99.99,
+    "currency": "USD",
+    "old_price": 114.99,
+    "rating": 3.3,
+    "reviews_count": 2078,
+    "stock": 0,
+    "seller_id": "s5",
+    "description": "Jump Rope by Northwind. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p40/600/600",
+    "tags": []
+  },
+  {
+    "id": "p41",
+    "title": "Northwind The Pragmatic Builder",
+    "category": "books",
+    "price": 149.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.6,
+    "reviews_count": 4,
+    "stock": 2,
+    "seller_id": "s7",
+    "description": "The Pragmatic Builder by Oakline. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p41/600/600",
+    "tags": []
+  },
+  {
+    "id": "p42",
+    "title": "Acme Designing Data Systems",
+    "category": "books",
+    "price": 14.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.8,
+    "reviews_count": 1505,
+    "stock": 2,
+    "seller_id": "s6",
+    "description": "Designing Data Systems by Acme. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p42/600/600",
+    "tags": []
+  },
+  {
+    "id": "p43",
+    "title": "Acme A Short History of Cities",
+    "category": "books",
+    "price": 49.5,
+    "currency": "USD",
+    "old_price": 61.88,
+    "rating": 3.9,
+    "reviews_count": 811,
+    "stock": 1,
+    "seller_id": "s2",
+    "description": "A Short History of Cities by Vertex. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p43/600/600",
+    "tags": [
+      "limited",
+      "sale"
+    ]
+  },
+  {
+    "id": "p44",
+    "title": "Juniper The Quiet Garden",
+    "category": "books",
+    "price": 49.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.3,
+    "reviews_count": 420,
+    "stock": 1,
+    "seller_id": "s2",
+    "description": "The Quiet Garden by Acme. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p44/600/600",
+    "tags": [
+      "gift"
+    ]
+  },
+  {
+    "id": "p45",
+    "title": "Northwind Learning to Cook",
+    "category": "books",
+    "price": 24.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.9,
+    "reviews_count": 1202,
+    "stock": 2,
+    "seller_id": "s6",
+    "description": "Learning to Cook by Juniper. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p45/600/600",
+    "tags": [
+      "sale"
+    ]
+  },
+  {
+    "id": "p46",
+    "title": "Vertex Night Train to Lisbon",
+    "category": "books",
+    "price": 24.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.7,
+    "reviews_count": 1648,
+    "stock": 3,
+    "seller_id": "s6",
+    "description": "Night Train to Lisbon by Kestrel. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p46/600/600",
+    "tags": []
+  },
+  {
+    "id": "p47",
+    "title": "Kestrel Mountains of the Mind",
+    "category": "books",
+    "price": 59.99,
+    "currency": "USD",
+    "old_price": 74.99,
+    "rating": 3.7,
+    "reviews_count": 887,
+    "stock": 35,
+    "seller_id": "s2",
+    "description": "Mountains of the Mind by Mosaic. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p47/600/600",
+    "tags": [
+      "limited"
+    ]
+  },
+  {
+    "id": "p48",
+    "title": "Acme The Art of Tea",
+    "category": "books",
+    "price": 99.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.2,
+    "reviews_count": 904,
+    "stock": 0,
+    "seller_id": "s1",
+    "description": "The Art of Tea by Oakline. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p48/600/600",
+    "tags": [
+      "sale"
+    ]
+  },
+  {
+    "id": "p49",
+    "title": "Kestrel Small Habits",
+    "category": "books",
+    "price": 249,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.3,
+    "reviews_count": 1262,
+    "stock": 1,
+    "seller_id": "s2",
+    "description": "Small Habits by Oakline. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p49/600/600",
+    "tags": []
+  },
+  {
+    "id": "p50",
+    "title": "Mosaic Stars and Atoms",
+    "category": "books",
+    "price": 59.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.6,
+    "reviews_count": 544,
+    "stock": 2,
+    "seller_id": "s6",
+    "description": "Stars and Atoms by Juniper. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p50/600/600",
+    "tags": [
+      "sale",
+      "new"
+    ]
+  },
+  {
+    "id": "p51",
+    "title": "Acme Wooden Puzzle",
+    "category": "toys",
+    "price": 24.5,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.4,
+    "reviews_count": 618,
+    "stock": 50,
+    "seller_id": "s5",
+    "description": "Wooden Puzzle by Vertex. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p51/600/600",
+    "tags": [
+      "eco",
+      "limited"
+    ]
+  },
+  {
+    "id": "p52",
+    "title": "Oakline Building Blocks Set",
+    "category": "toys",
+    "price": 59.5,
+    "currency": "USD",
+    "old_price": 83.3,
+    "rating": 4.8,
+    "reviews_count": 1417,
+    "stock": 3,
+    "seller_id": "s6",
+    "description": "Building Blocks Set by Polar. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p52/600/600",
+    "tags": []
+  },
+  {
+    "id": "p53",
+    "title": "Juniper Board Game: Harbors",
+    "category": "toys",
+    "price": 49.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.8,
+    "reviews_count": 2146,
+    "stock": 35,
+    "seller_id": "s5",
+    "description": "Board Game: Harbors by Polar. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p53/600/600",
+    "tags": []
+  },
+  {
+    "id": "p54",
+    "title": "Tidal Plush Fox",
+    "category": "toys",
+    "price": 49,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.9,
+    "reviews_count": 1626,
+    "stock": 1,
+    "seller_id": "s7",
+    "description": "Plush Fox by Kestrel. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p54/600/600",
+    "tags": []
+  },
+  {
+    "id": "p55",
+    "title": "Polar RC Car",
+    "category": "toys",
+    "price": 49.99,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.7,
+    "reviews_count": 635,
+    "stock": 1,
+    "seller_id": "s4",
+    "description": "RC Car by Tidal. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p55/600/600",
+    "tags": [
+      "sale"
+    ]
+  },
+  {
+    "id": "p56",
+    "title": "Oakline Card Game: Sprites",
+    "category": "toys",
+    "price": 39,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 4.5,
+    "reviews_count": 2191,
+    "stock": 0,
+    "seller_id": "s5",
+    "description": "Card Game: Sprites by Kestrel. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p56/600/600",
+    "tags": [
+      "bestseller"
+    ]
+  },
+  {
+    "id": "p57",
+    "title": "Tidal Kite",
+    "category": "toys",
+    "price": 59.5,
+    "currency": "USD",
+    "old_price": 68.42,
+    "rating": 4.6,
+    "reviews_count": 1037,
+    "stock": 50,
+    "seller_id": "s2",
+    "description": "Kite by Acme. Thoughtfully made with premium materials.",
+    "image": "https://picsum.photos/seed/tolerance-p57/600/600",
+    "tags": []
+  },
+  {
+    "id": "p58",
+    "title": "Juniper Science Kit",
+    "category": "toys",
+    "price": 14.99,
+    "currency": "USD",
+    "old_price": 18.74,
+    "rating": 3.1,
+    "reviews_count": 2031,
+    "stock": 2,
+    "seller_id": "s4",
+    "description": "Science Kit by Kestrel. Great value and a two-year warranty.",
+    "image": "https://picsum.photos/seed/tolerance-p58/600/600",
+    "tags": [
+      "eco",
+      "sale"
+    ]
+  },
+  {
+    "id": "p59",
+    "title": "Oakline Watercolor Set",
+    "category": "toys",
+    "price": 149,
+    "currency": "USD",
+    "old_price": 208.6,
+    "rating": 5.0,
+    "reviews_count": 453,
+    "stock": 5,
+    "seller_id": "s1",
+    "description": "Watercolor Set by Mosaic. A customer favourite with a clean, minimal look.",
+    "image": "https://picsum.photos/seed/tolerance-p59/600/600",
+    "tags": []
+  },
+  {
+    "id": "p60",
+    "title": "Oakline Marble Run",
+    "category": "toys",
+    "price": 249,
+    "currency": "USD",
+    "old_price": null,
+    "rating": 3.8,
+    "reviews_count": 2094,
+    "stock": 20,
+    "seller_id": "s5",
+    "description": "Marble Run by Polar. Built to last, designed for everyday use.",
+    "image": "https://picsum.photos/seed/tolerance-p60/600/600",
+    "tags": [
+      "limited"
+    ]
+  }
+]

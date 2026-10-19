@@ -1,0 +1,173 @@
+// Package tasks is the catalog of agent-run tasks: what the agent is asked to build (TASK.md + RULES.md), the
+// shared mock data it gets, the automatic API checks, and the judge's checklist.
+//
+// The catalog is embedded. The judge checklist (judge.md) can be replaced from ARENA_TASKS_HIDDEN_DIR/<slug>/judge.md
+// so the real one can live in the private arena-tasks repo once uploads open to everyone.
+package tasks
+
+import (
+	"archive/zip"
+	"bytes"
+	"embed"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+//go:embed catalog
+var catalog embed.FS
+
+type Text struct {
+	En string `json:"en"`
+	Ru string `json:"ru"`
+}
+
+// Check is one automatic HTTP check against the running app (run by verify.py, in order).
+type Check struct {
+	Name     string            `json:"name"`
+	Method   string            `json:"method"`
+	Path     string            `json:"path"`
+	Body     any               `json:"body,omitempty"`
+	Auth     bool              `json:"auth,omitempty"`
+	Status   int               `json:"status,omitempty"`
+	StatusIn []int             `json:"status_in,omitempty"`
+	Expect   []map[string]any  `json:"expect,omitempty"`
+	Save     map[string]string `json:"save,omitempty"`
+}
+
+type Task struct {
+	Slug        string  `json:"slug"`
+	Order       int     `json:"order"`
+	Title       Text    `json:"title"`
+	Tagline     Text    `json:"tagline"`
+	TimeLimitS  int     `json:"time_limit_s"`
+	TokenBudget int64   `json:"token_budget"`
+	Checks      []Check `json:"checks"`
+
+	TaskMD    string            `json:"-"` // TASK.md with RULES.md appended: exactly what the agent reads
+	Judge     string            `json:"-"`
+	DataFiles map[string][]byte `json:"-"` // name → content, from data/
+}
+
+var all []*Task
+
+// Load reads the embedded catalog; hiddenDir ("" = none) overrides judge.md per task.
+func Load(hiddenDir string) error {
+	rules, err := catalog.ReadFile("catalog/RULES.md")
+	if err != nil {
+		return err
+	}
+	entries, err := catalog.ReadDir("catalog")
+	if err != nil {
+		return err
+	}
+	var out []*Task
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		slug := e.Name()
+		dir := "catalog/" + slug
+		raw, err := catalog.ReadFile(dir + "/task.json")
+		if err != nil {
+			return fmt.Errorf("tasks: %s: %w", slug, err)
+		}
+		t := &Task{Slug: slug, DataFiles: map[string][]byte{}}
+		if err := json.Unmarshal(raw, t); err != nil {
+			return fmt.Errorf("tasks: %s/task.json: %w", slug, err)
+		}
+		md, err := catalog.ReadFile(dir + "/TASK.md")
+		if err != nil {
+			return fmt.Errorf("tasks: %s: %w", slug, err)
+		}
+		t.TaskMD = strings.TrimSpace(string(md)) + "\n\n" + strings.TrimSpace(string(rules)) + "\n"
+		judge, err := catalog.ReadFile(dir + "/judge.md")
+		if err != nil {
+			return fmt.Errorf("tasks: %s: %w", slug, err)
+		}
+		t.Judge = string(judge)
+		if hiddenDir != "" {
+			if b, err := os.ReadFile(filepath.Join(hiddenDir, slug, "judge.md")); err == nil {
+				t.Judge = string(b)
+			}
+		}
+		err = fs.WalkDir(catalog, dir+"/data", func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			b, err := catalog.ReadFile(p)
+			t.DataFiles[path.Base(p)] = b
+			return err
+		})
+		if err != nil {
+			return fmt.Errorf("tasks: %s data: %w", slug, err)
+		}
+		if t.TimeLimitS <= 0 || t.TokenBudget <= 0 {
+			return fmt.Errorf("tasks: %s: time_limit_s and token_budget are required", slug)
+		}
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Order < out[j].Order })
+	all = out
+	return nil
+}
+
+func All() []*Task { return all }
+
+func BySlug(slug string) *Task {
+	for _, t := range all {
+		if t.Slug == slug {
+			return t
+		}
+	}
+	return nil
+}
+
+// DataNames lists the data files, sorted.
+func (t *Task) DataNames() []string {
+	names := make([]string, 0, len(t.DataFiles))
+	for n := range t.DataFiles {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Workspace is what the agent finds in /work when it starts: TASK.md and data/.
+func (t *Task) Workspace() map[string][]byte {
+	files := map[string][]byte{"TASK.md": []byte(t.TaskMD)}
+	for n, b := range t.DataFiles {
+		files["data/"+n] = b
+	}
+	return files
+}
+
+// BundleZip is the workspace as a zip (public: anyone can see exactly what the agents get).
+func (t *Task) BundleZip() ([]byte, error) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	files := t.Workspace()
+	names := make([]string, 0, len(files))
+	for n := range files {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		w, err := zw.Create(t.Slug + "/" + n)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write(files[n]); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}

@@ -1,0 +1,42 @@
+{
+  "order": 1,
+  "title": {"en": "Marketplace", "ru": "Маркетплейс"},
+  "tagline": {
+    "en": "A storefront with many sellers: catalog, search, cart, checkout, orders.",
+    "ru": "Витрина с продавцами: каталог, поиск, корзина, оформление заказа, история."
+  },
+  "time_limit_s": 2400,
+  "token_budget": 3000000,
+  "checks": [
+    {"name": "catalog lists all products", "method": "GET", "path": "/api/products?limit=5", "status": 200,
+     "expect": [{"path": "total", "equals": 60}, {"path": "items", "len": 5}]},
+    {"name": "search by text", "method": "GET", "path": "/api/products?q=mug", "status": 200,
+     "expect": [{"path": "total", "equals": 1}, {"path": "items.0.id", "equals": "p16"}]},
+    {"name": "filter by category", "method": "GET", "path": "/api/products?category=books&limit=50", "status": 200,
+     "expect": [{"path": "total", "equals": 10}]},
+    {"name": "sort by price", "method": "GET", "path": "/api/products?sort=price_asc&limit=60", "status": 200,
+     "expect": [{"path": "items", "sorted_by": "price"}]},
+    {"name": "product page", "method": "GET", "path": "/api/products/p1", "status": 200,
+     "expect": [{"path": "title", "equals": "Oakline Wireless Earbuds"}, {"path": "price", "equals": 19}]},
+    {"name": "unknown product is 404", "method": "GET", "path": "/api/products/nope-404", "status": 404},
+    {"name": "categories", "method": "GET", "path": "/api/categories", "status": 200, "expect": [{"path": "", "len": 6}]},
+    {"name": "wrong password is 401", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "wrong"}, "status": 401},
+    {"name": "sign in", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "pass007"}, "status": 200, "save": {"token": "token"}},
+    {"name": "cart needs auth", "method": "GET", "path": "/api/cart", "status": 401},
+    {"name": "add to cart", "method": "POST", "path": "/api/cart/items", "auth": true, "body": {"product_id": "p3", "qty": 2},
+     "status_in": [200, 201]},
+    {"name": "cart beyond stock is 409", "method": "POST", "path": "/api/cart/items", "auth": true,
+     "body": {"product_id": "p3", "qty": 10}, "status": 409},
+    {"name": "cart total", "method": "GET", "path": "/api/cart", "auth": true, "status": 200,
+     "expect": [{"path": "total", "equals": 198}]},
+    {"name": "checkout", "method": "POST", "path": "/api/orders", "auth": true, "status": 201,
+     "expect": [{"path": "total", "equals": 198}]},
+    {"name": "stock went down", "method": "GET", "path": "/api/products/p3", "status": 200,
+     "expect": [{"path": "stock", "equals": 3}]},
+    {"name": "order history", "method": "GET", "path": "/api/orders", "auth": true, "status": 200,
+     "expect": [{"path": "", "len": 1}]},
+    {"name": "empty cart checkout is 400", "method": "POST", "path": "/api/orders", "auth": true, "status": 400}
+  ]
+}

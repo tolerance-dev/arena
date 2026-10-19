@@ -1,125 +1,391 @@
+// Package sandbox drives disposable Docker containers through the docker CLI: the agent's build container, the
+// check container and the preview containers. Files go in and out as tar streams (`docker cp -`), so the same code
+// works when the caller itself runs in a container that only has the host's docker.sock.
 package sandbox
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
-// Docker runs the work directory in a throwaway container via the docker
-// CLI. The directory is copied in with `docker cp` rather than bind-mounted
-// so the same code works when the API itself runs in a container that only
-// has the host's docker.sock (its filesystem is invisible to the daemon).
-type Docker struct{}
+// Network is the internal Docker network sandboxes join: no route out, only the gateway (alias "gateway") on it.
+const Network = "arena-agents"
 
-func NewDocker() *Docker { return &Docker{} }
+// GatewayURL is how a sandbox reaches the gateway.
+const GatewayURL = "http://gateway:8090"
 
-const (
-	maxOutput         = 256 << 10
-	maxCapturedOutput = 8 << 20 // hard cap on what is buffered before tail() trims to maxOutput
-)
+// Image is the runtime every sandbox starts from (runtime/Dockerfile): Node, Python, Chromium, agent CLIs.
+const Image = "arena-runtime:1"
 
-// cappedWriter discards bytes past limit instead of growing forever; the
-// caller only cares about the tail of what was captured, via tail().
-type cappedWriter struct {
-	buf   bytes.Buffer
-	limit int
+type Spec struct {
+	Name    string
+	Image   string
+	Network string // "" = none
+	Env     []string
+	Cmd     []string
+	Workdir string
+	Memory  string // e.g. "4g"
+	CPUs    string
+	Pids    int
+	CapAdd  []string
+	Labels  map[string]string
 }
 
-func (w *cappedWriter) Write(p []byte) (int, error) {
-	if room := w.limit - w.buf.Len(); room > 0 {
-		if len(p) > room {
-			w.buf.Write(p[:room])
-		} else {
-			w.buf.Write(p)
+func (s Spec) createArgs() []string {
+	network := s.Network
+	if network == "" {
+		network = "none"
+	}
+	mem, cpus, pids := s.Memory, s.CPUs, s.Pids
+	if mem == "" {
+		mem = "2g"
+	}
+	if cpus == "" {
+		cpus = "1"
+	}
+	if pids == 0 {
+		pids = 1024
+	}
+	args := []string{"create"}
+	if s.Name != "" {
+		args = append(args, "--name", s.Name)
+	}
+	args = append(args,
+		"--network", network, "--memory", mem, "--memory-swap", mem, "--cpus", cpus, "--pids-limit", fmt.Sprint(pids),
+		"--cap-drop=ALL", "--security-opt=no-new-privileges",
+		"--tmpfs", "/tmp:rw,exec,size=1g",
+		// Caps a single file's size everywhere (storage-opt size= works on few storage drivers).
+		"--ulimit", "fsize=524288000",
+		"--label", "arena.sandbox=1")
+	for _, c := range s.CapAdd {
+		args = append(args, "--cap-add", c)
+	}
+	keys := make([]string, 0, len(s.Labels))
+	for k := range s.Labels {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		args = append(args, "--label", k+"="+s.Labels[k])
+	}
+	for _, e := range s.Env {
+		args = append(args, "-e", e)
+	}
+	if s.Workdir != "" {
+		args = append(args, "-w", s.Workdir)
+	}
+	args = append(args, s.Image)
+	return append(args, s.Cmd...)
+}
+
+func docker(ctx context.Context, stdin io.Reader, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	cmd.Stdin = stdin
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	err := cmd.Run()
+	s := strings.TrimSpace(out.String())
+	if err != nil {
+		return s, fmt.Errorf("docker %s: %w: %s", args[0], err, tail(s, 2000))
+	}
+	return s, nil
+}
+
+// EnsureNetwork creates the internal sandbox network when it is missing.
+func EnsureNetwork(ctx context.Context) error {
+	if _, err := docker(ctx, nil, "network", "inspect", Network); err == nil {
+		return nil
+	}
+	_, err := docker(ctx, nil, "network", "create", "--internal", Network)
+	return err
+}
+
+// Create creates (but does not start) a container and returns its id.
+func Create(ctx context.Context, s Spec) (string, error) {
+	return docker(ctx, nil, s.createArgs()...)
+}
+
+// Remove force-removes a container, best effort.
+func Remove(id string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, _ = docker(ctx, nil, "rm", "-f", id)
+}
+
+func Kill(id string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, _ = docker(ctx, nil, "kill", id)
+}
+
+// File is one file to copy into a container.
+type File struct {
+	Body []byte
+	Mode int64 // 0 = 0644
+}
+
+// CopyIn writes files (paths relative to dest, slash-separated) into the container under dest. dirMode applies to
+// the directories it creates (0 = 0755).
+func CopyIn(ctx context.Context, id, dest string, files map[string]File, dirMode int64) error {
+	if dirMode == 0 {
+		dirMode = 0o755
+	}
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	names := make([]string, 0, len(files))
+	for n := range files {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	made := map[string]bool{}
+	now := time.Now()
+	for _, n := range names {
+		parts := strings.Split(n, "/")
+		for i := 1; i < len(parts); i++ {
+			d := strings.Join(parts[:i], "/")
+			if !made[d] {
+				made[d] = true
+				if err := tw.WriteHeader(&tar.Header{Name: d + "/", Typeflag: tar.TypeDir, Mode: dirMode, ModTime: now}); err != nil {
+					return err
+				}
+			}
+		}
+		f := files[n]
+		mode := f.Mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		if err := tw.WriteHeader(&tar.Header{Name: n, Typeflag: tar.TypeReg, Mode: mode, Size: int64(len(f.Body)), ModTime: now}); err != nil {
+			return err
+		}
+		if _, err := tw.Write(f.Body); err != nil {
+			return err
 		}
 	}
-	return len(p), nil
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	// docker cp - extracts the tar into an existing directory; make sure dest exists by shipping it as the root.
+	var wrapped bytes.Buffer
+	if err := prefixTar(&wrapped, &buf, strings.TrimPrefix(dest, "/"), dirMode); err != nil {
+		return err
+	}
+	_, err := docker(ctx, &wrapped, "cp", "-", id+":/")
+	return err
 }
 
-func (d *Docker) Run(ctx context.Context, req Request) (Result, error) {
-	// --read-only is deliberately omitted here, unlike the original design: it
-	// is incompatible with the docker-cp-based file injection below (docker cp
-	// fails with "container rootfs is marked read-only" against a read-only
-	// container, and docker update cannot re-apply --read-only afterward).
-	// Network isolation, resource limits and immediate container removal after
-	// each run remain in place; only in-container filesystem tampering during
-	// a single ephemeral run is no longer prevented.
-	create := exec.CommandContext(ctx, "docker", createArgs(req.Image, "/work", nil, "sh", "-c", req.RunCmd)...)
-	idRaw, err := create.CombinedOutput()
-	if err != nil {
-		return Result{}, fmt.Errorf("sandbox: docker create: %w: %s", err, strings.TrimSpace(string(idRaw)))
+// prefixTar re-roots a tar under prefix (creating prefix's directories).
+func prefixTar(dst io.Writer, src io.Reader, prefix string, dirMode int64) error {
+	tw := tar.NewWriter(dst)
+	now := time.Now()
+	parts := strings.Split(strings.Trim(prefix, "/"), "/")
+	for i := 1; i <= len(parts); i++ {
+		if err := tw.WriteHeader(&tar.Header{Name: strings.Join(parts[:i], "/") + "/", Typeflag: tar.TypeDir, Mode: dirMode, ModTime: now}); err != nil {
+			return err
+		}
 	}
-	id := strings.TrimSpace(string(idRaw))
-	defer exec.Command("docker", "rm", "-f", id).Run() //nolint:errcheck
-
-	if out, err := exec.CommandContext(ctx, "docker", "cp", req.WorkDir+"/.", id+":/work").CombinedOutput(); err != nil {
-		return Result{}, fmt.Errorf("sandbox: docker cp: %w: %s", err, strings.TrimSpace(string(out)))
+	tr := tar.NewReader(src)
+	for {
+		h, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		h.Name = strings.Trim(prefix, "/") + "/" + h.Name
+		if err := tw.WriteHeader(h); err != nil {
+			return err
+		}
+		if _, err := io.Copy(tw, tr); err != nil {
+			return err
+		}
 	}
+	return tw.Close()
+}
 
-	runCtx, cancel := context.WithTimeout(ctx, req.Timeout)
+// Result is how a container run ended.
+type Result struct {
+	ExitCode int
+	TimedOut bool
+	Killed   bool // stopped by the caller (budget, cancel)
+	Output   string
+}
+
+// Start runs a created container to completion (attached), keeping the tail of its output in out (readable while
+// it runs). It kills the container when timeout passes or stop is closed.
+func Start(ctx context.Context, id string, timeout time.Duration, stop <-chan struct{}, out *Tail) (Result, error) {
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	buf := &cappedWriter{limit: maxCapturedOutput}
-	start := exec.CommandContext(runCtx, "docker", "start", "-a", id)
-	start.Stdout, start.Stderr = buf, buf
-	err = start.Run()
-	if req.CopyOut != "" {
-		copyOut(ctx, id, req.WorkDir, req.CopyOut)
+	cmd := exec.Command("docker", "start", "-a", id)
+	cmd.Stdout, cmd.Stderr = out, out
+	if err := cmd.Start(); err != nil {
+		return Result{}, fmt.Errorf("docker start: %w", err)
 	}
-	res := Result{Output: tail(buf.buf.String(), maxOutput)}
-	res.Tests = ParseOutput(req.Language, []byte(res.Output))
-	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-		res.TimedOut, res.ExitCode = true, -1
-		return res, nil
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	var res Result
+	select {
+	case err := <-done:
+		res = exitResult(err)
+	case <-runCtx.Done():
+		Kill(id)
+		<-done
+		res = Result{ExitCode: -1, TimedOut: errors.Is(runCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil}
+		if ctx.Err() != nil {
+			res.Killed = true
+		}
+	case <-stop:
+		Kill(id)
+		<-done
+		res = Result{ExitCode: -1, Killed: true}
 	}
-	var exitErr *exec.ExitError
-	switch {
-	case err == nil:
-		res.ExitCode = 0
-	case errors.As(err, &exitErr):
-		res.ExitCode = exitErr.ExitCode()
-	default:
-		return Result{}, fmt.Errorf("sandbox: docker start: %w", err)
-	}
-	// `docker start -a` exits 125 when the container itself could not run
-	// (e.g. the command is missing); that is ours, not the participant's.
-	if res.ExitCode == 125 {
-		return Result{}, fmt.Errorf("sandbox: container failed to start: %s", tail(res.Output, 2000))
+	res.Output = out.String()
+	if res.ExitCode == 125 && !res.TimedOut && !res.Killed {
+		return res, fmt.Errorf("container failed to start: %s", tail(res.Output, 2000))
 	}
 	return res, nil
 }
 
-// copyOut copies /work/<dir> of the stopped container into <workDir>/<dir>, best effort.
-func copyOut(ctx context.Context, id, workDir, dir string) {
-	dst := filepath.Join(workDir, filepath.FromSlash(dir))
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return
+func exitResult(err error) Result {
+	if err == nil {
+		return Result{}
 	}
-	_ = exec.CommandContext(ctx, "docker", "cp", id+":/work/"+dir+"/.", dst).Run()
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return Result{ExitCode: ee.ExitCode()}
+	}
+	return Result{ExitCode: -1}
 }
 
-// createArgs is the `docker create` command line shared by every sandbox container: no network, resource
-// limits, dropped capabilities. env is extra KEY=VALUE pairs.
-func createArgs(image, workdir string, env []string, cmd ...string) []string {
-	args := []string{"create",
-		"--network", "none", "--memory", "1g", "--memory-swap", "1g", "--cpus", "1", "--pids-limit", "256",
-		"--cap-drop=ALL", "--security-opt=no-new-privileges",
-		"--tmpfs", "/tmp:rw,exec,size=512m",
-		// --ulimit fsize caps how large a single file the sandboxed process may create, everywhere:
-		// storage-opt size= only works on a handful of storage drivers.
-		"--ulimit", "fsize=209715200",
-		"-e", "HOME=/tmp", "-e", "GOCACHE=/tmp/gocache", "-e", "GOPATH=/tmp/gopath", "-e", "GOTMPDIR=/tmp"}
-	for _, e := range env {
-		args = append(args, "-e", e)
+// Commit snapshots a stopped container into an image. changes are Dockerfile instructions (ENV, CMD).
+func Commit(ctx context.Context, id, image string, changes ...string) error {
+	args := []string{"commit"}
+	for _, c := range changes {
+		args = append(args, "--change", c)
 	}
-	args = append(args, "-w", workdir, image)
-	return append(args, cmd...)
+	_, err := docker(ctx, nil, append(args, id, image)...)
+	return err
+}
+
+// CopyOut streams a path out of a container as a tar (docker cp's format: the last path element is the root).
+func CopyOut(ctx context.Context, id, path string, max int64) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "docker", "cp", id+":"+path, "-")
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	data, rerr := io.ReadAll(io.LimitReader(stdout, max+1))
+	if int64(len(data)) > max {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return nil, fmt.Errorf("docker cp %s: more than %d bytes", path, max)
+	}
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("docker cp %s: %w: %s", path, err, tail(errBuf.String(), 500))
+	}
+	return data, rerr
+}
+
+// RunOutput runs a one-off command in a fresh, networkless container from image and returns its stdout (capped).
+func RunOutput(ctx context.Context, image string, max int64, cmd ...string) ([]byte, error) {
+	args := []string{"run", "--rm", "--network", "none", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+		"--memory", "1g", "--entrypoint", cmd[0], image}
+	c := exec.CommandContext(ctx, "docker", append(args, cmd[1:]...)...)
+	var errBuf bytes.Buffer
+	c.Stderr = &errBuf
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Start(); err != nil {
+		return nil, err
+	}
+	data, _ := io.ReadAll(io.LimitReader(stdout, max+1))
+	if int64(len(data)) > max {
+		_ = c.Process.Kill()
+		_ = c.Wait()
+		return nil, fmt.Errorf("output larger than %d bytes", max)
+	}
+	if err := c.Wait(); err != nil {
+		var ee *exec.ExitError
+		// tar exits 1 when files changed while reading; the archive is still complete.
+		if !errors.As(err, &ee) || ee.ExitCode() > 1 {
+			return nil, fmt.Errorf("docker run %s: %w: %s", cmd[0], err, tail(errBuf.String(), 500))
+		}
+	}
+	return data, nil
+}
+
+// StartDetached starts a created container in the background.
+func StartDetached(ctx context.Context, id string) error {
+	_, err := docker(ctx, nil, "start", id)
+	return err
+}
+
+// Running reports whether the named container exists and runs.
+func Running(ctx context.Context, name string) bool {
+	out, err := docker(ctx, nil, "inspect", "-f", "{{.State.Running}}", name)
+	return err == nil && out == "true"
+}
+
+// RemoveByLabel force-removes every container carrying label (k=v), best effort: leftovers of a crashed process.
+func RemoveByLabel(ctx context.Context, label string) {
+	out, err := docker(ctx, nil, "ps", "-aq", "--filter", "label="+label)
+	if err != nil || out == "" {
+		return
+	}
+	_, _ = docker(ctx, nil, append([]string{"rm", "-f"}, strings.Fields(out)...)...)
+}
+
+// RemoveImage deletes an image, best effort.
+func RemoveImage(image string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	_, _ = docker(ctx, nil, "rmi", "-f", image)
+}
+
+// ImageExists reports whether image is present locally.
+func ImageExists(ctx context.Context, image string) bool {
+	_, err := docker(ctx, nil, "image", "inspect", image)
+	return err == nil
+}
+
+// Tail keeps the last Max bytes written to it; safe to read while a container writes.
+type Tail struct {
+	Max int
+	mu  sync.Mutex
+	buf []byte
+}
+
+func (w *Tail) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.buf = append(w.buf, p...)
+	if len(w.buf) > 2*w.Max {
+		w.buf = append([]byte(nil), w.buf[len(w.buf)-w.Max:]...)
+	}
+	return len(p), nil
+}
+
+func (w *Tail) String() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return tail(string(w.buf), w.Max)
 }
 
 func tail(s string, n int) string {
@@ -128,5 +394,3 @@ func tail(s string, n int) string {
 	}
 	return s[len(s)-n:]
 }
-
-var _ = time.Second

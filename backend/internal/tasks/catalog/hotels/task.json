@@ -1,0 +1,41 @@
+{
+  "order": 2,
+  "title": {"en": "Hotel booking", "ru": "Бронирование отелей"},
+  "tagline": {
+    "en": "Booking.com in miniature: search by dates, availability, rooms, bookings.",
+    "ru": "Booking.com в миниатюре: поиск по датам, свободные номера, бронь и отмена."
+  },
+  "time_limit_s": 2400,
+  "token_budget": 3000000,
+  "checks": [
+    {"name": "hotels in a city", "method": "GET", "path": "/api/hotels?city=Lisbon", "status": 200,
+     "expect": [{"path": "total", "equals": 4}]},
+    {"name": "hotel page", "method": "GET", "path": "/api/hotels/h2?check_in=2026-12-02&check_out=2026-12-04", "status": 200,
+     "expect": [{"path": "rooms", "len": 4}, {"path": "rooms[id=r4].available", "equals": 0}, {"path": "rooms[id=r6].available", "equals": 2}]},
+    {"name": "unknown hotel is 404", "method": "GET", "path": "/api/hotels/nope-404", "status": 404},
+    {"name": "wrong password is 401", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "wrong"}, "status": 401},
+    {"name": "sign in", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "pass007"}, "status": 200, "save": {"token": "token"}},
+    {"name": "booking needs auth", "method": "POST", "path": "/api/bookings",
+     "body": {"room_id": "r6", "check_in": "2027-02-10", "check_out": "2027-02-12", "guests": 2}, "status": 401},
+    {"name": "fully booked room is 409", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r4", "check_in": "2026-12-03", "check_out": "2026-12-05", "guests": 1}, "status": 409},
+    {"name": "bad dates are 400", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r6", "check_in": "2027-02-12", "check_out": "2027-02-10", "guests": 2}, "status": 400},
+    {"name": "too many guests is 400", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r5", "check_in": "2027-02-10", "check_out": "2027-02-12", "guests": 3}, "status": 400},
+    {"name": "book the last room", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r7", "check_in": "2027-03-01", "check_out": "2027-03-04", "guests": 2}, "status": 201,
+     "save": {"booking": "id"}, "expect": [{"path": "status", "equals": "confirmed"}]},
+    {"name": "overlapping stay is 409", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r7", "check_in": "2027-03-03", "check_out": "2027-03-06", "guests": 1}, "status": 409},
+    {"name": "back-to-back stay is fine", "method": "POST", "path": "/api/bookings", "auth": true,
+     "body": {"room_id": "r7", "check_in": "2027-03-04", "check_out": "2027-03-05", "guests": 1}, "status": 201},
+    {"name": "my bookings", "method": "GET", "path": "/api/bookings", "auth": true, "status": 200,
+     "expect": [{"path": "", "len": 2}]},
+    {"name": "cancel", "method": "DELETE", "path": "/api/bookings/{booking}", "auth": true, "status_in": [200, 204]},
+    {"name": "cancelled room is free again", "method": "GET", "path": "/api/hotels/h2?check_in=2027-03-01&check_out=2027-03-04", "status": 200,
+     "expect": [{"path": "rooms[id=r7].available", "equals": 1}]}
+  ]
+}

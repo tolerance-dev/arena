@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"tolerance/internal/identity"
 )
@@ -22,19 +21,16 @@ type config struct {
 	noLimits         bool // ARENA_NO_LIMITS: daily/hourly quotas off (local runs)
 	trustProxy       bool // ARENA_TRUST_PROXY: take the client IP from X-Real-IP
 	allowNonLoopback bool
-	workDir          string
-	sandbox          string // "docker" | "fake"
-	connectorDir     string // prebuilt connector binaries; "" = none
+	secretKey        string // ARENA_SECRET_KEY: seals agents' LLM keys (the gateway opens them)
 	publicURL        string
+	previewURL       string // ARENA_PREVIEW_URL: live preview address with {id}, e.g. http://{id}.preview.localhost:3023
+	runConcurrency   int
+	judgeModel       string
 	githubID         string
 	githubSecret     string
 	googleID         string
 	googleSecret     string
-	matchInterval    time.Duration
-	matchConcurrency int
-	botImage         string
-	houseAgents      string // ARENA_HOUSE_AGENTS: path to the house agents JSON; "" = feature off
-	buildsTestsDir   string // ARENA_BUILDS_TESTS_DIR: the private build challenge catalog (hidden tests, references)
+	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/judge.md overrides (the private arena-tasks repo)
 }
 
 func loadConfig() (config, error) {
@@ -46,33 +42,23 @@ func loadConfig() (config, error) {
 		noLimits:         os.Getenv("ARENA_NO_LIMITS") == "true",
 		trustProxy:       os.Getenv("ARENA_TRUST_PROXY") == "true",
 		allowNonLoopback: os.Getenv("ARENA_ALLOW_NON_LOOPBACK") == "true",
-		workDir:          env("ARENA_WORK_DIR", os.TempDir()),
-		sandbox:          env("ARENA_SANDBOX", "docker"),
-		connectorDir:     os.Getenv("ARENA_CONNECTOR_DIR"),
+		secretKey:        os.Getenv("ARENA_SECRET_KEY"),
 		publicURL:        os.Getenv("ARENA_PUBLIC_URL"),
+		previewURL:       os.Getenv("ARENA_PREVIEW_URL"),
+		runConcurrency:   1,
+		judgeModel:       os.Getenv("ARENA_JUDGE_MODEL"),
 		githubID:         os.Getenv("ARENA_GITHUB_CLIENT_ID"),
 		githubSecret:     os.Getenv("ARENA_GITHUB_CLIENT_SECRET"),
 		googleID:         os.Getenv("ARENA_GOOGLE_CLIENT_ID"),
 		googleSecret:     os.Getenv("ARENA_GOOGLE_CLIENT_SECRET"),
-		matchInterval:    20 * time.Second,
-		matchConcurrency: 1,
-		botImage:         env("ARENA_BOT_IMAGE", "arena-bot-runtime:1"),
-		houseAgents:      os.Getenv("ARENA_HOUSE_AGENTS"),
-		buildsTestsDir:   os.Getenv("ARENA_BUILDS_TESTS_DIR"),
+		tasksHiddenDir:   os.Getenv("ARENA_TASKS_HIDDEN_DIR"),
 	}
-	if v := os.Getenv("ARENA_MATCH_INTERVAL"); v != "" {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			return config{}, errors.New("ARENA_MATCH_INTERVAL must be a valid duration")
-		}
-		cfg.matchInterval = d
-	}
-	if v := os.Getenv("ARENA_MATCH_CONCURRENCY"); v != "" {
+	if v := os.Getenv("ARENA_RUN_CONCURRENCY"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 {
-			return config{}, errors.New("ARENA_MATCH_CONCURRENCY must be an integer >= 1")
+			return config{}, errors.New("ARENA_RUN_CONCURRENCY must be an integer >= 1")
 		}
-		cfg.matchConcurrency = n
+		cfg.runConcurrency = n
 	}
 	for _, e := range strings.Split(os.Getenv("ARENA_ADMIN_EMAILS"), ",") {
 		if e = strings.TrimSpace(e); e != "" {
@@ -89,9 +75,6 @@ func loadConfig() (config, error) {
 	if cfg.databaseURL == "" {
 		return config{}, errors.New("ARENA_APP_DATABASE_URL is required")
 	}
-	if cfg.sandbox != "docker" && cfg.sandbox != "fake" {
-		return config{}, errors.New("ARENA_SANDBOX must be docker or fake")
-	}
 	if cfg.devLogin || cfg.noLimits {
 		// Dev login makes every user an admin: never next to a public origin.
 		if u, err := url.Parse(cfg.publicURL); cfg.publicURL != "" && (err != nil || !isLocalHost(u.Hostname())) {
@@ -103,9 +86,6 @@ func loadConfig() (config, error) {
 	}
 	if cfg.noLimits && cfg.secureCookies {
 		return config{}, errors.New("ARENA_NO_LIMITS is for local runs; it cannot be on with ARENA_SECURE_COOKIES=true")
-	}
-	if cfg.sandbox == "fake" && cfg.secureCookies {
-		return config{}, errors.New("ARENA_SANDBOX=fake is for local runs and CI; it cannot be on with ARENA_SECURE_COOKIES=true")
 	}
 	for _, p := range [][3]string{{"GITHUB", cfg.githubID, cfg.githubSecret}, {"GOOGLE", cfg.googleID, cfg.googleSecret}} {
 		if (p[1] == "") != (p[2] == "") {

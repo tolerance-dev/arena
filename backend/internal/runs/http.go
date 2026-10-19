@@ -1,0 +1,160 @@
+package runs
+
+import (
+	"net/http"
+	"strconv"
+
+	"tolerance/internal/platform/httpx"
+	"tolerance/internal/sandbox"
+	"tolerance/internal/tasks"
+)
+
+// TaskView is a task page: the brief as the agents get it, the data files, the leaderboard and the latest runs.
+type TaskView struct {
+	TaskSummary
+	TaskMD    string   `json:"task_md"`
+	DataFiles []string `json:"data_files"`
+	Checks    []string `json:"checks"`
+	Board     []Run    `json:"leaderboard"`
+	Recent    []Run    `json:"recent"`
+}
+
+// RegisterPublicRoutes mounts the public reads.
+func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("GET /api/v1/tasks", func(w http.ResponseWriter, r *http.Request) {
+		items, err := s.Summaries(r.Context())
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
+	})
+	mux.HandleFunc("GET /api/v1/tasks/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		t := tasks.BySlug(r.PathValue("slug"))
+		if t == nil {
+			httpx.WriteError(w, r, httpx.NotFound())
+			return
+		}
+		sums, err := s.Summaries(r.Context())
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		v := TaskView{TaskMD: t.TaskMD, DataFiles: t.DataNames(), Checks: []string{}}
+		for _, sm := range sums {
+			if sm.Slug == t.Slug {
+				v.TaskSummary = sm
+			}
+		}
+		for _, c := range t.Checks {
+			v.Checks = append(v.Checks, c.Name)
+		}
+		if v.Board, err = s.Leaderboard(r.Context(), t.Slug); err == nil {
+			v.Recent, err = s.Recent(r.Context(), t.Slug, "", 20)
+		}
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, v)
+	})
+	mux.HandleFunc("GET /api/v1/tasks/{slug}/bundle.zip", func(w http.ResponseWriter, r *http.Request) {
+		t := tasks.BySlug(r.PathValue("slug"))
+		if t == nil {
+			httpx.WriteError(w, r, httpx.NotFound())
+			return
+		}
+		data, err := t.BundleZip()
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+t.Slug+`-task.zip"`)
+		_, _ = w.Write(data)
+	})
+	mux.HandleFunc("GET /api/v1/runs", func(w http.ResponseWriter, r *http.Request) {
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit <= 0 || limit > 100 {
+			limit = 30
+		}
+		items, err := s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), limit)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
+	})
+	mux.HandleFunc("GET /api/v1/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		run, err := s.Get(r.Context(), r.PathValue("id"))
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, run)
+	})
+	blob := func(column, ctype, disposition string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			b, err := s.Blob(r.Context(), r.PathValue("id"), column)
+			if err != nil {
+				httpx.WriteError(w, r, err)
+				return
+			}
+			w.Header().Set("Content-Type", ctype)
+			if disposition != "" {
+				w.Header().Set("Content-Disposition", disposition)
+			} else {
+				w.Header().Set("Cache-Control", "public, max-age=3600")
+			}
+			_, _ = w.Write(b)
+		}
+	}
+	mux.HandleFunc("GET /api/v1/runs/{id}/shot.jpg", blob("shot", "image/jpeg", ""))
+	mux.HandleFunc("GET /api/v1/runs/{id}/shot-mobile.jpg", blob("shot_mobile", "image/jpeg", ""))
+	mux.HandleFunc("GET /api/v1/runs/{id}/source.zip", func(w http.ResponseWriter, r *http.Request) {
+		blob("source_zip", "application/zip", `attachment; filename="`+PreviewHost(r.PathValue("id"))+`-source.zip"`)(w, r)
+	})
+}
+
+// RegisterAdminRoutes mounts starting, cancelling and deleting runs.
+func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("POST /api/v1/admin/runs", func(w http.ResponseWriter, r *http.Request) {
+		raw, err := httpx.ReadBody(w, r)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		var in struct {
+			AgentID     string `json:"agent_id"`
+			Task        string `json:"task"`
+			TimeLimitS  int    `json:"time_limit_s"`
+			TokenBudget int64  `json:"token_budget"`
+		}
+		if err := httpx.Decode(raw, &in); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		run, err := s.Create(r.Context(), in.AgentID, in.Task, in.TimeLimitS, in.TokenBudget)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusCreated, run)
+	})
+	mux.HandleFunc("POST /api/v1/admin/runs/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Cancel(r.Context(), r.PathValue("id")); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("DELETE /api/v1/admin/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := s.Delete(r.Context(), id); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		go sandbox.RemoveImage(ImageFor(id))
+		w.WriteHeader(http.StatusNoContent)
+	})
+}

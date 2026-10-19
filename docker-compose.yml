@@ -1,8 +1,9 @@
 # Local stack: `make up` (or `docker compose up --build`) → site on
-# :${WEB_PORT}, api on :${API_PORT}. `migrate` runs goose + catalog sync once
-# and exits; `api` is one process serving HTTP and running
-# the submissions and tanks workers, so it needs docker.sock for the
-# sandbox and bot containers.
+# :${WEB_PORT}, api on :${API_PORT}, live previews on :${GATEWAY_PORT}.
+# `migrate` runs goose once and exits; `api` serves HTTP and runs the runs
+# worker (it starts sandbox containers, so it needs docker.sock); `gateway` is
+# the sandboxes' only way out (LLM APIs, npm, PyPI) and serves the previews.
+# `make dev` starts only postgres and gateway here and runs api/web natively.
 #
 # Production uses deploy/compose.yml (see .github/workflows/deploy.yml).
 
@@ -33,10 +34,6 @@ services:
     environment:
       ARENA_MIGRATE_DATABASE_URL: postgres://arena_migrate:${POSTGRES_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
-      # The language catalog is mounted here; ARENA_SKILLS_SOURCE can point it at the private arena-tasks repo.
-      ARENA_SKILLS_DIR: /opt/arena/skills
-    volumes:
-      - ${ARENA_SKILLS_SOURCE:-./backend/fixtures/skills}:/opt/arena/skills:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,17 +47,17 @@ services:
       ARENA_ALLOW_NON_LOOPBACK: "true"
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
-      ARENA_SANDBOX: ${ARENA_SANDBOX:-docker}
+      ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:-dev-only-secret-key-change-me}
+      ARENA_PREVIEW_URL: http://{id}.preview.localhost:${GATEWAY_PORT:-3023}
+      ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
       ARENA_DEV_LOGIN: ${ARENA_DEV_LOGIN:-true}
       ARENA_NO_LIMITS: ${ARENA_NO_LIMITS:-true}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:3000}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
-      ARENA_FAIRPLAY_SECRET: ${ARENA_FAIRPLAY_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
       ARENA_GOOGLE_CLIENT_SECRET: ${ARENA_GOOGLE_CLIENT_SECRET:-}
-      ARENA_MATCH_INTERVAL: ${ARENA_MATCH_INTERVAL:-20s}
     # The image runs as a non-root user; this is the group that owns
     # docker.sock (detected by `make up`, see DOCKER_GID in the Makefile).
     group_add: ["${DOCKER_GID:-999}"]
@@ -71,6 +68,31 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  gateway:
+    build: ./backend
+    image: tolerance-backend:local
+    command: ["gateway"]
+    restart: unless-stopped
+    environment:
+      ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
+      ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:-dev-only-secret-key-change-me}
+      ARENA_JUDGE_API_KEY: ${ARENA_JUDGE_API_KEY:-}
+      ARENA_GATEWAY_FAKE: ${ARENA_GATEWAY_FAKE:-false}
+      ARENA_PREVIEW_DOMAIN: preview.localhost
+      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:${WEB_PORT:-3000}}
+    group_add: ["${DOCKER_GID:-999}"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default: {}
+      agents:
+        aliases: [gateway]
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-3023}:8091"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   web:
     # API_URL is baked into the Next build (rewrites land in the routes
@@ -92,3 +114,9 @@ services:
 
 volumes:
   arena-postgres-data:
+
+networks:
+  # Internal (no route out): sandboxes live here with only the gateway. Created by `make net` / the api worker.
+  agents:
+    name: arena-agents
+    external: true

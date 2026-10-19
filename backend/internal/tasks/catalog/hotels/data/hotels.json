@@ -1,0 +1,603 @@
+[
+  {
+    "id": "h1",
+    "name": "Hotel Aurora",
+    "city": "Lisbon",
+    "stars": 4,
+    "rating": 7.0,
+    "reviews_count": 1437,
+    "address": "55 Main Street, Lisbon",
+    "distance_to_center_km": 1.0,
+    "amenities": [
+      "breakfast",
+      "pets",
+      "spa",
+      "wifi"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h1-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h1-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h1-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h2",
+    "name": "Skyline Tower",
+    "city": "Lisbon",
+    "stars": 3,
+    "rating": 7.2,
+    "reviews_count": 1454,
+    "address": "150 Main Street, Lisbon",
+    "distance_to_center_km": 5.1,
+    "amenities": [
+      "parking",
+      "wifi"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h2-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h2-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h2-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  },
+  {
+    "id": "h3",
+    "name": "Garden Court",
+    "city": "Lisbon",
+    "stars": 2,
+    "rating": 9.6,
+    "reviews_count": 2264,
+    "address": "29 Main Street, Lisbon",
+    "distance_to_center_km": 4.2,
+    "amenities": [
+      "gym",
+      "pets"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h3-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h3-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h3-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h4",
+    "name": "Casa Azul",
+    "city": "Lisbon",
+    "stars": 5,
+    "rating": 8.7,
+    "reviews_count": 1505,
+    "address": "142 Market Street, Lisbon",
+    "distance_to_center_km": 2.7,
+    "amenities": [
+      "air_conditioning",
+      "airport_shuttle",
+      "breakfast",
+      "kitchen",
+      "pets",
+      "wifi"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h4-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h4-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h4-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 3
+  },
+  {
+    "id": "h5",
+    "name": "Skyline Tower",
+    "city": "Barcelona",
+    "stars": 4,
+    "rating": 7.8,
+    "reviews_count": 628,
+    "address": "6 Market Street, Barcelona",
+    "distance_to_center_km": 2.1,
+    "amenities": [
+      "air_conditioning",
+      "breakfast",
+      "gym",
+      "parking",
+      "pets",
+      "spa"
+    ],
+    "description": "Budget-friendly with everything you need.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h5-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h5-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h5-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h6",
+    "name": "Garden Court",
+    "city": "Barcelona",
+    "stars": 4,
+    "rating": 7.4,
+    "reviews_count": 135,
+    "address": "120 Castle Street, Barcelona",
+    "distance_to_center_km": 4.0,
+    "amenities": [
+      "breakfast",
+      "kitchen",
+      "pets",
+      "wifi"
+    ],
+    "description": "Bright rooms a short walk from the old town.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h6-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h6-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h6-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  },
+  {
+    "id": "h7",
+    "name": "Hotel Aurora",
+    "city": "Barcelona",
+    "stars": 3,
+    "rating": 7.5,
+    "reviews_count": 645,
+    "address": "90 River Street, Barcelona",
+    "distance_to_center_km": 7.1,
+    "amenities": [
+      "air_conditioning",
+      "airport_shuttle",
+      "kitchen",
+      "parking",
+      "pets"
+    ],
+    "description": "Rooftop views and an excellent breakfast.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h7-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h7-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h7-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h8",
+    "name": "Hostel Nomad",
+    "city": "Barcelona",
+    "stars": 4,
+    "rating": 9.0,
+    "reviews_count": 449,
+    "address": "72 Market Street, Barcelona",
+    "distance_to_center_km": 4.5,
+    "amenities": [
+      "air_conditioning",
+      "gym",
+      "pets",
+      "spa"
+    ],
+    "description": "Bright rooms a short walk from the old town.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h8-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h8-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h8-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  },
+  {
+    "id": "h9",
+    "name": "Prague Harbour Inn",
+    "city": "Prague",
+    "stars": 4,
+    "rating": 7.7,
+    "reviews_count": 2212,
+    "address": "60 River Street, Prague",
+    "distance_to_center_km": 4.2,
+    "amenities": [
+      "airport_shuttle",
+      "breakfast",
+      "parking",
+      "pets",
+      "spa"
+    ],
+    "description": "Bright rooms a short walk from the old town.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h9-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h9-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h9-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 3
+  },
+  {
+    "id": "h10",
+    "name": "The Lantern House",
+    "city": "Prague",
+    "stars": 4,
+    "rating": 9.6,
+    "reviews_count": 736,
+    "address": "55 Castle Street, Prague",
+    "distance_to_center_km": 4.8,
+    "amenities": [
+      "breakfast",
+      "kitchen",
+      "parking",
+      "pool",
+      "spa",
+      "wifi"
+    ],
+    "description": "Rooftop views and an excellent breakfast.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h10-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h10-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h10-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 3
+  },
+  {
+    "id": "h11",
+    "name": "Stone Bridge Hotel",
+    "city": "Prague",
+    "stars": 2,
+    "rating": 7.9,
+    "reviews_count": 2395,
+    "address": "77 Castle Street, Prague",
+    "distance_to_center_km": 5.2,
+    "amenities": [
+      "gym",
+      "pets",
+      "spa"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h11-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h11-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h11-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h12",
+    "name": "Riverside Boutique",
+    "city": "Prague",
+    "stars": 2,
+    "rating": 7.0,
+    "reviews_count": 276,
+    "address": "81 Market Street, Prague",
+    "distance_to_center_km": 0.7,
+    "amenities": [
+      "parking",
+      "pets"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h12-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h12-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h12-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 3
+  },
+  {
+    "id": "h13",
+    "name": "Old Town Suites",
+    "city": "Vienna",
+    "stars": 3,
+    "rating": 8.7,
+    "reviews_count": 1653,
+    "address": "147 Main Street, Vienna",
+    "distance_to_center_km": 1.8,
+    "amenities": [
+      "air_conditioning",
+      "breakfast",
+      "pool"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h13-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h13-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h13-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h14",
+    "name": "The Lantern House",
+    "city": "Vienna",
+    "stars": 5,
+    "rating": 8.1,
+    "reviews_count": 1732,
+    "address": "152 Main Street, Vienna",
+    "distance_to_center_km": 3.9,
+    "amenities": [
+      "gym",
+      "spa",
+      "wifi"
+    ],
+    "description": "Rooftop views and an excellent breakfast.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h14-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h14-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h14-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  },
+  {
+    "id": "h15",
+    "name": "Skyline Tower",
+    "city": "Vienna",
+    "stars": 3,
+    "rating": 7.9,
+    "reviews_count": 1561,
+    "address": "17 Main Street, Vienna",
+    "distance_to_center_km": 6.9,
+    "amenities": [
+      "air_conditioning",
+      "parking",
+      "spa",
+      "wifi"
+    ],
+    "description": "Bright rooms a short walk from the old town.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h15-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h15-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h15-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h16",
+    "name": "The Orchard",
+    "city": "Vienna",
+    "stars": 4,
+    "rating": 7.5,
+    "reviews_count": 279,
+    "address": "164 Castle Street, Vienna",
+    "distance_to_center_km": 4.8,
+    "amenities": [
+      "air_conditioning",
+      "airport_shuttle",
+      "breakfast",
+      "kitchen"
+    ],
+    "description": "Budget-friendly with everything you need.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h16-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h16-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h16-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h17",
+    "name": "Hotel Aurora",
+    "city": "Istanbul",
+    "stars": 3,
+    "rating": 9.1,
+    "reviews_count": 1705,
+    "address": "9 Main Street, Istanbul",
+    "distance_to_center_km": 7.0,
+    "amenities": [
+      "air_conditioning",
+      "airport_shuttle",
+      "pets",
+      "pool",
+      "spa",
+      "wifi"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h17-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h17-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h17-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h18",
+    "name": "Old Town Suites",
+    "city": "Istanbul",
+    "stars": 3,
+    "rating": 8.4,
+    "reviews_count": 1677,
+    "address": "40 Harbour Street, Istanbul",
+    "distance_to_center_km": 1.6,
+    "amenities": [
+      "spa",
+      "wifi"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h18-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h18-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h18-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h19",
+    "name": "Casa Azul",
+    "city": "Istanbul",
+    "stars": 4,
+    "rating": 8.6,
+    "reviews_count": 727,
+    "address": "46 Castle Street, Istanbul",
+    "distance_to_center_km": 1.6,
+    "amenities": [
+      "air_conditioning",
+      "gym",
+      "pets",
+      "spa",
+      "wifi"
+    ],
+    "description": "Modern design in a historic building.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h19-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h19-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h19-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h20",
+    "name": "The Orchard",
+    "city": "Istanbul",
+    "stars": 3,
+    "rating": 8.4,
+    "reviews_count": 1007,
+    "address": "67 Castle Street, Istanbul",
+    "distance_to_center_km": 0.2,
+    "amenities": [
+      "airport_shuttle",
+      "gym",
+      "kitchen",
+      "pool"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h20-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h20-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h20-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  },
+  {
+    "id": "h21",
+    "name": "Old Town Suites",
+    "city": "Tbilisi",
+    "stars": 4,
+    "rating": 7.9,
+    "reviews_count": 966,
+    "address": "129 Harbour Street, Tbilisi",
+    "distance_to_center_km": 4.0,
+    "amenities": [
+      "air_conditioning",
+      "breakfast",
+      "parking",
+      "pets"
+    ],
+    "description": "Bright rooms a short walk from the old town.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h21-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h21-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h21-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 3
+  },
+  {
+    "id": "h22",
+    "name": "The Lantern House",
+    "city": "Tbilisi",
+    "stars": 3,
+    "rating": 8.6,
+    "reviews_count": 2307,
+    "address": "23 Castle Street, Tbilisi",
+    "distance_to_center_km": 5.5,
+    "amenities": [
+      "airport_shuttle",
+      "kitchen",
+      "parking",
+      "spa",
+      "wifi"
+    ],
+    "description": "Rooftop views and an excellent breakfast.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h22-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h22-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h22-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 1
+  },
+  {
+    "id": "h23",
+    "name": "Tbilisi Harbour Inn",
+    "city": "Tbilisi",
+    "stars": 5,
+    "rating": 9.4,
+    "reviews_count": 121,
+    "address": "17 Main Street, Tbilisi",
+    "distance_to_center_km": 5.0,
+    "amenities": [
+      "air_conditioning",
+      "parking",
+      "pets",
+      "pool",
+      "spa",
+      "wifi"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h23-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h23-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h23-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 7
+  },
+  {
+    "id": "h24",
+    "name": "Hotel Aurora",
+    "city": "Tbilisi",
+    "stars": 4,
+    "rating": 8.4,
+    "reviews_count": 107,
+    "address": "154 Main Street, Tbilisi",
+    "distance_to_center_km": 6.2,
+    "amenities": [
+      "kitchen",
+      "parking"
+    ],
+    "description": "Quiet, friendly and great for families.",
+    "photos": [
+      "https://picsum.photos/seed/tolerance-h24-1/1000/700",
+      "https://picsum.photos/seed/tolerance-h24-2/1000/700",
+      "https://picsum.photos/seed/tolerance-h24-3/1000/700"
+    ],
+    "check_in_from": "14:00",
+    "check_out_until": "11:00",
+    "free_cancellation_days": 0
+  }
+]

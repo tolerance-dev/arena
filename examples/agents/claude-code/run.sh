@@ -1,0 +1,24 @@
+#!/bin/bash
+# Claude Code, headless, on the task in /work. The gateway URL and the run token come in ANTHROPIC_BASE_URL and
+# ANTHROPIC_API_KEY. MODEL can be changed here.
+set -uo pipefail
+cd /work
+MODEL="${MODEL:-claude-opus-5-5}"
+MINUTES=$(( ${ARENA_TIME_LIMIT_S:-1800} / 60 ))
+
+PROMPT="$(cat TASK.md)
+
+---
+You have about ${MINUTES} minutes of wall clock and a budget of ${ARENA_TOKEN_BUDGET:-?} tokens. Work autonomously in
+/work until the app is complete. Keep start.sh runnable at all times; commit to a simple, robust stack. Test the
+API with curl and the UI with Playwright (python3) before you finish."
+
+claude -p "$PROMPT" --model "$MODEL" --dangerously-skip-permissions --max-turns 500 \
+  --output-format stream-json --verbose \
+| jq -rc --unbuffered '
+    if .type == "assistant" then
+      (.message.content[]? | if .type == "text" then "• " + (.text | gsub("\n"; " ") | .[0:400])
+                              elif .type == "tool_use" then "→ " + .name + " " + ((.input | tostring) | .[0:240])
+                              else empty end)
+    elif .type == "result" then "== " + (.subtype // "done") + " turns=" + ((.num_turns // 0) | tostring)
+    else empty end'

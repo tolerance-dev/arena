@@ -9,140 +9,56 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/account"
-	adminpkg "tolerance/internal/admin"
-	"tolerance/internal/analytics"
-	"tolerance/internal/badges"
-	"tolerance/internal/builds"
-	"tolerance/internal/daily"
-	"tolerance/internal/discussion"
-	"tolerance/internal/fairplay"
-	"tolerance/internal/games"
+	"tolerance/internal/agents"
 	"tolerance/internal/identity"
-	"tolerance/internal/moderation"
-	"tolerance/internal/notify"
 	"tolerance/internal/platform/clientip"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
 	"tolerance/internal/platform/limits"
 	"tolerance/internal/platform/ratelimit"
-	"tolerance/internal/profiles"
-	"tolerance/internal/recap"
-	"tolerance/internal/submissions"
-	"tolerance/internal/tasks"
-	"tolerance/internal/uploadlink"
+	"tolerance/internal/runs"
 )
 
 type deps struct {
-	pool        *db.Pool
-	log         *slog.Logger
-	users       *identity.Service
-	daily       *daily.Service
-	submissions *submissions.Service
-	games       *games.Service
-	builds      *builds.Service
-	admin       *adminpkg.Service
-	moderation  *moderation.Service
-	fairplay    *fairplay.Service
-	discussion  *discussion.Service
-	profiles    *profiles.Service
-	recap       *recap.Service
-	notify      *notify.Service
-	analytics   *analytics.Service
-	uploadLinks *uploadlink.Service
-	account     *account.Service
-	limiter     *ratelimit.Limiter
-	providers   map[string]identity.Provider
+	pool      *db.Pool
+	log       *slog.Logger
+	users     *identity.Service
+	agents    *agents.Service
+	runs      *runs.Service
+	limiter   *ratelimit.Limiter
+	providers map[string]identity.Provider
 }
 
+// newHandler is ALL the routing. Reads are public; uploading agents and starting runs is for admins only (for now
+// only the platform owner uploads agents).
 func newHandler(cfg config, d deps) http.Handler {
 	owner := http.NewServeMux()
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
-		st, err := d.daily.StreakOf(ctx, userID)
-		return map[string]any{"streak": st, "can_admin": identity.CanAdmin(cfg.devLogin, identity.MustFromContext(ctx).Role)}, err
+		return map[string]any{"can_admin": identity.CanAdmin(cfg.devLogin, identity.MustFromContext(ctx).Role)}, nil
 	})
-	submissions.RegisterOwnerRoutes(owner, d.submissions)
-	fairplay.RegisterOwnerRoutes(owner, d.fairplay, d.limiter)
-	discussion.RegisterOwnerRoutes(owner, d.discussion, d.limiter)
-	games.RegisterOwnerRoutes(owner, d.games)
-	recap.RegisterOwnerRoutes(owner, d.recap)
-	notify.RegisterOwnerRoutes(owner, d.notify)
-	uploadlink.RegisterOwnerRoutes(owner, d.uploadLinks)
-	account.RegisterOwnerRoutes(owner, d.account, cfg.secureCookies)
-	builds.RegisterOwnerRoutes(owner, d.builds, d.limiter, cfg.devLogin)
 
-	pulse := http.NewServeMux()
 	admin := http.NewServeMux()
-	games.RegisterAdminRoutes(admin, d.games)
-	adminpkg.RegisterRoutes(pulse, d.admin)
-	moderation.RegisterRoutes(pulse, d.moderation)
-	analytics.RegisterAdminRoutes(pulse, d.analytics)
-	fairplay.RegisterAdminRoutes(pulse, d.fairplay)
+	agents.RegisterAdminRoutes(admin, d.agents)
+	runs.RegisterAdminRoutes(admin, d.runs)
 
 	public := http.NewServeMux()
-	daily.RegisterPublicRoutes(public, d.daily, identity.OptionalUserID(d.users), d.submissions.MyDay)
-	discussion.RegisterPublicRoutes(public, d.discussion, identity.OptionalUserID(d.users))
-	tasks.RegisterPublicRoutes(public, d.pool, identity.OptionalUserID(d.users))
-	analytics.RegisterPublicRoutes(public, d.analytics, identity.OptionalUserID(d.users), d.limiter, cfg.trustProxy)
-	profiles.RegisterPublicRoutes(public, d.profiles)
-	badges.RegisterPublicRoutes(public, badges.Deps{Daily: d.daily, Games: d.games})
-	games.RegisterPublicRoutes(public, d.games, identity.OptionalUserID(d.users))
-	builds.RegisterPublicRoutes(public, d.builds, identity.OptionalUserID(d.users), cfg.publicURL)
-
-	// The personal upload link: the token in the URL is the credential (no session).
-	uploadlink.RegisterPublicRoutes(public, uploadlink.Deps{Links: d.uploadLinks, Pool: d.pool, Daily: d.daily, Submissions: d.submissions,
-		Games: d.games, Limiter: d.limiter, TrustProxy: cfg.trustProxy})
+	agents.RegisterPublicRoutes(public, d.agents)
+	runs.RegisterPublicRoutes(public, d.runs)
 
 	session := identity.RequireSession(d.users)
 	api := http.NewServeMux()
 	identity.RegisterAuthRoutes(api, d.users, d.limiter, identity.AuthConfig{
 		Providers: d.providers, PublicURL: cfg.publicURL, DevLogin: cfg.devLogin, Secure: cfg.secureCookies, TrustProxy: cfg.trustProxy,
 	})
-	// Public: the local `arena tanks new|play` tool is downloadable without an account.
-	api.HandleFunc("GET /api/v1/connector/download", connectorDownload(cfg.connectorDir))
 	api.Handle("/api/v1/me", session(owner))
-	api.Handle("GET /api/v1/me/recap", session(owner))
-	api.Handle("GET /api/v1/me/notifications", session(owner))
-	api.Handle("POST /api/v1/me/notifications/read", session(owner))
-	api.Handle("/api/v1/me/upload-link", session(owner))
-	api.Handle("GET /api/v1/me/export", session(owner))
-	api.Handle("/api/v1/u/", public)
-	api.Handle("/api/v1/me/tanks", session(owner))
-	api.Handle("/api/v1/me/tanks/", session(owner))
-	api.Handle("/api/v1/submissions", session(owner))
-	api.Handle("/api/v1/submissions/", session(owner))
-	api.Handle("POST /api/v1/events", public)
-	api.Handle("POST /api/v1/daily/{day}/comments", session(owner))
-	api.Handle("PATCH /api/v1/comments/{id}", session(owner))
-	api.Handle("DELETE /api/v1/comments/{id}", session(owner))
-	api.Handle("/api/v1/daily", public)
-	api.Handle("/api/v1/daily/", public)
-	api.Handle("/api/v1/days", public)
-	api.Handle("/api/v1/leaderboard", public)
-	api.Handle("/api/v1/users/", public)
-	api.Handle("GET /api/v1/badges/", public)
-	// Remember when a signed-in user first fetched a task repo (fair-play signal), then serve it as usual.
-	api.Handle("GET /api/v1/tasks/{slug}/repo.zip", d.fairplay.RecordDownload("task", identity.OptionalUserID(d.users))(public))
+	api.Handle("/api/v1/admin/", session(adminOrDev(cfg.devLogin)(admin)))
+	api.Handle("/api/v1/tasks", public)
 	api.Handle("/api/v1/tasks/", public)
-	api.Handle("/api/v1/tanks/", public)
-	api.Handle("/api/v1/builds", public)
-	api.Handle("/api/v1/builds/", public)
-	api.Handle("/api/v1/build-entries/", public)
-	api.Handle("POST /api/v1/builds/{slug}/entries", session(owner))
-	api.Handle("/api/v1/build-entries/{id}/vote", session(owner))
-	api.Handle("DELETE /api/v1/build-entries/{id}", session(owner))
-	// Starting a tournament now: admins, or anyone signed in when the dev login is on (local runs).
-	api.Handle("POST /api/v1/tanks/tournaments", session(adminOrDev(cfg.devLogin)(admin)))
-	api.Handle("POST /api/v1/tanks/tournaments/{id}/pairings/{pairing}/resume", session(adminOrDev(cfg.devLogin)(admin)))
-
-	api.Handle("GET /api/v1/admin/pulse", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("GET /api/v1/admin/recent", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("GET /api/v1/admin/funnel", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("/api/v1/admin/moderation/", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("/api/v1/admin/fairplay", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("/api/v1/admin/fairplay/", session(adminOrDev(cfg.devLogin)(pulse)))
-	api.Handle("POST /api/v1/reports", session(owner))
+	api.Handle("/api/v1/runs", public)
+	api.Handle("/api/v1/runs/", public)
+	api.Handle("/api/v1/agents", public)
+	api.Handle("/api/v1/agents/", public)
 
 	top := http.NewServeMux()
 	top.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +71,7 @@ func newHandler(cfg config, d deps) http.Handler {
 		}
 		httpx.Respond(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-	top.Handle("/api/", d.fairplay.Client(api, cfg.trustProxy, cfg.secureCookies))
+	top.Handle("/api/", api)
 	return withMiddleware(top, d.log, cfg.trustProxy, d.limiter)
 }
 
@@ -198,7 +114,7 @@ func withMiddleware(next http.Handler, log *slog.Logger, trustProxy bool, limite
 		start := time.Now()
 		withRequestID.ServeHTTP(sw, r)
 		ms := time.Since(start).Milliseconds()
-		route := r.Method + " " + uploadlink.RedactPath(r.URL.Path) // the upload-link token is a credential
+		route := r.Method + " " + r.URL.Path
 		fields := []any{
 			"request_id", sw.Header().Get("X-Request-Id"),
 			"route", route,

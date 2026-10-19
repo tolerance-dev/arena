@@ -1,0 +1,43 @@
+{
+  "order": 3,
+  "title": {"en": "Online cinema", "ru": "Онлайн-кинотеатр"},
+  "tagline": {
+    "en": "Netflix in miniature: catalog, title pages, player, watchlist, premium plan.",
+    "ru": "Netflix в миниатюре: каталог, страница фильма, плеер, «смотреть позже», премиум."
+  },
+  "time_limit_s": 2400,
+  "token_budget": 3000000,
+  "checks": [
+    {"name": "catalog lists all titles", "method": "GET", "path": "/api/movies?limit=5", "status": 200,
+     "expect": [{"path": "total", "equals": 48}, {"path": "items", "len": 5}]},
+    {"name": "filter by genre", "method": "GET", "path": "/api/movies?genre=drama&limit=50", "status": 200,
+     "expect": [{"path": "total", "equals": 10}]},
+    {"name": "only series", "method": "GET", "path": "/api/movies?type=series&limit=50", "status": 200,
+     "expect": [{"path": "total", "equals": 6}]},
+    {"name": "sort by rating", "method": "GET", "path": "/api/movies?sort=rating&limit=48", "status": 200,
+     "expect": [{"path": "items", "sorted_by": "-rating"}]},
+    {"name": "title page", "method": "GET", "path": "/api/movies/m1", "status": 200,
+     "expect": [{"path": "title", "equals": "The Endless Frontier"}]},
+    {"name": "unknown title is 404", "method": "GET", "path": "/api/movies/nope-404", "status": 404},
+    {"name": "genres", "method": "GET", "path": "/api/genres", "status": 200, "expect": [{"path": "", "len": 10}]},
+    {"name": "wrong password is 401", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "wrong"}, "status": 401},
+    {"name": "sign in (free plan)", "method": "POST", "path": "/api/login",
+     "body": {"email": "greta.petrov@example.com", "password": "pass007"}, "status": 200, "save": {"token": "token"}},
+    {"name": "me has the plan, no password", "method": "GET", "path": "/api/me", "auth": true, "status": 200,
+     "expect": [{"path": "plan", "equals": "free"}, {"path": "password", "absent": true}]},
+    {"name": "play needs auth", "method": "GET", "path": "/api/movies/m2/play", "status": 401},
+    {"name": "free title plays", "method": "GET", "path": "/api/movies/m2/play", "auth": true, "status": 200,
+     "expect": [{"path": "stream_url", "exists": true}]},
+    {"name": "premium title is 403 on free", "method": "GET", "path": "/api/movies/m1/play", "auth": true, "status": 403},
+    {"name": "add to watchlist", "method": "POST", "path": "/api/watchlist", "auth": true, "body": {"movie_id": "m4"}, "status_in": [200, 201]},
+    {"name": "add again", "method": "POST", "path": "/api/watchlist", "auth": true, "body": {"movie_id": "m4"}, "status_in": [200, 201, 409]},
+    {"name": "watchlist has one entry", "method": "GET", "path": "/api/watchlist", "auth": true, "status": 200,
+     "expect": [{"path": "", "len": 1}]},
+    {"name": "save progress", "method": "POST", "path": "/api/progress", "auth": true,
+     "body": {"movie_id": "m5", "position_sec": 1234}, "status_in": [200, 201, 204]},
+    {"name": "continue watching", "method": "GET", "path": "/api/continue-watching", "auth": true, "status": 200,
+     "expect": [{"path": "0.movie_id", "equals": "m5"}, {"path": "0.position_sec", "equals": 1234}]},
+    {"name": "remove from watchlist", "method": "DELETE", "path": "/api/watchlist/m4", "auth": true, "status_in": [200, 204]}
+  ]
+}

@@ -1,0 +1,612 @@
+[
+  {
+    "id": "b1",
+    "room_id": "r19",
+    "hotel_id": "h6",
+    "user_id": "u5",
+    "check_in": "2026-11-13",
+    "check_out": "2026-11-17",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b2",
+    "room_id": "r77",
+    "hotel_id": "h24",
+    "user_id": "u7",
+    "check_in": "2026-12-21",
+    "check_out": "2026-12-23",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b3",
+    "room_id": "r56",
+    "hotel_id": "h18",
+    "user_id": "u6",
+    "check_in": "2026-12-16",
+    "check_out": "2026-12-21",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b4",
+    "room_id": "r52",
+    "hotel_id": "h16",
+    "user_id": "u8",
+    "check_in": "2026-12-11",
+    "check_out": "2026-12-17",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b5",
+    "room_id": "r77",
+    "hotel_id": "h24",
+    "user_id": "u6",
+    "check_in": "2026-11-22",
+    "check_out": "2026-11-24",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b6",
+    "room_id": "r77",
+    "hotel_id": "h24",
+    "user_id": "u6",
+    "check_in": "2026-11-28",
+    "check_out": "2026-11-29",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b7",
+    "room_id": "r5",
+    "hotel_id": "h2",
+    "user_id": "u7",
+    "check_in": "2026-11-02",
+    "check_out": "2026-11-06",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b8",
+    "room_id": "r47",
+    "hotel_id": "h15",
+    "user_id": "u3",
+    "check_in": "2026-11-22",
+    "check_out": "2026-11-25",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b9",
+    "room_id": "r30",
+    "hotel_id": "h9",
+    "user_id": "u3",
+    "check_in": "2026-11-13",
+    "check_out": "2026-11-19",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b10",
+    "room_id": "r70",
+    "hotel_id": "h22",
+    "user_id": "u3",
+    "check_in": "2026-11-09",
+    "check_out": "2026-11-13",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b11",
+    "room_id": "r24",
+    "hotel_id": "h7",
+    "user_id": "u1",
+    "check_in": "2026-12-11",
+    "check_out": "2026-12-15",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b12",
+    "room_id": "r45",
+    "hotel_id": "h14",
+    "user_id": "u3",
+    "check_in": "2026-12-05",
+    "check_out": "2026-12-10",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b13",
+    "room_id": "r67",
+    "hotel_id": "h20",
+    "user_id": "u6",
+    "check_in": "2026-12-19",
+    "check_out": "2026-12-25",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b14",
+    "room_id": "r54",
+    "hotel_id": "h17",
+    "user_id": "u1",
+    "check_in": "2026-12-19",
+    "check_out": "2026-12-20",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b15",
+    "room_id": "r32",
+    "hotel_id": "h10",
+    "user_id": "u3",
+    "check_in": "2026-12-18",
+    "check_out": "2026-12-23",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b16",
+    "room_id": "r3",
+    "hotel_id": "h1",
+    "user_id": "u7",
+    "check_in": "2026-11-29",
+    "check_out": "2026-12-05",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b17",
+    "room_id": "r75",
+    "hotel_id": "h23",
+    "user_id": "u7",
+    "check_in": "2026-11-25",
+    "check_out": "2026-11-26",
+    "guests": 4,
+    "status": "confirmed"
+  },
+  {
+    "id": "b18",
+    "room_id": "r61",
+    "hotel_id": "h19",
+    "user_id": "u2",
+    "check_in": "2026-11-01",
+    "check_out": "2026-11-02",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b19",
+    "room_id": "r57",
+    "hotel_id": "h18",
+    "user_id": "u2",
+    "check_in": "2026-11-02",
+    "check_out": "2026-11-08",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b20",
+    "room_id": "r16",
+    "hotel_id": "h5",
+    "user_id": "u5",
+    "check_in": "2026-12-14",
+    "check_out": "2026-12-19",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b21",
+    "room_id": "r63",
+    "hotel_id": "h19",
+    "user_id": "u6",
+    "check_in": "2026-11-23",
+    "check_out": "2026-11-26",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b22",
+    "room_id": "r20",
+    "hotel_id": "h6",
+    "user_id": "u2",
+    "check_in": "2026-11-17",
+    "check_out": "2026-11-22",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b23",
+    "room_id": "r38",
+    "hotel_id": "h11",
+    "user_id": "u1",
+    "check_in": "2026-12-19",
+    "check_out": "2026-12-25",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b24",
+    "room_id": "r59",
+    "hotel_id": "h18",
+    "user_id": "u5",
+    "check_in": "2026-11-06",
+    "check_out": "2026-11-10",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b25",
+    "room_id": "r77",
+    "hotel_id": "h24",
+    "user_id": "u5",
+    "check_in": "2026-11-18",
+    "check_out": "2026-11-23",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b26",
+    "room_id": "r59",
+    "hotel_id": "h18",
+    "user_id": "u6",
+    "check_in": "2026-12-05",
+    "check_out": "2026-12-07",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b27",
+    "room_id": "r9",
+    "hotel_id": "h3",
+    "user_id": "u8",
+    "check_in": "2026-12-05",
+    "check_out": "2026-12-08",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b28",
+    "room_id": "r30",
+    "hotel_id": "h9",
+    "user_id": "u2",
+    "check_in": "2026-11-15",
+    "check_out": "2026-11-18",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b29",
+    "room_id": "r17",
+    "hotel_id": "h5",
+    "user_id": "u7",
+    "check_in": "2026-11-17",
+    "check_out": "2026-11-23",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b30",
+    "room_id": "r71",
+    "hotel_id": "h22",
+    "user_id": "u5",
+    "check_in": "2026-11-19",
+    "check_out": "2026-11-23",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b31",
+    "room_id": "r29",
+    "hotel_id": "h9",
+    "user_id": "u6",
+    "check_in": "2026-12-13",
+    "check_out": "2026-12-16",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b32",
+    "room_id": "r55",
+    "hotel_id": "h17",
+    "user_id": "u7",
+    "check_in": "2026-11-30",
+    "check_out": "2026-12-06",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b33",
+    "room_id": "r11",
+    "hotel_id": "h3",
+    "user_id": "u7",
+    "check_in": "2026-11-02",
+    "check_out": "2026-11-05",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b34",
+    "room_id": "r66",
+    "hotel_id": "h20",
+    "user_id": "u3",
+    "check_in": "2026-11-02",
+    "check_out": "2026-11-05",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b35",
+    "room_id": "r70",
+    "hotel_id": "h22",
+    "user_id": "u7",
+    "check_in": "2026-12-17",
+    "check_out": "2026-12-20",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b36",
+    "room_id": "r53",
+    "hotel_id": "h17",
+    "user_id": "u6",
+    "check_in": "2026-11-25",
+    "check_out": "2026-11-27",
+    "guests": 4,
+    "status": "confirmed"
+  },
+  {
+    "id": "b37",
+    "room_id": "r11",
+    "hotel_id": "h3",
+    "user_id": "u7",
+    "check_in": "2026-12-04",
+    "check_out": "2026-12-07",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b38",
+    "room_id": "r45",
+    "hotel_id": "h14",
+    "user_id": "u1",
+    "check_in": "2026-11-05",
+    "check_out": "2026-11-09",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b39",
+    "room_id": "r66",
+    "hotel_id": "h20",
+    "user_id": "u3",
+    "check_in": "2026-11-06",
+    "check_out": "2026-11-12",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b40",
+    "room_id": "r33",
+    "hotel_id": "h10",
+    "user_id": "u2",
+    "check_in": "2026-11-20",
+    "check_out": "2026-11-24",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b41",
+    "room_id": "r24",
+    "hotel_id": "h7",
+    "user_id": "u2",
+    "check_in": "2026-11-08",
+    "check_out": "2026-11-10",
+    "guests": 4,
+    "status": "confirmed"
+  },
+  {
+    "id": "b42",
+    "room_id": "r31",
+    "hotel_id": "h9",
+    "user_id": "u6",
+    "check_in": "2026-12-02",
+    "check_out": "2026-12-08",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b43",
+    "room_id": "r16",
+    "hotel_id": "h5",
+    "user_id": "u6",
+    "check_in": "2026-11-25",
+    "check_out": "2026-11-27",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b44",
+    "room_id": "r21",
+    "hotel_id": "h7",
+    "user_id": "u8",
+    "check_in": "2026-12-12",
+    "check_out": "2026-12-15",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b45",
+    "room_id": "r37",
+    "hotel_id": "h11",
+    "user_id": "u5",
+    "check_in": "2026-11-20",
+    "check_out": "2026-11-22",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b46",
+    "room_id": "r36",
+    "hotel_id": "h11",
+    "user_id": "u3",
+    "check_in": "2026-11-17",
+    "check_out": "2026-11-22",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b47",
+    "room_id": "r33",
+    "hotel_id": "h10",
+    "user_id": "u4",
+    "check_in": "2026-11-27",
+    "check_out": "2026-12-02",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b48",
+    "room_id": "r31",
+    "hotel_id": "h9",
+    "user_id": "u5",
+    "check_in": "2026-11-12",
+    "check_out": "2026-11-13",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b49",
+    "room_id": "r57",
+    "hotel_id": "h18",
+    "user_id": "u1",
+    "check_in": "2026-11-03",
+    "check_out": "2026-11-07",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b50",
+    "room_id": "r57",
+    "hotel_id": "h18",
+    "user_id": "u1",
+    "check_in": "2026-12-04",
+    "check_out": "2026-12-07",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b51",
+    "room_id": "r78",
+    "hotel_id": "h24",
+    "user_id": "u4",
+    "check_in": "2026-12-21",
+    "check_out": "2026-12-23",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b52",
+    "room_id": "r29",
+    "hotel_id": "h9",
+    "user_id": "u5",
+    "check_in": "2026-11-13",
+    "check_out": "2026-11-14",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b53",
+    "room_id": "r56",
+    "hotel_id": "h18",
+    "user_id": "u8",
+    "check_in": "2026-11-01",
+    "check_out": "2026-11-04",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b54",
+    "room_id": "r53",
+    "hotel_id": "h17",
+    "user_id": "u5",
+    "check_in": "2026-11-30",
+    "check_out": "2026-12-02",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b55",
+    "room_id": "r53",
+    "hotel_id": "h17",
+    "user_id": "u3",
+    "check_in": "2026-11-28",
+    "check_out": "2026-12-04",
+    "guests": 3,
+    "status": "confirmed"
+  },
+  {
+    "id": "b56",
+    "room_id": "r48",
+    "hotel_id": "h15",
+    "user_id": "u1",
+    "check_in": "2026-11-12",
+    "check_out": "2026-11-18",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b57",
+    "room_id": "r60",
+    "hotel_id": "h19",
+    "user_id": "u3",
+    "check_in": "2026-12-08",
+    "check_out": "2026-12-11",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b58",
+    "room_id": "r76",
+    "hotel_id": "h23",
+    "user_id": "u6",
+    "check_in": "2026-11-06",
+    "check_out": "2026-11-12",
+    "guests": 2,
+    "status": "confirmed"
+  },
+  {
+    "id": "b59",
+    "room_id": "r55",
+    "hotel_id": "h17",
+    "user_id": "u6",
+    "check_in": "2026-12-10",
+    "check_out": "2026-12-13",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b60",
+    "room_id": "r14",
+    "hotel_id": "h4",
+    "user_id": "u7",
+    "check_in": "2026-11-22",
+    "check_out": "2026-11-24",
+    "guests": 1,
+    "status": "confirmed"
+  },
+  {
+    "id": "b-full",
+    "room_id": "r4",
+    "hotel_id": "h2",
+    "user_id": "u1",
+    "check_in": "2026-12-01",
+    "check_out": "2026-12-08",
+    "guests": 1,
+    "status": "confirmed"
+  }
+]

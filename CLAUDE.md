@@ -12,14 +12,8 @@ overrides the superpowers skills and any default habits:
   plans in `docs/`, no subagent-driven-development, no TDD, no per-task or
   whole-branch reviews — unless the user asks for one. If a change needs a
   plan, a short list of steps in chat is enough.
-- **No new tests.** Most tests were deleted on 2026-10-03; what's left guards
-  only what you can't see by clicking: submission verdicts, diff-apply safety
-  and zip-upload handling (`internal/submissions`), pytest output parsing
-  (`internal/sandbox`), the task catalog (`internal/tasks`), the job queue
-  (`internal/platform/jobs`). Add a test only for a bug found in one of
-  those. If a change breaks one of them, the change is probably wrong.
-  `*_test.go` under `backend/fixtures/**` are task content (hidden tests), not
-  our tests — never delete them.
+- **No new tests.** Since the 2026-10-19 pivot almost no tests remain; add one only for a bug in the gateway's
+  token metering or the run verdict (`internal/gateway`, `internal/runs`).
 - **"Done" = it compiles and works locally**: `make test-fast`, then `make dev`
   (or `make up`) and the flow clicked through. Full `make test` is optional.
   CI (`ci.yml`) is manual-only (`workflow_dispatch`); nothing runs on push.
@@ -40,114 +34,87 @@ overrides the superpowers skills and any default habits:
 
 ## What this is
 
-**tolerance** (site https://tolerance.cc; the CLI is still called `arena`, env
-vars are `ARENA_*`, the database is `arena`). Since 2026-10-03 the product is
-upload-based — the platform never talks to users' agents. Two modes:
+**tolerance** (site https://tolerance.cc; env vars are `ARENA_*`, the database is `arena`). Since 2026-10-19 it
+is an **agent arena for whole apps**: an admin uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM
+key; a run puts the agent in a sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and
+frontend; the platform measures and judges the result. Everything older (daily task, tanks, build challenges,
+products, profiles, fair play, …) was deleted; its tables are still in the DB, unused, and the code is in git
+history (before commit "Pivot to agent runs").
 
-1. **Task of the day** (built): one coding task per UTC day. The user downloads
-   the repo, has their own agent fix it, uploads a zip or a patch; the platform
-   runs the hidden tests in the Docker sandbox. Daily/overall leaderboards,
-   streaks, 3 attempts a day.
-2. **Tanks** (`internal/games`): users download a starter kit zip, have their
-   agent improve it, upload a zip; check match, ladder, monthly seasons
-   (per-season ratings), weekly single-elimination tournaments, plain-text
-   match reports for pasting back to the agent.
+Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking → done | infra_error`:
+1. **agent**: container from `arena-runtime:1` on the internal Docker network `arena-agents` (no route out).
+   `/agent` = the bundle, `/work` = `TASK.md` + `data/`. Env: `ANTHROPIC_BASE_URL`/`OPENAI_BASE_URL` = the gateway,
+   `*_API_KEY` = a per-run token (`gateway_tokens`), npm/PyPI mirrors, `ARENA_DEADLINE`, `ARENA_TOKEN_BUDGET`.
+   Killed on time limit, on budget (polled every 3 s) or on cancel. Then `docker commit` → image
+   `arena-run:<hex>` (the snapshot; previews and checks start from it).
+2. **checking**: source tar out of the snapshot → LOC per language + `source_zip`; then a check container runs
+   `internal/runs/verify.py` as root, which starts `/work/start.sh` as uid 1001 (so the app can't read `/verify`
+   with the judge checklist and token), runs the task's HTTP checks (`task.json`), screenshots desktop/mobile, and
+   runs the judge (Anthropic SDK through the gateway with a judge token; tools: browser via Playwright, HTTP,
+   read files; ends with `submit_verdict`).
+3. **score** = 0 if the app didn't start, else 30% automatic checks + 70% judge (checks only when no judge).
 
-Also: `/u/[handle]` (+ `internal/profiles` for tanks bots and the main `made_with`
-stack; `made_with` itself is a free-text field on submissions, normalized for
-display in `internal/profiles/stack.go` and `components/daily/stack-label.tsx`),
-`/admin` (`internal/admin`, pulse; admin = `identity.CanAdmin`: admin role, or
-anyone when `ARENA_DEV_LOGIN=true` — the same rule gates "start a tournament now").
-Products ("product of the week") and the `/agents` stacks page were removed on
-2026-10-03; they live in the commit history.
+`cmd/gateway` (always a container, on `default` + `arena-agents` with alias `gateway`): `/anthropic/*`,
+`/openai/*` swap the run token for the real key (agent keys are sealed with `ARENA_SECRET_KEY`, the judge key is
+`ARENA_JUDGE_API_KEY` on the gateway only), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget;
+`/npm/*`, `/pypi/*`, `/pyfiles/*` are read-only registry mirrors. Port 8091 serves live previews:
+`http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand.
+`ARENA_GATEWAY_FAKE=true` answers LLM calls locally (fake judge included) to click through without keys.
 
-**Build challenges** (`internal/builds`, since 2026-10-05 the whole visible site; daily and tanks are hidden
-behind redirects in `frontend/next.config.mjs`): the public half is `catalog/<slug>/` (manifest, contract
-en/ru) and `catalog/season.json` (order, dates); hidden tests, references and broken versions live in the
-private `arena-tasks/builds/<slug>/`. Locally set `ARENA_BUILDS_TESTS_SOURCE=<arena-tasks>/builds` in `.env`;
-check a challenge with `python3 <arena-tasks>/builds/verify.py <slug> --tolerance <this repo>`.
+Tasks: `backend/internal/tasks/catalog/<slug>/` (`task.json` limits + HTTP checks, `TASK.md`, `judge.md`,
+`data/*.json` generated once, deterministic) + `catalog/RULES.md` appended to every brief. `judge.md` can be
+overridden from `ARENA_TASKS_HIDDEN_DIR/<slug>/judge.md` (move the real checklists to private arena-tasks before
+uploads open to everyone). Example agents: `examples/agents/{claude-code,demo}`.
 
-This repository is public: `backend/fixtures/*` tasks are practice tasks. The
-real hidden tasks live in the private repo `artur-gavronchuk/arena-tasks`.
-Never copy those tasks here.
+Prod (`deploy/`) is NOT adapted yet: it has no gateway service, no `arena-runtime` image, no
+`arena-agents` network and no `*.preview` DNS/TLS. Don't press deploy until that is done.
 
-Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks
-to the backend over HTTP only). The code is the only description of the
-current design; `docs/superpowers/specs/…-platform-roadmap.md` is a history of
-ideas, older specs/plans live in git history.
+Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks to the backend over HTTP only).
 
 ## Commands
 
 ```sh
-make dev         # postgres in Docker + migrate, then api and web natively (Ctrl-C stops both)
-make up          # whole stack in Docker: postgres, migrate, api (HTTP + all workers), web
+make dev         # postgres + gateway in Docker, migrate, then api and web natively (Ctrl-C stops api/web)
+make up          # whole stack in Docker
 make down        # make reset also wipes the DB volume
-make migrate     # goose migrations + catalog sync
-make seed        # fake 30 days of activity (500 people; --users N via go run ./cmd/seed --yes); local DB only, re-run replaces it
-make run-api     # native API alone;  ARENA_SANDBOX=fake runs without Docker
-make run-web     # pnpm dev, proxying /api to the native API
-make images      # sandbox + bot runtime images, built only when missing
+make images      # arena-runtime:1 (sandbox image), built only when missing
+make gateway     # rebuild + restart the gateway container (after Go changes in internal/gateway)
 make test-fast   # go vet + go test + pnpm typecheck
-make test        # everything: -race, ARENA_TEST_REQUIRE_DOCKER=1, frontend build
-
-cd backend && go test ./internal/submissions/...   # one package
 ```
 
-Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`; Superset's
-`.superset/setup.sh` assigns free ones per workspace). Frontend uses pnpm.
-Sign in locally through the dev login (`ARENA_DEV_LOGIN=true`).
-`ARENA_NO_LIMITS=true` (the local default) turns off daily/hourly quotas via
-`internal/platform/limits`; route any new quota through `limits.Cap`.
-
-Integration tests (`*_integration_test.go`) use testcontainers Postgres and
-skip without Docker. With Colima, if testcontainers can't find the socket:
-`export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
-`internal/games/match` tests need `python3` and `node` on `PATH`.
-
-There is no API contract file: the Go handlers and `frontend/lib/types.ts`
-are the contract.
+Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Sign in locally through the dev
+login (`ARENA_DEV_LOGIN=true` makes everyone an admin, i.e. able to upload agents). Upload at `/admin`.
 
 ## Map
 
 ```
-backend/cmd/api              config, handler.go (ALL routing), main (server + workers)
-backend/cmd/migrate          goose up + task catalog sync + tanks house bots
-backend/cmd/arena            CLI: tanks new | tanks play (local only)
-backend/internal/tasks       task catalog (fixtures → tasks table), repo.zip
-backend/internal/daily       today's task (assigned lazily), days archive, leaderboards, streaks
-backend/internal/submissions upload (zip → diff via git diff --no-index, or patch), worker, verdict
-backend/internal/sandbox     hidden tests in Docker (or fake)
-backend/internal/games       tanks: bots, versions, check, ladder, match runner, rating
-backend/internal/identity    OAuth (GitHub/Google), dev login, sessions, RequireSession
-backend/internal/platform    db, dbtest, httpx, jobs queue, limits, sanitize, …
-backend/fixtures             practice tasks (`_hidden/` = hidden tests — task content, never delete)
-backend/internal/profiles    /users/{handle}/activity, made_with normalizer
-backend/internal/admin       /admin/pulse, /admin/recent
-frontend/app                 / (today), /day/[day], /days, /leaderboard, /u/*, /admin, /tanks/*, /app/tanks
-frontend/lib                 types.ts (API types), api.ts (fetching)
+backend/cmd/api            config, handler.go (ALL routing), main (server + runs worker)
+backend/cmd/gateway        LLM/registry proxy + live previews
+backend/cmd/migrate        goose up
+backend/internal/agents    agent bundles + sealed keys, admin upload routes
+backend/internal/runs      runs service/routes, worker, verify.py (checks + judge), LOC stats
+backend/internal/gateway   gateway.go (proxy, metering, budget, fake upstream), preview.go
+backend/internal/sandbox   docker CLI wrapper (create/cp/start/commit), network arena-agents
+backend/internal/tasks     task catalog (embedded)
+backend/runtime            Dockerfile of arena-runtime:1 (Playwright python + Node 22 + claude/codex CLIs)
+frontend/app               / (tasks), /t/[slug], /r/[id], /admin, /login
+frontend/components/runs   the views
 ```
 
-Session cookie routes: `/api/v1/me`, `/submissions*`, `/me/tanks*`, `/admin/*`. Everything
-else (`/daily*`, `/days`, `/leaderboard`, `/tasks/{slug}/repo.zip`,
-`/tanks/*`, `/connector/download`) is public.
-
-Submission states: `queued → running → passed | failed | infra_error`. The
-worker runs inside `cmd/api` on the `jobs` queue (`run_submission`); a
-submission stuck > 15 min becomes `infra_error`. `infra_error` never uses up
-an attempt.
+Public: `/api/v1/tasks*`, `/runs*`, `/agents*`. Session + admin: `/api/v1/admin/*` (agents, runs). `/me` needs a
+session.
 
 ## Rules that stay even in prototype mode
 
-- **Verdict integrity**: `passed` requires every hidden test, by name, to have
-  run and passed. `infra_error` is the platform's fault and never counts
-  against the user. A diff touching test files or the test harness fails.
-- **Sandbox safety**: the worker applies diffs with plain `git apply` (no
-  `--unsafe-paths`); the sandbox runs with `--network none` and dropped caps.
+- **Sandbox safety**: agent/check/preview containers run with dropped caps on the internal `arena-agents`
+  network; the real LLM keys never enter a sandbox; the app under check runs as uid 1001, away from `/verify`.
+- `infra_error` is the platform's fault, never a score.
 - **Migrations**: tolerance.cc runs them on every deploy, so a migration that
   has been deployed is append-only — add a new file. One that hasn't shipped
   yet may still be edited; run `make reset` afterwards (goose won't re-run an
   applied file) and say in the commit message that other sessions need it too.
 - Agent-written logs are sanitized server-side (`internal/platform/sanitize`).
+- Migration `00042_agent_runs.sql` is not deployed yet (may still be edited + `make reset`).
 - Errors go through `httpx.WriteError` (`{code, message, request_id}`);
   timestamps are UTC (`.UTC()` after scanning — pgx returns local time).
 - Frontend: no mocks, data from the API, browser calls same-origin `/api/v1/*`.

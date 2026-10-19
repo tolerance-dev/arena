@@ -1,7 +1,3 @@
-import type {
-  AdminEvent, AdminFunnel, AdminPulse, ModItem, ModLogItem, ModUser, NotificationList, Recap, SeasonDetail, SeasonView, Showcase, TournamentView,
-} from './types'
-
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public retryAfterSec?: number, public fields?: { path: string; code: string }[]) {
     super(message)
@@ -58,47 +54,5 @@ export async function upload<T>(path: string, form: FormData): Promise<T> {
   return (await res.json()) as T
 }
 
-// Tanks showcase, seasons and tournaments (public reads; starting a tournament needs an admin or the dev login).
-export const tanks = {
-  showcase: () => api<Showcase>('/tanks/showcase'),
-  seasons: () => api<{ items: SeasonView[] }>('/tanks/seasons').then((r) => r.items),
-  season: (id: string, offset = 0, limit = 100) => api<SeasonDetail>(`/tanks/seasons/${encodeURIComponent(id)}?offset=${offset}&limit=${limit}`),
-  tournaments: (status = '') =>
-    api<{ items: TournamentView[]; now: string }>(`/tanks/tournaments${status ? `?status=${status}` : ''}`),
-  tournament: (id: string) => api<TournamentView>(`/tanks/tournaments/${encodeURIComponent(id)}`),
-  startTournament: (size?: number) => post<TournamentView>('/tanks/tournaments', size ? { size } : {}),
-}
-
-export const admin = {
-  pulse: () => api<AdminPulse>('/admin/pulse'),
-  funnel: () => api<AdminFunnel>('/admin/funnel'),
-  recent: () => api<{ items: AdminEvent[] }>('/admin/recent').then((r) => r.items),
-}
-
-export type ModKind = 'submission' | 'bot' | 'comment'
-export const moderation = {
-  users: (q: string) => api<{ items: ModUser[] }>(`/admin/moderation/users?q=${encodeURIComponent(q)}`).then((r) => r.items),
-  items: (userId: string) => api<{ items: ModItem[] }>(`/admin/moderation/users/${encodeURIComponent(userId)}/items`).then((r) => r.items),
-  log: () => api<{ items: ModLogItem[] }>('/admin/moderation/log').then((r) => r.items),
-  ban: (userId: string, reason: string) => post<{ ok: boolean }>(`/admin/moderation/users/${encodeURIComponent(userId)}/ban`, { reason }),
-  unban: (userId: string, reason: string) => post<{ ok: boolean }>(`/admin/moderation/users/${encodeURIComponent(userId)}/unban`, { reason }),
-  hide: (kind: ModKind, id: string, reason: string) => post<{ ok: boolean }>('/admin/moderation/hide', { kind, id, reason }),
-  unhide: (kind: ModKind, id: string, reason: string) => post<{ ok: boolean }>('/admin/moderation/unhide', { kind, id, reason }),
-}
-
-export const retention = {
-  recap: () => api<Recap>('/me/recap'),
-  notifications: () => api<NotificationList>('/me/notifications'),
-  markNotificationsRead: () => post<{ ok: boolean }>('/me/notifications/read'),
-}
-
-// Fair play: reports from users, the admin queue.
-export const fairplay = {
-  report: (handle: string, reason: string, details: string) =>
-    post<{ ok: boolean }>('/reports', { target_kind: 'user', target: handle, reason, details }),
-  overview: () => api<import('./types').FairOverview>('/admin/fairplay'),
-  resolveFlags: (subjectId: string, status: 'dismissed' | 'actioned') =>
-    post<{ ok: boolean }>('/admin/fairplay/flags/resolve', { subject_kind: 'submission', subject_id: subjectId, status }),
-  resolveReport: (id: string, status: 'dismissed' | 'actioned') =>
-    post<{ ok: boolean }>(`/admin/fairplay/reports/${encodeURIComponent(id)}/resolve`, { status }),
-}
+export const del = <T,>(path: string) => api<T>(path, { method: 'DELETE' })
+export const put = <T,>(path: string, body: unknown) => api<T>(path, { method: 'PUT', body: JSON.stringify(body) })

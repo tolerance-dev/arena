@@ -1,41 +1,27 @@
-import { makeT, type Locale } from '@/lib/i18n/core'
-import { dailyMessages } from '@/lib/i18n/messages/daily'
+import type { Locale } from '@/lib/i18n/core'
 
-type DailyKey = keyof typeof dailyMessages.en
-
-export function ago(iso: string, now = Date.now(), locale: Locale = 'en') {
-  const t = makeT(dailyMessages, locale)
-  const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
-  if (s < 60) return t('ago.s', { n: s })
-  if (s < 3600) return t('ago.m', { n: Math.round(s / 60) })
-  if (s < 86400) return t('ago.h', { n: Math.round(s / 3600) })
-  return t('ago.d', { n: Math.round(s / 86400) })
-}
-
-// Why a submission failed, in words. Keys are the backend's failure_reason values.
-export function reasonLabel(reason: string | null, locale: Locale = 'en') {
-  if (!reason) return null
-  const key = `reason.${reason}`
-  return key in dailyMessages.en ? makeT(dailyMessages, locale)(key as DailyKey) : reason.replace(/_/g, ' ')
-}
-
-export function statusLabel(status: string, locale: Locale = 'en') {
-  const key = `status.${status}`
-  return key in dailyMessages.en ? makeT(dailyMessages, locale)(key as DailyKey) : status
-}
-
-export function difficultyLabel(difficulty: number, locale: Locale = 'en') {
-  const t = makeT(dailyMessages, locale)
-  const key = `difficulty.${difficulty}`
-  return key in dailyMessages.en ? t(key as DailyKey) : t('difficulty.other', { n: difficulty })
-}
-
-// "05:12:09" until `iso`, or null once it has passed.
-export function countdown(iso: string, now = Date.now()) {
-  const s = Math.floor((new Date(iso).getTime() - now) / 1000)
-  if (s <= 0) return null
+// 754 → "12:34", 4000 → "1:06:40".
+export function duration(sec: number | null | undefined) {
+  if (sec == null) return '—'
+  const s = Math.max(0, Math.round(sec))
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
+  const h = Math.floor(s / 3600)
+  return h ? `${h}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}` : `${Math.floor(s / 60)}:${p(s % 60)}`
 }
 
-export { errorText } from '@/lib/i18n/messages/errors'
+// 1234567 → "1.23M", 45600 → "45.6k".
+export function compact(n: number | null | undefined) {
+  if (n == null) return '—'
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e5 ? 0 : 1)}k`
+  return String(n)
+}
+
+export function grouped(n: number, locale: Locale = 'en') {
+  return n.toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-GB')
+}
+
+// Budget-counted tokens: fresh input + cache writes + output.
+export function usedTokens(t: { in: number; out: number; cache_write: number }) {
+  return t.in + t.cache_write + t.out
+}
