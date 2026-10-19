@@ -29,8 +29,10 @@ overrides the superpowers skills and any default habits:
   The old canary/monitoring stack is at git tag `ops-snapshot-2026-10-03`.
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what
   would trip up the next session.
-- **Git**: commit to `main` directly (`git pull --rebase` first — other
-  sessions push too), no PRs needed.
+- **Git: only through pull requests.** Pushing to `main` is blocked on GitHub (branch protection,
+  admins included, since 2026-10-19). Work on a branch (`git fetch && git checkout -b <name> origin/main`),
+  push it, open a PR with `gh pr create`, merge with `gh pr merge --squash --delete-branch` (no review is
+  required). Never try to push to `main` or weaken the protection.
 
 ## What this is
 
