@@ -24,8 +24,7 @@ overrides the superpowers skills and any default habits:
   builds the images into GHCR and runs `deploy/server.sh` on the host over SSH
   (secrets in the `production` environment). `deploy/compose.yml` and
   `deploy/Caddyfile` are the server's source of truth — the Caddyfile also
-  serves `mentor.nualimov.dev`, keep that block. Migrations run on every
-  deploy, so once a migration has shipped to tolerance.cc, don't edit it.
+  serves `mentor.nualimov.dev`, keep that block.
   The old canary/monitoring stack is at git tag `ops-snapshot-2026-10-03`.
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what
   would trip up the next session.
@@ -40,8 +39,8 @@ overrides the superpowers skills and any default habits:
 is an **agent arena for whole apps**: an admin uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM
 key; a run puts the agent in a sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and
 frontend; the platform measures and judges the result. Everything older (daily task, tanks, build challenges,
-products, profiles, fair play, …) was deleted; its tables are still in the DB, unused, and the code is in git
-history (before commit "Pivot to agent runs").
+products, profiles, fair play, …) was deleted, code and tables; it is in git history (before "Pivot to agent
+runs").
 
 Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking → done | infra_error`:
 1. **agent**: container from `arena-runtime:1` on the internal Docker network `arena-agents` (no route out).
@@ -64,7 +63,7 @@ Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking
 `ARENA_GATEWAY_FAKE=true` answers LLM calls locally (fake judge included) to click through without keys.
 
 Tasks: `backend/internal/tasks/catalog/<slug>/` (`task.json` limits + HTTP checks, `TASK.md`, `judge.md`,
-`data/*.json` generated once, deterministic) + `catalog/RULES.md` appended to every brief. `judge.md` can be
+`data/*.json` from `internal/tasks/gen_data.py`, deterministic) + `catalog/RULES.md` appended to every brief. `judge.md` can be
 overridden from `ARENA_TASKS_HIDDEN_DIR/<slug>/judge.md` (move the real checklists to private arena-tasks before
 uploads open to everyone). Example agents: `examples/agents/{claude-code,demo}`.
 
@@ -111,12 +110,12 @@ session.
 - **Sandbox safety**: agent/check/preview containers run with dropped caps on the internal `arena-agents`
   network; the real LLM keys never enter a sandbox; the app under check runs as uid 1001, away from `/verify`.
 - `infra_error` is the platform's fault, never a score.
-- **Migrations**: tolerance.cc runs them on every deploy, so a migration that
-  has been deployed is append-only — add a new file. One that hasn't shipped
-  yet may still be edited; run `make reset` afterwards (goose won't re-run an
-  applied file) and say in the commit message that other sessions need it too.
+- **Database: no data worth keeping yet** (prod included). The schema is `migrations/00002_schema.sql`
+  (+ `00001`, the arena_app role): edit it in place and recreate the DB (`make reset` locally, the same
+  wipe on prod) instead of adding migrations or writing compatibility/cleanup code.
 - Agent-written logs are sanitized server-side (`internal/platform/sanitize`).
-- Migration `00042_agent_runs.sql` is not deployed yet (may still be edited + `make reset`).
+- Run snapshots (`arena-run:*` images) older than a day are removed hourly by the worker, except each agent's
+  best run per task.
 - Errors go through `httpx.WriteError` (`{code, message, request_id}`);
   timestamps are UTC (`.UTC()` after scanning — pgx returns local time).
 - Frontend: no mocks, data from the API, browser calls same-origin `/api/v1/*`.

@@ -352,6 +352,15 @@ func RemoveByLabel(ctx context.Context, label string) {
 	_, _ = docker(ctx, nil, append([]string{"rm", "-f"}, strings.Fields(out)...)...)
 }
 
+// Images lists local image references (repo:tag) of a repository.
+func Images(ctx context.Context, repo string) ([]string, error) {
+	out, err := docker(ctx, nil, "images", "--format", "{{.Repository}}:{{.Tag}}", repo)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(out), nil
+}
+
 // RemoveImage deletes an image, best effort.
 func RemoveImage(image string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

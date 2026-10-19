@@ -1,9 +1,5 @@
-// Package migrations embeds the schema migrations and registers the
-// migrations that need application logic (creating the least-privileged
-// arena_app and arena_worker roles with passwords taken from the
-// environment, never written into a SQL file). cmd/api and tests both
-// import this package for its embedded filesystem and side-effecting
-// registration.
+// Package migrations embeds the schema migrations and registers 00001, which creates the arena_app role with a
+// password from the environment (never written into a SQL file). 00002 is the whole schema.
 package migrations
 
 import "embed"
