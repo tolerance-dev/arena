@@ -58,6 +58,8 @@ if [ -n "$port_base" ]; then
   set_env_var API_PORT "$api_port"
   set_env_var PG_PORT "$pg_port"
   set_env_var GATEWAY_PORT "$gateway_port"
+  # OAuth callbacks come back to the web port.
+  set_env_var ARENA_PUBLIC_URL "http://localhost:${web_port}"
 
   echo "  web=${web_port} api=${api_port} postgres=${pg_port} gateway=${gateway_port}"
 fi

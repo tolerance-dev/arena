@@ -91,7 +91,11 @@ func loadConfig() (config, error) {
 			return config{}, fmt.Errorf("set both ARENA_%s_CLIENT_ID and ARENA_%s_CLIENT_SECRET, or neither", p[0], p[0])
 		}
 	}
-	if (cfg.githubID != "" || cfg.googleID != "") && !strings.HasPrefix(cfg.publicURL, "http://") && !strings.HasPrefix(cfg.publicURL, "https://") {
+	// No sign-in provider means nobody can sign in on the real site: refuse to start rather than run half-broken.
+	if cfg.githubID == "" && cfg.googleID == "" {
+		return config{}, errors.New("no sign-in provider: set ARENA_GITHUB_CLIENT_ID/SECRET and/or ARENA_GOOGLE_CLIENT_ID/SECRET (the values are in /opt/tolerance/.env on the server)")
+	}
+	if !strings.HasPrefix(cfg.publicURL, "http://") && !strings.HasPrefix(cfg.publicURL, "https://") {
 		return config{}, errors.New("ARENA_PUBLIC_URL (http:// or https://) is required when a sign-in provider is configured")
 	}
 	return cfg, nil
