@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Prototype mode (since 2026-10-03) — read first
 
-The product concept is still changing week to week (tanks, skills, challenges
+The product concept is still changing week to week (tasks, judging, scoring
 may all be redone). The goal is a working skeleton, fast. This section
 overrides the superpowers skills and any default habits:
 
@@ -27,8 +27,8 @@ overrides the superpowers skills and any default habits:
   serves `mentor.nualimov.dev`, keep that block. Migrations run on every
   deploy, so once a migration has shipped to tolerance.cc, don't edit it.
   The old canary/monitoring stack is at git tag `ops-snapshot-2026-10-03`.
-- **Docs**: don't update `README.md` or `docs/` specs. Update this file only
-  with what would trip up the next session.
+- **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what
+  would trip up the next session.
 - **Git**: commit to `main` directly (`git pull --rebase` first — other
   sessions push too), no PRs needed.
 
@@ -79,7 +79,7 @@ make up          # whole stack in Docker
 make down        # make reset also wipes the DB volume
 make images      # arena-runtime:1 (sandbox image), built only when missing
 make gateway     # rebuild + restart the gateway container (after Go changes in internal/gateway)
-make test-fast   # go vet + go test + pnpm typecheck
+make test-fast   # gofmt + go vet + go test + pnpm typecheck
 ```
 
 Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Sign in locally through the dev
@@ -122,10 +122,10 @@ session.
   (`defineMessages`, ru must have every en key), read with `useT(m)` in client
   components or `await getT(m)` on the server; dates via `formatDate`/
   `formatDateTime` from `lib/i18n/core`. Language = `lang` cookie, else
-  Accept-Language, else en. Task content (TASK.md, GAME.md) stays English.
+  Accept-Language, else en. Task content (TASK.md, judge.md) stays English.
 - Colours are tokens from `frontend/app/globals.css`, never raw hex in classes:
   `bg-terminal`/`text-terminal-foreground` for copy blocks and dark panels (navy
   in both themes), `bg-arena` for the match viewer, `border-input` for control
   borders (3:1), `border-strong` for dashed empty states.
 - Commit subjects in English, imperative, sentence case, no `feat:` prefixes.
-  Docs in `docs/` are in Russian, code and comments in English.
+  README is in Russian, code and comments in English.

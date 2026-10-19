@@ -14,7 +14,7 @@ import { useT } from '@/lib/i18n/client'
 import { authMessages } from '@/lib/i18n/messages/auth'
 import type { AuthProviders } from '@/lib/types'
 
-const ERROR_CODES = ['oauth_denied', 'oauth_state', 'oauth_failed', 'email_unverified', 'rate_limited', 'banned'] as const
+const ERROR_CODES = ['oauth_denied', 'oauth_state', 'oauth_failed', 'email_unverified', 'rate_limited'] as const
 
 function ProviderIcon({ id }: { id: 'github' | 'google' }) {
   if (id === 'github') {
@@ -103,9 +103,6 @@ export function AuthForm() {
               <Button type="submit" variant="secondary" disabled={busy}>{busy ? t('wait') : t('devButton')}</Button>
             </form>
           )}
-          <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-            {t('termsPre')}<Link className="font-semibold text-foreground underline underline-offset-2" href="/terms">{t('termsLink')}</Link>{t('termsAnd')}<Link className="font-semibold text-foreground underline underline-offset-2" href="/privacy">{t('privacyLink')}</Link>{t('termsPost')}
-          </p>
           <p className="mt-6 text-sm text-muted-foreground"><Link className="hover:text-foreground hover:underline" href="/">{t('browse')}</Link></p>
         </div>
       </div>

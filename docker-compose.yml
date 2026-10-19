@@ -52,15 +52,13 @@ services:
       ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
       ARENA_DEV_LOGIN: ${ARENA_DEV_LOGIN:-true}
-      ARENA_NO_LIMITS: ${ARENA_NO_LIMITS:-true}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:3000}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
       ARENA_GOOGLE_CLIENT_SECRET: ${ARENA_GOOGLE_CLIENT_SECRET:-}
-    # The image runs as a non-root user; this is the group that owns
-    # docker.sock (detected by `make up`, see DOCKER_GID in the Makefile).
-    group_add: ["${DOCKER_GID:-999}"]
+    # Root inside the container to reach docker.sock without group juggling (local stack only).
+    user: "0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
@@ -81,7 +79,7 @@ services:
       ARENA_GATEWAY_FAKE: ${ARENA_GATEWAY_FAKE:-false}
       ARENA_PREVIEW_DOMAIN: preview.localhost
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:${WEB_PORT:-3000}}
-    group_add: ["${DOCKER_GID:-999}"]
+    user: "0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

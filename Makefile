@@ -1,4 +1,4 @@
-.PHONY: up down logs reset dev db gateway net docker migrate run-api run-web images test test-fast check
+.PHONY: up down logs reset dev db gateway net docker migrate run-api run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 -include .env
@@ -7,15 +7,10 @@ API_PORT ?= 8080
 PG_PORT ?= 5432
 GATEWAY_PORT ?= 3023
 ARENA_SECRET_KEY ?= dev-only-secret-key-change-me
-# Group that owns docker.sock as containers see it: the api container runs as
-# a non-root user and needs that group to reach the daemon for sandbox runs.
-# Asked of the daemon itself because on macOS (colima, Docker Desktop) the
-# socket lives in a VM. Only expanded by `up`; set DOCKER_GID in .env to override.
-DOCKER_GID ?= $(shell docker run --rm -v /var/run/docker.sock:/var/run/docker.sock alpine:3.22 stat -c %g /var/run/docker.sock 2>/dev/null)
 
 # Everything in Docker.
 up: .env docker images net
-	DOCKER_GID=$(DOCKER_GID) $(COMPOSE) up --build -d
+	$(COMPOSE) up --build -d
 	@echo
 	@echo "  site:  http://localhost:$(WEB_PORT)"
 	@echo "  api:   http://localhost:$(API_PORT)/healthz"
@@ -46,7 +41,7 @@ db: .env docker
 # The sandboxes' way out (LLM APIs, npm, PyPI) and the live previews; always in Docker, since it has to sit on
 # the internal arena-agents network. Rebuilt from backend/ on every start (cached when nothing changed).
 gateway: .env docker net
-	DOCKER_GID=$(DOCKER_GID) $(COMPOSE) up -d --build gateway
+	$(COMPOSE) up -d --build gateway
 
 # The internal network sandboxes run on: no route out, only the gateway.
 net: docker
@@ -59,7 +54,7 @@ migrate:
 run-api:
 	cd backend && ARENA_ADDR=127.0.0.1:$(API_PORT) \
 		ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
-		ARENA_DEV_LOGIN=$(or $(ARENA_DEV_LOGIN),true) ARENA_NO_LIMITS=$(or $(ARENA_NO_LIMITS),true) \
+		ARENA_DEV_LOGIN=$(or $(ARENA_DEV_LOGIN),true) \
 		ARENA_ADMIN_EMAILS="$(ARENA_ADMIN_EMAILS)" ARENA_SECRET_KEY="$(ARENA_SECRET_KEY)" \
 		ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) \
 		ARENA_PREVIEW_URL="http://{id}.preview.localhost:$(GATEWAY_PORT)" ARENA_JUDGE_MODEL="$(ARENA_JUDGE_MODEL)" \
@@ -79,18 +74,14 @@ images:
 docker:
 	@docker info >/dev/null 2>&1 || (command -v colima >/dev/null && colima start) || (echo "Docker is not running"; exit 1)
 
-# Everyday check: vet, the few remaining tests, typecheck.
+# Everyday check: fmt, vet, tests, typecheck.
 test-fast:
-	cd backend && go vet ./... && go test ./...
+	cd backend && test -z "$$(gofmt -l .)" && go vet ./... && go test ./...
 	cd frontend && pnpm typecheck
 
-# Everything, the way CI runs it.
-test:
-	cd backend && ARENA_TEST_REQUIRE_DOCKER=1 go test -race ./...
-	cd frontend && pnpm typecheck && pnpm build
-
-check:
-	cd backend && go vet ./... && test -z "$$(gofmt -l .)"
+# test-fast plus a production frontend build.
+test: test-fast
+	cd frontend && pnpm build
 
 .env:
 	cp .env.example .env

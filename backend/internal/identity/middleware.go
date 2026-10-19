@@ -14,7 +14,7 @@ func CanAdmin(devLogin bool, role string) bool { return devLogin || role == "adm
 func RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if MustFromContext(r.Context()).Role != "admin" {
-			httpx.WriteError(w, r, httpx.Forbidden("Admin role required"))
+			httpx.WriteError(w, r, httpx.New(http.StatusForbidden, "forbidden", "Admin role required"))
 			return
 		}
 		next.ServeHTTP(w, r)

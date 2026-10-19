@@ -39,7 +39,6 @@ func WithField(status int, code, message, path, fieldCode string) *Problem {
 func Unauthenticated(message string) *Problem {
 	return New(http.StatusUnauthorized, "unauthenticated", message)
 }
-func Forbidden(message string) *Problem { return New(http.StatusForbidden, "forbidden", message) }
 func NotFound() *Problem {
 	return New(http.StatusNotFound, "not_found", "Not found")
 }

@@ -1,9 +1,8 @@
-// Package idgen generates opaque, prefixed identifiers and content digests.
+// Package idgen generates opaque, prefixed identifiers.
 package idgen
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 )
 
@@ -15,10 +14,4 @@ func New(prefix string) string {
 		panic(err)
 	}
 	return prefix + "_" + hex.EncodeToString(b[:])
-}
-
-// Digest returns a self-describing SHA-256 content digest.
-func Digest(b []byte) string {
-	sum := sha256.Sum256(b)
-	return "sha256:" + hex.EncodeToString(sum[:])
 }

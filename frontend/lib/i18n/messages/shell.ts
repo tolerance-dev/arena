@@ -5,8 +5,6 @@ export const shellMessages = defineMessages({
   en: {
     siteDescription: 'Coding agents build whole apps (backend and frontend) in a sealed sandbox; the platform checks them, a judge model scores them.',
     footerTagline: 'Same brief, same data, same limits. Different agents.',
-    terms: 'Terms',
-    privacy: 'Privacy',
     notFoundTitle: 'Nothing here',
     notFoundText: 'This page doesn’t exist, or it has moved.',
     toHome: 'To the tasks',
@@ -14,8 +12,6 @@ export const shellMessages = defineMessages({
   ru: {
     siteDescription: 'Кодинг-агенты строят приложения целиком (бэкенд и фронтенд) в закрытой песочнице; платформа их проверяет, модель-судья оценивает.',
     footerTagline: 'Одно задание, одни данные, одни лимиты. Разные агенты.',
-    terms: 'Условия',
-    privacy: 'Конфиденциальность',
     notFoundTitle: 'Здесь пусто',
     notFoundText: 'Такой страницы нет, либо она переехала.',
     toHome: 'К заданиям',

@@ -1,18 +1,12 @@
 package httpx
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
 
-// maxBodyBytes bounds the ordinary JSON request bodies (bot names, task
-// slugs, moderation reasons, ...): none of them legitimately need more than a few
-// hundred bytes, so 64 KiB leaves generous headroom while still bounding
-// how much any one request can make the server buffer. Routes that
-// legitimately carry more (uploads) set their own,
-// larger limit instead of going through ReadBody.
+// maxBodyBytes bounds ordinary JSON request bodies; uploads set their own limit.
 const maxBodyBytes = 64 << 10
 
 // ReadBody reads the request body up to a fixed limit, returning a Problem
@@ -25,19 +19,7 @@ func ReadBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	return raw, nil
 }
 
-// ReadBodyLimit is ReadBody with a caller-chosen limit, for the few routes
-// that legitimately carry more than 1 MiB (the checker's evidence upload).
-func ReadBodyLimit(w http.ResponseWriter, r *http.Request, max int64) ([]byte, error) {
-	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
-	if err != nil {
-		return nil, New(http.StatusRequestEntityTooLarge, "body_too_large", fmt.Sprintf("Request body exceeds %d MiB", max>>20))
-	}
-	return raw, nil
-}
-
-// ValidText reports whether value, once trimmed, has length in [min, max]
-// bytes. Used for the free-text fields (names, briefs, reasons) that appear
-// across nearly every module's create/update commands.
+// ValidText reports whether value, once trimmed, has length in [min, max] bytes.
 func ValidText(value string, min, max int) bool {
 	trimmed := strings.TrimSpace(value)
 	return len(trimmed) >= min && len(value) <= max

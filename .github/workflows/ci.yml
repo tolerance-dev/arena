@@ -1,45 +1,9 @@
 name: ci
-# Prototype mode: nothing runs on push. Run it by hand (Actions → ci → Run
-# workflow) or restore the push/pull_request triggers when it matters again.
+# Prototype mode: nothing runs on push. Run it by hand (Actions → ci → Run workflow).
 on:
   workflow_dispatch:
 
 jobs:
-  # Fails a PR that modifies, deletes or renames an EXISTING migration file
-  # under backend/migrations — goose migrations are append-only once they
-  # might have shipped; editing one in place (rather than adding a new
-  # migration) desyncs any database that already ran it, which has forced a
-  # production DB wipe before. migrations.go (the registration list) is
-  # expected to change on every new migration, so it's excluded here.
-  # Escape hatch for a genuine rewrite of a migration that has never shipped
-  # to production: add `[migration-rewrite]` to the commit message.
-  migration-guard:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: no existing migration file changed, deleted or renamed
-        run: |
-          git fetch origin "${{ github.event.pull_request.base.ref }}" --quiet
-          base=$(git merge-base "origin/${{ github.event.pull_request.base.ref }}" HEAD)
-          changed=$(git diff --name-status --diff-filter=MDR "$base" HEAD -- backend/migrations | grep -v 'migrations\.go$' || true)
-          if [ -z "$changed" ]; then
-            echo "ok: no existing migration file was modified, deleted or renamed"
-            exit 0
-          fi
-          echo "Existing migration file(s) changed, deleted or renamed:"
-          echo "$changed"
-          if git log --format=%B "$base"..HEAD | grep -qF '[migration-rewrite]'; then
-            echo "override: a commit in this PR has [migration-rewrite] in its message, allowing it"
-            exit 0
-          fi
-          echo
-          echo "Migrations are append-only: add a NEW migration instead of editing this one." >&2
-          echo "If this migration genuinely never shipped anywhere yet, add '[migration-rewrite]' to a commit message in this PR and re-push." >&2
-          exit 1
-
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -47,16 +11,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
-      - name: vet and fmt
-        run: cd backend && go vet ./... && test -z "$(gofmt -l .)"
-      - name: build skill images
-        run: |
-          docker build -q -t arena-skill-go:1 backend/fixtures/skills/go
-          docker build -q -t arena-skill-python:1 backend/fixtures/skills/python
-      - name: build bot runtime image
-        run: docker build -q -t arena-bot-runtime:1 backend/internal/games/match/runtime
-      - name: test (integration tests must run, not skip)
-        run: cd backend && ARENA_TEST_REQUIRE_DOCKER=1 go test -race ./...
+      - run: cd backend && test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -15,7 +15,6 @@ import (
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
-	"tolerance/internal/platform/limits"
 	"tolerance/internal/platform/ratelimit"
 	"tolerance/internal/runs"
 )
@@ -72,7 +71,7 @@ func newHandler(cfg config, d deps) http.Handler {
 		httpx.Respond(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	top.Handle("/api/", api)
-	return withMiddleware(top, d.log, cfg.trustProxy, d.limiter)
+	return withMiddleware(top, d.log, cfg.trustProxy)
 }
 
 type statusWriter struct {
@@ -91,22 +90,13 @@ func (s *statusWriter) WriteHeader(code int) { s.status = code; s.ResponseWriter
 // this handler's own r is a different *http.Request value than the one
 // those middlewares attach the actor to, so FromContext here would always
 // miss; the holder is the one thing both sides share.
-func withMiddleware(next http.Handler, log *slog.Logger, trustProxy bool, limiter *ratelimit.Limiter) http.Handler {
+func withMiddleware(next http.Handler, log *slog.Logger, trustProxy bool) http.Handler {
 	withRequestID := httpx.WithRequestID(func() string { return idgen.New("req") })(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Cache-Control", "no-store")
-		}
-		// Backstop for every state-changing call (uploads, moderation): the per-feature quotas
-		// bound what is stored, this bounds how hard one address can hammer the handlers.
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions &&
-			strings.HasPrefix(r.URL.Path, "/api/") && !limits.Disabled() &&
-			!limiter.Allow("write:ip:"+clientip.FromRequest(r, trustProxy), 240, time.Minute) {
-			w.Header().Set("Retry-After", "60")
-			httpx.WriteError(w, r, httpx.New(http.StatusTooManyRequests, "rate_limited", "Too many requests, try again in a minute"))
-			return
 		}
 		sw := &statusWriter{ResponseWriter: w, status: 200}
 		actorLog := &identity.ActorLog{}

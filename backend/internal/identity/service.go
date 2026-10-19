@@ -10,7 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/platform/audit"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
@@ -84,9 +83,6 @@ type Identity struct {
 // shared across every request, so a *Problem here would race under
 // concurrent requests and leak one request's id into another's response.
 // Callers map it to a fresh httpx.Problem at the HTTP boundary.
-// ErrBanned: the account is banned by a moderator; no session is opened.
-var ErrBanned = errors.New("identity: account banned")
-
 var ErrEmailUnverified = errors.New("identity: no verified email for a new sign-in")
 
 // SignIn finds or creates the user behind an external identity and opens a
@@ -115,14 +111,6 @@ func (s *Service) SignIn(ctx context.Context, id Identity) (User, string, error)
 		if err != nil {
 			return err
 		}
-		var banned bool
-		// House agents (platform-run, internal/house) can never sign in, same as a banned account.
-		if err := tx.QueryRow(ctx, `SELECT banned_at IS NOT NULL OR house FROM users WHERE id = $1`, userID).Scan(&banned); err != nil {
-			return err
-		}
-		if banned {
-			return ErrBanned
-		}
 		if err := scanUser(tx.QueryRow(ctx, `UPDATE users SET role = CASE WHEN email = ANY($2) THEN 'admin' ELSE 'user' END
 			WHERE id = $1 RETURNING `+userColumns, userID, s.adminList()), &u); err != nil {
 			return err
@@ -146,7 +134,7 @@ func (s *Service) attachIdentity(ctx context.Context, tx pgx.Tx, id Identity, em
 	if err != nil {
 		return "", err
 	}
-	created, err := tx.Exec(ctx, `INSERT INTO users (id, email, handle, role) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING`,
+	_, err = tx.Exec(ctx, `INSERT INTO users (id, email, handle, role) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING`,
 		idgen.New("user"), email, handle, s.roleFor(email))
 	if err != nil {
 		return "", err
@@ -172,13 +160,7 @@ func (s *Service) attachIdentity(ctx context.Context, tx pgx.Tx, id Identity, em
 		}
 		return owner, nil
 	}
-	action := "user.identity_linked"
-	if created.RowsAffected() == 1 {
-		action = "user.signed_up"
-	}
-	return userID, audit.Record(ctx, tx, audit.Event{ActorID: userID, ActorKind: KindUser, Action: action,
-		AggregateKind: "user", AggregateID: userID, RequestID: httpx.RequestID(ctx),
-		Payload: map[string]string{"provider": id.Provider}})
+	return userID, nil
 }
 
 func (s *Service) adminList() []string {
@@ -206,7 +188,7 @@ func (s *Service) UserBySession(ctx context.Context, token string) (User, error)
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return scanUser(tx.QueryRow(ctx, `
 			UPDATE sessions s SET last_seen_at = CASE WHEN s.last_seen_at < now() - interval '1 hour' THEN now() ELSE s.last_seen_at END
-			FROM users u WHERE s.id = $1 AND s.user_id = u.id AND s.expires_at > now() AND u.banned_at IS NULL
+			FROM users u WHERE s.id = $1 AND s.user_id = u.id AND s.expires_at > now()
 			RETURNING u.id, u.email, u.handle, u.role, u.created_at`, sessionID(token)), &u)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

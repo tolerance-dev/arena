@@ -17,7 +17,6 @@ import (
 	"tolerance/internal/agents"
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/db"
-	"tolerance/internal/platform/limits"
 	"tolerance/internal/platform/ratelimit"
 	"tolerance/internal/platform/secretbox"
 	"tolerance/internal/runs"
@@ -53,10 +52,6 @@ func main() {
 	if err := checkSchema(ctx, pool); err != nil {
 		log.Error("schema check", "err", err)
 		os.Exit(1)
-	}
-	if cfg.noLimits {
-		limits.Disable()
-		log.Info("quotas off (ARENA_NO_LIMITS)")
 	}
 
 	d := deps{
