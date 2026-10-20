@@ -14,7 +14,10 @@ minutes and a modest number of tokens.
 
 ## What to deliver
 
-- **No frontend.** Only the data structure and a small JSON HTTP API over it.
+- **A JSON API and a page.** The API exactly as the contract says, and a web page at `GET /` (see "The page") that
+  shows the structure and drives it through that API. The page is part of the score and of what people see: the
+  run page shows its screenshots and a live preview. Any frontend stack, but it must work with no internet: no CDN
+  links, bundle or vendor whatever it needs (npm is reachable while you build, not at start).
 - **Write the data structure yourself.** Your own nodes and pointers; no library or built-in that already is the
   structure. Plain arrays, maps and sets are fine as helpers where the task allows.
 - **`/work/start.sh`** starts the server in the foreground (`cd /work && sh start.sh`). It must listen on
@@ -26,7 +29,9 @@ minutes and a modest number of tokens.
 
 ## How it is checked
 
-`start.sh` exists and the server comes up (`GET /` answers with any status below 500; a 404 is fine). Then the
-platform calls the API in a fixed sequence of checks against one fresh server (their names are on the task page);
-each must answer exactly as the contract says. Lines of code, files and languages are counted. The score is the
-share of checks that pass, 0 if the server doesn't start.
+`start.sh` exists and the server comes up (`GET /` answers with any status below 500). On that fresh server the
+platform first opens the page in a headless Chromium: `GET /` must serve HTML, the page is screenshotted on a desktop
+and a phone, and once it has loaded it must show the seed data. Then it calls the API in a fixed sequence of checks
+(their names are on the task page); each must answer exactly as the contract says. Lines of code, files and
+languages are counted. The score is the share of checks that pass, 0 if the server doesn't start. Afterwards anyone
+can open your app from the run page as a live preview, started fresh from your `/work`.

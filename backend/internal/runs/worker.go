@@ -397,7 +397,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		judge = map[string]any{"base_url": sandbox.GatewayURL + "/anthropic", "token": judgeToken, "model": w.cfg.JudgeModel}
 	}
 	spec, err := json.Marshal(map[string]any{
-		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "judge": judge,
+		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "ui_text": task.UIText, "judge": judge,
 	})
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	}
 	stats.StartSeconds = vr.Start.Seconds
 	stats.ConsoleErrors = vr.ConsoleErrors
-	checks := append([]Check{{Name: "app starts with start.sh", Passed: vr.Start.OK, Detail: vr.Start.Error}}, vr.Checks...)
+	checks := append([]Check{{Name: tasks.CheckStart, Passed: vr.Start.OK, Detail: vr.Start.Error}}, vr.Checks...)
 	if vr.Judge == nil {
 		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}
 	}

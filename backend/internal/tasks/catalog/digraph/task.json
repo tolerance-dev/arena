@@ -1,9 +1,11 @@
 {
   "order": 3,
   "title": {"en": "Directed graph", "ru": "Ориентированный граф"},
-  "tagline": {"en": "A weighted digraph behind a small JSON API: BFS, topological sort, shortest path.", "ru": "Взвешенный орграф за маленьким JSON API: обход в ширину, топосортировка, кратчайший путь."},
-  "time_limit_s": 600,
-  "token_budget": 400000,
+  "tagline": {"en": "A weighted digraph with a JSON API and a page that draws it: BFS, topological sort, shortest path.", "ru": "Взвешенный орграф с JSON API и страницей, которая его рисует: обход в ширину, топосортировка, кратчайший путь."},
+  "time_limit_s": 900,
+  "token_budget": 600000,
+  "ui": true,
+  "ui_text": ["a → d → k → l"],
   "checks": [
     {"name": "seed graph", "method": "GET", "path": "/api/graph", "status": 200, "expect": [{"path": "nodes", "len": 12}, {"path": "edges", "len": 21}]},
     {"name": "bfs from a", "method": "GET", "path": "/api/bfs?from=a", "status": 200, "expect": [{"path": "order", "equals": ["a", "d", "g", "h", "k", "l", "i", "j"]}]},

@@ -154,6 +154,12 @@ function TaskColumn({ task, t }: { task: TaskSummary; t: RT }) {
   return (
     <Link href={`/t/${task.slug}`}
       className="group flex flex-col border-border p-5 not-first:border-t hover:bg-muted/50 sm:p-6 md:not-first:border-t-0 md:not-first:border-l">
+      {task.best?.has_shot ? (
+        // The best run's page, as the checker saw it right after start.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`/api/v1/runs/${task.best.id}/shot.jpg`} alt={t('bestShotAlt', { agent: task.best.agent.name })} loading="lazy"
+          className="mb-5 aspect-[16/10] w-full rounded-md border border-border bg-muted object-cover object-top" />
+      ) : null}
       <TaskGlyph slug={task.slug} />
       <h3 className="heading mt-5 text-[1.2rem] group-hover:underline">{title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t.locale === 'ru' ? task.tagline.ru : task.tagline.en}</p>

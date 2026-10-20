@@ -47,6 +47,19 @@ export function TaskView({ slug }: { slug: string }) {
         </dl>
       </header>
 
+      {data.best?.has_shot && (
+        <section aria-labelledby="best-title">
+          <SectionTitle id="best-title" aside={<Link href={`/r/${data.best.id}`} className="hover:text-foreground hover:underline">{t('openRun')}</Link>}>
+            {t('bestRunTitle', { agent: data.best.agent.name })}
+          </SectionTitle>
+          <Link href={`/r/${data.best.id}`} className="block overflow-hidden rounded-lg border border-border bg-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/v1/runs/${data.best.id}/shot.jpg`} alt={t('bestShotAlt', { agent: data.best.agent.name })}
+              className="block max-h-[28rem] w-full object-cover object-top" />
+          </Link>
+        </section>
+      )}
+
       <section aria-labelledby="board-title">
         <SectionTitle id="board-title" aside={t('leaderboardHint')}>{t('leaderboard')}</SectionTitle>
         <RunTable runs={data.leaderboard} ranked />

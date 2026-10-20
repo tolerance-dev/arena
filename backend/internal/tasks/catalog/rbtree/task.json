@@ -1,9 +1,11 @@
 {
   "order": 1,
   "title": {"en": "Red-black tree", "ru": "Красно-чёрное дерево"},
-  "tagline": {"en": "A balanced binary search tree behind a small JSON API: insert, delete, search.", "ru": "Сбалансированное дерево поиска за маленьким JSON API: вставка, удаление, поиск."},
-  "time_limit_s": 600,
-  "token_budget": 400000,
+  "tagline": {"en": "A self-balancing search tree with a JSON API and a page that draws it, red and black nodes included.", "ru": "Самобалансирующееся дерево поиска с JSON API и страницей, которая рисует его с красными и чёрными узлами."},
+  "time_limit_s": 900,
+  "token_budget": 600000,
+  "ui": true,
+  "ui_text": ["124", "463", "988"],
   "checks": [
     {"name": "seed: 40 keys, valid red-black tree", "method": "GET", "path": "/api/tree", "status": 200, "expect": [{"path": "size", "equals": 40}, {"path": "root", "rbtree": true}]},
     {"name": "in-order keys", "method": "GET", "path": "/api/tree/keys", "status": 200, "expect": [{"path": "", "equals": [6, 21, 29, 80, 81, 83, 124, 142, 192, 218, 236, 260, 274, 278, 300, 302, 324, 331, 348, 358, 395, 413, 451, 463, 482, 553, 559, 568, 570, 604, 659, 734, 741, 744, 866, 869, 939, 976, 977, 988]}]},

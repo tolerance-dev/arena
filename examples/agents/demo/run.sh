@@ -1,6 +1,7 @@
 #!/bin/sh
 # A pipeline smoke test: makes one LLM call through the gateway (to show up in the token count), then writes a
-# hand-made reference solution for whichever task it got (Python, standard library only). No real agent work.
+# hand-made reference solution for whichever task it got (Python standard library + one plain HTML page per task).
+# No real agent work.
 set -eu
 cd /work
 curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
@@ -437,6 +438,14 @@ HANDLE = {"rbtree": rbtree_app, "linked-list": list_app, "digraph": graph_app}[T
 class H(BaseHTTPRequestHandler):
     def go(self):
         u = urlparse(self.path)
+        if self.command == "GET" and u.path in ("/", "/index.html"):
+            raw = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui", TASK + ".html"), "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+            return
         try:
             n = int(self.headers.get("Content-Length") or 0)
             try:
@@ -461,6 +470,401 @@ class H(BaseHTTPRequestHandler):
 
 ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", 3000))), H).serve_forever()
 PY
+# One plain HTML page per task (no build step, no CDN: the sandbox has no internet at start).
+mkdir -p ui
+cat > ui/rbtree.html <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red-black tree</title>
+<style>
+  :root { --bg: #f6f7f5; --ink: #1b1f1d; --muted: #5a625d; --line: #c9cdc7; --red: #c2412d; --blue: #2a3fb8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  .stats { display: flex; gap: 20px; margin: 6px 0 20px; color: var(--muted); }
+  .stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input { height: 38px; min-width: 0; flex: 1 1 220px; max-width: 360px; padding: 0 12px; border: 1px solid #858d88; border-radius: 6px; font: inherit; background: #fff; }
+  button { height: 38px; padding: 0 14px; border: 1px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--ink); color: #fff; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .msg { min-height: 22px; margin: 10px 0; color: var(--muted); }
+  .msg.err { color: var(--red); }
+  .canvas { overflow-x: auto; background: #fff; border: 1px solid #dcdfda; border-radius: 8px; padding: 12px; }
+  svg { display: block; margin: 0 auto; }
+  .edge { stroke: var(--line); stroke-width: 1.5; }
+  .node text { fill: #fff; font: 600 12px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+  .node.found circle { stroke: var(--blue); stroke-width: 4; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Red-black tree</h1>
+  <div class="stats"><span>Size <b id="size">0</b></span><span>Height <b id="height">0</b></span><span>Root <b id="root">—</b></span></div>
+  <form id="f">
+    <input id="keys" inputmode="numeric" placeholder="Keys, e.g. 5, 17, 42" aria-label="Keys">
+    <button class="primary" data-op="insert">Insert</button>
+    <button data-op="delete">Delete</button>
+    <button data-op="search">Search</button>
+  </form>
+  <div id="msg" class="msg" role="status"></div>
+  <div class="canvas"><div id="tree"></div></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id)
+let found = null
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  const doc = await r.json().catch(() => null)
+  if (!r.ok) throw new Error((doc && doc.error) || r.status + ' ' + r.statusText)
+  return doc
+}
+
+function say(text, err) { $('msg').textContent = text; $('msg').className = 'msg' + (err ? ' err' : '') }
+
+function height(n) { return n ? 1 + Math.max(height(n.left), height(n.right)) : 0 }
+
+// In-order position gives x, depth gives y: a tidy layout with no overlaps.
+function draw(tree) {
+  $('size').textContent = tree.size
+  $('height').textContent = height(tree.root)
+  $('root').textContent = tree.root ? tree.root.key : '—'
+  if (!tree.root) { $('tree').innerHTML = '<div class="empty">The tree is empty. Insert a key.</div>'; return }
+  const pos = new Map(); let i = 0
+  const walk = (n, d) => { if (!n) return; walk(n.left, d + 1); pos.set(n, { x: i++, d }); walk(n.right, d + 1) }
+  walk(tree.root, 0)
+  const DX = 40, DY = 62, R = 16, P = 8
+  const w = (i - 1) * DX + 2 * (P + R), h = (height(tree.root) - 1) * DY + 2 * (P + R)
+  const X = (n) => P + R + pos.get(n).x * DX, Y = (n) => P + R + pos.get(n).d * DY
+  let edges = '', nodes = ''
+  const emit = (n) => {
+    if (!n) return
+    for (const c of [n.left, n.right]) if (c) edges += `<line class="edge" x1="${X(n)}" y1="${Y(n)}" x2="${X(c)}" y2="${Y(c)}"/>`
+    const fill = n.color === 'red' ? 'var(--red)' : 'var(--ink)'
+    nodes += `<g class="node${n.key === found ? ' found' : ''}"><circle cx="${X(n)}" cy="${Y(n)}" r="${R}" fill="${fill}"/><text x="${X(n)}" y="${Y(n)}">${n.key}</text></g>`
+    emit(n.left); emit(n.right)
+  }
+  emit(tree.root)
+  // Fits the width when it can; below 55% of its natural size it scrolls instead of shrinking further.
+  $('tree').innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px;min-width:${Math.round(w * 0.55)}px;height:auto" role="img" aria-label="Red-black tree with ${tree.size} keys">${edges}${nodes}</svg>`
+}
+
+async function refresh() { draw(await api('GET', '/api/tree')) }
+
+$('f').addEventListener('submit', (e) => e.preventDefault())
+for (const b of document.querySelectorAll('button[data-op]')) {
+  b.addEventListener('click', async (e) => {
+    e.preventDefault()
+    const keys = $('keys').value.split(/[\s,]+/).filter(Boolean).map(Number)
+    if (!keys.length || keys.some((k) => !Number.isInteger(k))) return say('Enter whole numbers, separated by commas.', true)
+    try {
+      found = null
+      if (b.dataset.op === 'search') {
+        const n = await api('GET', '/api/tree/search?key=' + keys[0])
+        found = n.key
+        say(`Found ${n.key}, a ${n.color} node.`)
+      } else {
+        const r = await api('POST', '/api/tree/' + b.dataset.op, { keys })
+        say(b.dataset.op === 'insert' ? `Inserted ${r.inserted} new key(s).` : `Deleted ${r.deleted} key(s).`)
+      }
+      await refresh()
+    } catch (err) { say(err.message, true); await refresh() }
+  })
+}
+refresh().catch((err) => say(err.message, true))
+</script>
+</body>
+</html>
+HTML
+cat > ui/linked-list.html <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doubly linked list</title>
+<style>
+  :root { --bg: #f6f7f5; --ink: #1b1f1d; --muted: #5a625d; --line: #dcdfda; --red: #c2412d; --blue: #2a3fb8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  .stats { margin: 6px 0 20px; color: var(--muted); }
+  .stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; row-gap: 26px; padding: 26px 16px 18px; background: #fff; border: 1px solid var(--line); border-radius: 8px; min-height: 96px; }
+  .item { display: flex; align-items: center; }
+  .node { position: relative; min-width: 64px; padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 6px; background: #fff; font-weight: 600; text-align: center; }
+  .node .tag { position: absolute; top: -20px; left: 0; right: 0; font-size: 11px; font-weight: 600; color: var(--blue); }
+  .link { width: 34px; text-align: center; color: var(--muted); font-size: 18px; line-height: 1; }
+  .empty { color: var(--muted); margin: auto; }
+  .controls { display: grid; gap: 12px; margin-top: 18px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  fieldset { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: flex; flex-wrap: wrap; gap: 8px; }
+  legend { padding: 0 4px; font-size: 13px; color: var(--muted); }
+  input { height: 36px; min-width: 0; flex: 1 1 120px; padding: 0 10px; border: 1px solid #858d88; border-radius: 6px; font: inherit; }
+  input.idx { flex: 0 1 80px; }
+  button { height: 36px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--ink); color: #fff; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .msg { min-height: 22px; margin: 10px 0 0; color: var(--muted); }
+  .msg.err { color: var(--red); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Doubly linked list</h1>
+  <div class="stats">Size <b id="size">0</b></div>
+  <div id="chain" class="chain" aria-live="polite"></div>
+  <div id="msg" class="msg" role="status"></div>
+  <div class="controls">
+    <fieldset>
+      <legend>Ends</legend>
+      <input id="value" placeholder="Value" aria-label="Value">
+      <button class="primary" data-op="push-front">Push front</button>
+      <button class="primary" data-op="push-back">Push back</button>
+      <button data-op="pop-front">Pop front</button>
+      <button data-op="pop-back">Pop back</button>
+    </fieldset>
+    <fieldset>
+      <legend>By index</legend>
+      <input id="ivalue" placeholder="Value" aria-label="Value to insert">
+      <input id="index" class="idx" inputmode="numeric" placeholder="Index" aria-label="Index">
+      <button class="primary" data-op="insert">Insert at</button>
+      <button data-op="delete">Delete at</button>
+    </fieldset>
+    <fieldset>
+      <legend>Whole list</legend>
+      <button data-op="reverse">Reverse</button>
+      <button data-op="clear">Clear</button>
+    </fieldset>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id)
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  const doc = await r.json().catch(() => null)
+  if (!r.ok) throw new Error((doc && doc.error) || r.status + ' ' + r.statusText)
+  return doc
+}
+function say(text, err) { $('msg').textContent = text; $('msg').className = 'msg' + (err ? ' err' : '') }
+
+function draw(list) {
+  $('size').textContent = list.size
+  if (!list.items.length) { $('chain').innerHTML = '<span class="empty">The list is empty.</span>'; return }
+  $('chain').innerHTML = list.items.map((v, i) => {
+    const tag = i === 0 && i === list.items.length - 1 ? 'head · tail' : i === 0 ? 'head' : i === list.items.length - 1 ? 'tail' : ''
+    const link = i < list.items.length - 1 ? '<span class="link" title="next and prev">⇄</span>' : ''
+    return `<span class="item"><span class="node">${tag ? `<span class="tag">${tag}</span>` : ''}${esc(v)}</span>${link}</span>`
+  }).join('')
+}
+async function refresh() { draw(await api('GET', '/api/list')) }
+
+const ops = {
+  'push-front': () => api('POST', '/api/list/push-front', { value: $('value').value }),
+  'push-back': () => api('POST', '/api/list/push-back', { value: $('value').value }),
+  'pop-front': () => api('POST', '/api/list/pop-front'),
+  'pop-back': () => api('POST', '/api/list/pop-back'),
+  insert: () => api('POST', '/api/list/insert', { index: Number($('index').value), value: $('ivalue').value }),
+  delete: () => api('DELETE', '/api/list/items/' + encodeURIComponent($('index').value)),
+  reverse: () => api('POST', '/api/list/reverse'),
+  clear: () => api('POST', '/api/list/clear'),
+}
+for (const b of document.querySelectorAll('button[data-op]')) {
+  b.addEventListener('click', async () => {
+    try {
+      const r = await ops[b.dataset.op]()
+      say(r && r.value !== undefined ? `${b.textContent}: "${r.value}"` : `${b.textContent}: done`)
+    } catch (err) { say(err.message, true) }
+    await refresh().catch((err) => say(err.message, true))
+  })
+}
+refresh().catch((err) => say(err.message, true))
+</script>
+</body>
+</html>
+HTML
+cat > ui/digraph.html <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Directed graph</title>
+<style>
+  :root { --bg: #f6f7f5; --ink: #1b1f1d; --muted: #5a625d; --line: #dcdfda; --edge: #9aa19c; --red: #c2412d; --blue: #2a3fb8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  .stats { margin: 6px 0 20px; color: var(--muted); display: flex; gap: 20px; }
+  .stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .panel + .panel { margin-top: 12px; }
+  h2 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  svg { display: block; width: 100%; height: auto; }
+  .edge line { stroke: var(--edge); stroke-width: 1.4; }
+  .edge text { font: 600 11px system-ui, sans-serif; fill: var(--muted); paint-order: stroke; stroke: #fff; stroke-width: 4px; text-anchor: middle; dominant-baseline: central; }
+  .edge.on line { stroke: var(--blue); stroke-width: 3; }
+  .edge.on text { fill: var(--blue); }
+  .node circle { fill: #fff; stroke: var(--ink); stroke-width: 1.5; }
+  .node text { font: 600 13px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; fill: var(--ink); }
+  .node.on circle { fill: var(--blue); stroke: var(--blue); }
+  .node.on text { fill: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row + .row { margin-top: 8px; }
+  select, input { height: 36px; min-width: 0; padding: 0 8px; border: 1px solid #858d88; border-radius: 6px; font: inherit; background: #fff; }
+  input { width: 72px; }
+  button { height: 36px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--ink); color: #fff; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .result { margin-top: 8px; font-weight: 600; }
+  .result small { font-weight: 400; color: var(--muted); }
+  .msg { min-height: 22px; margin-top: 8px; color: var(--muted); }
+  .err { color: var(--red); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Directed graph</h1>
+  <div class="stats"><span>Nodes <b id="nn">0</b></span><span>Edges <b id="ne">0</b></span></div>
+  <div class="layout">
+    <div class="panel"><div id="drawing"></div></div>
+    <div>
+      <div class="panel">
+        <h2>Shortest path</h2>
+        <div class="row">
+          <select id="from" aria-label="From"></select><span>to</span><select id="to" aria-label="To"></select>
+          <button class="primary" id="go">Find</button>
+        </div>
+        <div class="result" id="path" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <h2>Traversals</h2>
+        <div class="row"><span>BFS from</span><select id="bfsFrom" aria-label="BFS from"></select><button id="bfs">Run</button><button id="topo">Topological order</button></div>
+        <div class="result" id="order" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <h2>Edit</h2>
+        <div class="row"><input id="nid" placeholder="id" aria-label="New node id"><button id="addNode">Add node</button><button id="delNode">Delete node</button></div>
+        <div class="row">
+          <input id="ef" placeholder="from" aria-label="Edge from"><input id="et" placeholder="to" aria-label="Edge to">
+          <input id="ew" placeholder="weight" inputmode="numeric" aria-label="Edge weight">
+          <button id="addEdge">Add edge</button><button id="delEdge">Delete edge</button>
+        </div>
+        <div class="msg" id="msg" role="status"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+let graph = { nodes: [], edges: [] }, onPath = []
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  const doc = r.status === 204 ? null : await r.json().catch(() => null)
+  if (!r.ok) throw new Error((doc && doc.error) || r.status + ' ' + r.statusText)
+  return doc
+}
+function say(id, text, err) { $(id).innerHTML = text; $(id).classList.toggle('err', !!err) }
+
+// Nodes on a circle in id order; edges stop at the node's rim so the arrowheads show.
+function draw() {
+  $('nn').textContent = graph.nodes.length
+  $('ne').textContent = graph.edges.length
+  const S = 440, C = S / 2, RAD = S / 2 - 34, R = 16
+  const at = new Map(graph.nodes.map((n, i) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(1, graph.nodes.length)
+    return [n, { x: C + RAD * Math.cos(a), y: C + RAD * Math.sin(a) }]
+  }))
+  const pathEdges = new Set(onPath.slice(1).map((v, i) => onPath[i] + '>' + v))
+  const edges = graph.edges.map((e) => {
+    const a = at.get(e.from), b = at.get(e.to)
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len
+    const x1 = a.x + ux * R, y1 = a.y + uy * R, x2 = b.x - ux * (R + 2), y2 = b.y - uy * (R + 2)
+    const on = pathEdges.has(e.from + '>' + e.to)
+    const mx = (x1 + x2) / 2 - uy * 9, my = (y1 + y2) / 2 + ux * 9
+    return `<g class="edge${on ? ' on' : ''}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#${on ? 'ahOn' : 'ah'})"/><text x="${mx}" y="${my}">${e.weight}</text></g>`
+  }).join('')
+  const nodes = graph.nodes.map((n) => {
+    const p = at.get(n)
+    return `<g class="node${onPath.includes(n) ? ' on' : ''}"><circle cx="${p.x}" cy="${p.y}" r="${R}"/><text x="${p.x}" y="${p.y}">${esc(n)}</text></g>`
+  }).join('')
+  $('drawing').innerHTML = `<svg viewBox="0 0 ${S} ${S}" role="img" aria-label="Graph with ${graph.nodes.length} nodes">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--edge)"/></marker>
+      <marker id="ahOn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--blue)"/></marker>
+    </defs>${edges}${nodes}</svg>`
+}
+
+function fillPickers() {
+  for (const id of ['from', 'to', 'bfsFrom']) {
+    const keep = $(id).value
+    $(id).innerHTML = graph.nodes.map((n) => `<option>${esc(n)}</option>`).join('')
+    if (graph.nodes.includes(keep)) $(id).value = keep
+  }
+}
+
+async function findPath() {
+  onPath = []
+  try {
+    const r = await api('GET', `/api/path?from=${encodeURIComponent($('from').value)}&to=${encodeURIComponent($('to').value)}`)
+    onPath = r.path
+    say('path', `${r.path.map(esc).join(' → ')} <small>distance ${r.distance}</small>`)
+  } catch (err) { say('path', esc(err.message), true) }
+  draw()
+}
+
+async function refresh() {
+  graph = await api('GET', '/api/graph')
+  graph.nodes.sort()
+  fillPickers()
+  await findPath()
+}
+
+async function edit(fn, done) {
+  try { await fn(); say('msg', done) } catch (err) { say('msg', esc(err.message), true) }
+  await refresh()
+}
+
+$('go').onclick = findPath
+$('bfs').onclick = async () => {
+  try { const r = await api('GET', '/api/bfs?from=' + encodeURIComponent($('bfsFrom').value)); say('order', 'BFS: ' + r.order.map(esc).join(', ')) }
+  catch (err) { say('order', esc(err.message), true) }
+}
+$('topo').onclick = async () => {
+  try { const r = await api('GET', '/api/topo'); say('order', 'Topological: ' + r.order.map(esc).join(', ')) }
+  catch (err) { say('order', 'No topological order: ' + esc(err.message), true) }
+}
+$('addNode').onclick = () => edit(() => api('POST', '/api/nodes', { id: $('nid').value.trim() }), 'Node added.')
+$('delNode').onclick = () => edit(() => api('DELETE', '/api/nodes/' + encodeURIComponent($('nid').value.trim())), 'Node deleted.')
+$('addEdge').onclick = () => edit(() => api('POST', '/api/edges', { from: $('ef').value.trim(), to: $('et').value.trim(), weight: Number($('ew').value) }), 'Edge added.')
+$('delEdge').onclick = () => edit(() => api('DELETE', `/api/edges/${encodeURIComponent($('ef').value.trim())}/${encodeURIComponent($('et').value.trim())}`), 'Edge deleted.')
+
+;(async () => {
+  graph = await api('GET', '/api/graph')
+  graph.nodes.sort()
+  fillPickers()
+  $('from').value = graph.nodes.includes('a') ? 'a' : graph.nodes[0]
+  $('to').value = graph.nodes.includes('l') ? 'l' : graph.nodes[graph.nodes.length - 1]
+  $('bfsFrom').value = $('from').value
+  await findPath()
+})().catch((err) => say('msg', esc(err.message), true))
+</script>
+</body>
+</html>
+HTML
 echo "$ARENA_TASK" > TASK
 printf '#!/bin/sh\ncd "$(dirname "$0")" && exec python3 server.py\n' > start.sh
 echo "demo solution written for $ARENA_TASK"

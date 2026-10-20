@@ -42,14 +42,16 @@ type Check struct {
 }
 
 type Task struct {
-	Slug        string  `json:"slug"`
-	Order       int     `json:"order"`
-	Title       Text    `json:"title"`
-	Tagline     Text    `json:"tagline"`
-	TimeLimitS  int     `json:"time_limit_s"`
-	TokenBudget int64   `json:"token_budget"`
-	UI          bool    `json:"ui"` // the app has a web UI: the HTML check, screenshots and the live preview apply
-	Checks      []Check `json:"checks"`
+	Slug        string `json:"slug"`
+	Order       int    `json:"order"`
+	Title       Text   `json:"title"`
+	Tagline     Text   `json:"tagline"`
+	TimeLimitS  int    `json:"time_limit_s"`
+	TokenBudget int64  `json:"token_budget"`
+	UI          bool   `json:"ui"` // the app has a web UI: the HTML check, screenshots and the live preview apply
+	// UIText: strings the home page must show (as HTML or SVG text) right after start, i.e. the seed data.
+	UIText []string `json:"ui_text,omitempty"`
+	Checks []Check  `json:"checks"`
 
 	TaskMD    string            `json:"-"` // TASK.md with RULES.md appended: exactly what the agent reads
 	Judge     string            `json:"-"` // "" = no judge
@@ -170,4 +172,27 @@ func (t *Task) BundleZip() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// Names of the checks a run records, in the order verify.py runs them (keep in sync with verify.py and the
+// worker, which adds the start check).
+const (
+	CheckStart    = "app starts with start.sh"
+	CheckHTML     = "home page serves HTML"
+	CheckSeedPage = "page shows the seed data"
+)
+
+// CheckNames lists every check of a run of this task, in order.
+func (t *Task) CheckNames() []string {
+	names := []string{CheckStart}
+	if t.UI {
+		names = append(names, CheckHTML)
+		if len(t.UIText) > 0 {
+			names = append(names, CheckSeedPage)
+		}
+	}
+	for _, c := range t.Checks {
+		names = append(names, c.Name)
+	}
+	return names
 }

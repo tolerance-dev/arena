@@ -1,9 +1,11 @@
 {
   "order": 2,
   "title": {"en": "Doubly linked list", "ru": "Двусвязный список"},
-  "tagline": {"en": "Nodes with prev and next behind a small JSON API: push, pop, insert, delete, reverse.", "ru": "Узлы с prev и next за маленьким JSON API: push, pop, вставка, удаление, разворот."},
-  "time_limit_s": 600,
-  "token_budget": 400000,
+  "tagline": {"en": "Nodes with prev and next, a JSON API and a page that shows the chain: push, pop, insert, delete, reverse.", "ru": "Узлы с prev и next, JSON API и страница с цепочкой: push, pop, вставка, удаление, разворот."},
+  "time_limit_s": 900,
+  "token_budget": 600000,
+  "ui": true,
+  "ui_text": ["apple", "grape", "nectarine"],
   "checks": [
     {"name": "seed, head to tail", "method": "GET", "path": "/api/list", "status": 200, "expect": [{"path": "size", "equals": 12}, {"path": "items", "equals": ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew", "kiwi", "lemon", "mango", "nectarine"]}]},
     {"name": "seed, tail to head", "method": "GET", "path": "/api/list/backward", "status": 200, "expect": [{"path": "items", "equals": ["nectarine", "mango", "lemon", "kiwi", "honeydew", "grape", "fig", "elderberry", "date", "cherry", "banana", "apple"]}]},
