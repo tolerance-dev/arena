@@ -45,8 +45,9 @@ type preview struct {
 }
 
 const (
-	previewIdle  = 15 * time.Minute
-	previewMax   = 4
+	// Prod has 4 GB of RAM shared with the runs: a few small previews at a time, gone soon after the last view.
+	previewIdle  = 10 * time.Minute
+	previewMax   = 3
 	previewStart = 120 * time.Second
 )
 
@@ -213,7 +214,7 @@ func (p *Previews) start(pv *preview, image string) {
 		return
 	}
 	id, err := sandbox.Create(ctx, sandbox.Spec{
-		Name: name, Image: image, Network: sandbox.Network, Memory: "1g", CPUs: "1", Pids: 1024, Workdir: "/work",
+		Name: name, Image: image, Network: sandbox.Network, Memory: "512m", CPUs: "1", Pids: 1024, Workdir: "/work",
 		Labels: map[string]string{"arena.role": "preview"},
 		Env:    []string{"PORT=3000", "HOST=0.0.0.0", "NODE_ENV=production", "HOME=/tmp", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="},
 		Cmd:    []string{"sh", "-c", "cd /work && exec sh start.sh"},
