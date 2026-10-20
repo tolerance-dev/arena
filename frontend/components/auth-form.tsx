@@ -75,41 +75,33 @@ export function AuthForm() {
 
   const nothing = options && options.providers.length === 0 && !options.dev_login && !providersFailed
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1fr_1.05fr]">
-      <div className="flex flex-col px-4 py-6 sm:px-10">
-        <Brand />
-        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
-          <h1 className="display text-[2.2rem]">{t('title')}</h1>
-          <p className="mt-2 text-muted-foreground">
-            {t('lead')}
-          </p>
-          <div className={`mt-8 flex flex-col gap-3 ${options ? '' : 'min-h-24'} ${options && !options.providers.length && !nothing ? 'hidden' : ''}`}>
-            {options?.providers.map((p) => (
-              <Button key={p} size="lg" variant="outline" className="gap-2.5"
-                render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
-                <ProviderIcon id={p} />
-                {t(p)}
-              </Button>
-            ))}
-            {nothing && <p className="text-sm text-muted-foreground">{t('notConfigured')}</p>}
-          </div>
-          {error && <p role="alert" className="mt-4 rounded-[9px] bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-          {options?.dev_login && (
-            <form onSubmit={devSignIn} className={`flex flex-col gap-3 ${options.providers.length ? 'mt-6 border-t border-dashed pt-6' : 'mt-8'}`}>
-              <Label htmlFor="email">{t('devTitle')}</Label>
-              <Input id="email" type="email" autoComplete="email" required placeholder="you@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)} />
-              <p className="text-xs text-muted-foreground">{t('devHint')}</p>
-              <Button type="submit" variant="secondary" disabled={busy}>{busy ? t('wait') : t('devButton')}</Button>
-            </form>
-          )}
-          <p className="mt-6 text-sm text-muted-foreground"><Link className="hover:text-foreground hover:underline" href="/">{t('browse')}</Link></p>
+    <main className="flex min-h-dvh flex-col px-4 py-5 sm:px-8">
+      <Brand />
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
+        <h1 className="display text-[2.25rem]">{t('title')}</h1>
+        <p className="mt-3 leading-relaxed text-muted-foreground">{t('lead')}</p>
+        <div className={`mt-8 flex flex-col gap-2.5 ${options ? '' : 'min-h-24'} ${options && !options.providers.length && !nothing ? 'hidden' : ''}`}>
+          {options?.providers.map((p) => (
+            <Button key={p} size="lg" variant="outline" className="justify-start gap-3"
+              render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
+              <ProviderIcon id={p} />
+              {t(p)}
+            </Button>
+          ))}
+          {nothing && <p className="text-sm text-muted-foreground">{t('notConfigured')}</p>}
         </div>
+        {error && <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive">{error}</p>}
+        {options?.dev_login && (
+          <form onSubmit={devSignIn} className={`flex flex-col gap-3 ${options.providers.length ? 'mt-8 border-t border-border pt-8' : 'mt-8'}`}>
+            <Label htmlFor="email">{t('devTitle')}</Label>
+            <Input id="email" type="email" autoComplete="email" required placeholder="you@example.com"
+              value={email} onChange={(e) => setEmail(e.target.value)} />
+            <p className="text-xs text-muted-foreground">{t('devHint')}</p>
+            <Button type="submit" variant="secondary" disabled={busy}>{busy ? t('wait') : t('devButton')}</Button>
+          </form>
+        )}
+        <p className="mt-8 text-sm text-muted-foreground"><Link className="underline-offset-4 hover:text-foreground hover:underline" href="/">{t('browse')}</Link></p>
       </div>
-      <aside className="relative hidden overflow-hidden bg-terminal lg:flex lg:flex-col lg:justify-center lg:px-14">
-        <p className="display max-w-md text-[2rem] text-terminal-foreground">{t('asideTitle')}</p>
-        <p className="mt-6 max-w-md text-terminal-foreground/70">{t('asideBuildText')}</p>
-      </aside>
     </main>
   )
 }

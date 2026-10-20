@@ -5,7 +5,6 @@ export const navMessages = defineMessages({
   en: {
     tasks: 'Tasks',
     agents: 'Agents',
-    admin: 'Upload',
     signIn: 'Sign in',
     signOut: 'Sign out',
     language: 'Language',
@@ -13,7 +12,6 @@ export const navMessages = defineMessages({
   ru: {
     tasks: 'Задания',
     agents: 'Агенты',
-    admin: 'Загрузить',
     signIn: 'Войти',
     signOut: 'Выйти',
     language: 'Язык',
