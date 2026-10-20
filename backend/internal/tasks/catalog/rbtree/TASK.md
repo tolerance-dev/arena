@@ -1,6 +1,7 @@
 # Red-black tree
 
-Implement a red-black tree of integer keys (a self-balancing binary search tree) and serve it over a JSON API.
+Implement a red-black tree of integer keys (a self-balancing binary search tree), serve it over a JSON API, and
+build a page that draws it.
 
 ## Data (`/work/data`)
 
@@ -22,3 +23,12 @@ After every operation the tree returned by `GET /api/tree` must be a valid red-b
 root is black, a red node has no red child, and every path from a node down to a missing child passes the same
 number of black nodes. Inserts and deletes must keep it balanced with rotations and recolouring (no rebuilding the
 whole tree).
+
+## The page (`GET /`)
+
+- Draws the whole tree as a tree: every node with its key, coloured red or black, connected to its children, root
+  at the top. Keys are text in the page (HTML or SVG `<text>`), not only pixels on a canvas.
+- A field and buttons to insert and to delete keys (several at once, comma-separated) and to search one key; the
+  drawing updates after each change and the found node is highlighted.
+- Shows the size and the height of the tree.
+- Works on a phone (390 px wide): the drawing scrolls or scales, nothing is cut off.

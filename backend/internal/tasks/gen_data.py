@@ -10,8 +10,9 @@ import random
 from collections import deque
 
 HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog")
-TIME_LIMIT_S = 600
-TOKEN_BUDGET = 400_000
+# A JSON API plus a page that draws the structure: 15 minutes is enough for a capable agent.
+TIME_LIMIT_S = 900
+TOKEN_BUDGET = 600_000
 
 
 def write(slug, name, obj, compact=False):
@@ -25,9 +26,13 @@ def write(slug, name, obj, compact=False):
         f.write("\n")
 
 
-def task_json(slug, order, title, tagline, checks):
+def task_json(slug, order, title, tagline, checks, ui_text=None):
+    # Every task has a page: verify.py checks it serves HTML and shows ui_text, and screenshots it.
     out = {"order": order, "title": title, "tagline": tagline,
-           "time_limit_s": TIME_LIMIT_S, "token_budget": TOKEN_BUDGET, "checks": checks}
+           "time_limit_s": TIME_LIMIT_S, "token_budget": TOKEN_BUDGET, "ui": True}
+    if ui_text:
+        out["ui_text"] = ui_text
+    out["checks"] = checks
     p = os.path.join(HERE, slug, "task.json")
     with open(p, "w") as f:
         f.write("{\n")
@@ -101,9 +106,11 @@ checks += [
     check("first key becomes a black root", "POST", "/api/tree/insert", body={"keys": [17]}, expect=[eq("size", 1)]),
     check("root is black", "GET", "/api/tree", expect=[eq("root.key", 17), eq("root.color", "black")]),
 ]
+three_digit = sorted(k for k in keys if k >= 100)
 task_json("rbtree", 1, {"en": "Red-black tree", "ru": "Красно-чёрное дерево"},
-          {"en": "A balanced binary search tree behind a small JSON API: insert, delete, search.",
-           "ru": "Сбалансированное дерево поиска за маленьким JSON API: вставка, удаление, поиск."}, checks)
+          {"en": "A self-balancing search tree with a JSON API and a page that draws it, red and black nodes included.",
+           "ru": "Самобалансирующееся дерево поиска с JSON API и страницей, которая рисует его с красными и чёрными узлами."},
+          checks, ui_text=[str(three_digit[0]), str(three_digit[len(three_digit) // 2]), str(three_digit[-1])])
 
 # ---------- linked-list ----------
 
@@ -154,8 +161,9 @@ checks += [
     check("one item, both ways", "GET", "/api/list/backward", expect=[eq("items", ["solo"])]),
 ]
 task_json("linked-list", 2, {"en": "Doubly linked list", "ru": "Двусвязный список"},
-          {"en": "Nodes with prev and next behind a small JSON API: push, pop, insert, delete, reverse.",
-           "ru": "Узлы с prev и next за маленьким JSON API: push, pop, вставка, удаление, разворот."}, checks)
+          {"en": "Nodes with prev and next, a JSON API and a page that shows the chain: push, pop, insert, delete, reverse.",
+           "ru": "Узлы с prev и next, JSON API и страница с цепочкой: push, pop, вставка, удаление, разворот."},
+          checks, ui_text=["apple", "grape", "nectarine"])
 
 # ---------- digraph ----------
 
@@ -275,7 +283,10 @@ checks = [
     check("its edges are gone", "GET", "/api/graph", expect=[{"path": "nodes", "len": 12}, {"path": "edges", "len": len(E)}]),
     check("delete a missing node → 404", "DELETE", "/api/nodes/m", status=404),
 ]
+# Edge weights are single digits and node ids single letters, so the page check looks for the shortest a → l
+# path written out with arrows (the brief asks the page to show it).
 task_json("digraph", 3, {"en": "Directed graph", "ru": "Ориентированный граф"},
-          {"en": "A weighted digraph behind a small JSON API: BFS, topological sort, shortest path.",
-           "ru": "Взвешенный орграф за маленьким JSON API: обход в ширину, топосортировка, кратчайший путь."}, checks)
+          {"en": "A weighted digraph with a JSON API and a page that draws it: BFS, topological sort, shortest path.",
+           "ru": "Взвешенный орграф с JSON API и страницей, которая его рисует: обход в ширину, топосортировка, кратчайший путь."},
+          checks, ui_text=[" → ".join(path_al)])
 print("ok", "graph seed", seed, "edges", len(E), "a→l", path_al, dist_al)

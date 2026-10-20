@@ -1,7 +1,8 @@
 """Checks an agent's app inside its snapshot container (run by internal/runs/worker.go as root).
 
 1. starts /work/start.sh as uid 1001 (the app can't read /verify: the checklist and the judge token live there);
-2. runs the task's API checks in order; 3. screenshots / on desktop and mobile (tasks with "ui" only);
+2. tasks with "ui": checks that / serves HTML, screenshots it on desktop and mobile and checks it shows the seed
+   data, all before the API checks change the state; 3. runs the task's API checks in order;
 4. lets the judge model use the app (browser + API + code) and score it against the hidden checklist (tasks with a
    judge only; spec "judge" is null otherwise).
 
@@ -218,13 +219,34 @@ def expect_ok(doc, e):
     return (True, "")
 
 
+PAGE_TEXT_JS = """() => [document.body ? document.body.innerText : '',
+  ...[...document.querySelectorAll('svg text')].map((t) => t.textContent)].join(' ')"""
+
+
+def ui_checks():
+    """The page, on the fresh seed state (before any API check changes it): it serves HTML, it is screenshotted on
+    desktop and mobile, and it shows the seed data (spec "ui_text") as HTML or SVG text."""
+    checks = []
+    status, headers, _ = http("GET", "/")
+    ctype = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
+    html = status == 200 and "html" in ctype
+    checks.append({"name": "home page serves HTML", "passed": html, "detail": "" if html else f"GET / → {status} {ctype}"})
+    screenshots()
+    want = SPEC.get("ui_text") or []
+    if want:
+        missing = list(want)
+        try:
+            text = browser_page("desktop").evaluate(PAGE_TEXT_JS) if html else ""
+            missing = [w for w in want if w not in text]
+        except Exception as ex:
+            log(f"page text failed: {ex}")
+        checks.append({"name": "page shows the seed data", "passed": not missing,
+                       "detail": "" if not missing else "not on the page after it loads: " + ", ".join(missing)})
+    return checks
+
+
 def run_checks():
     checks = []
-    if SPEC.get("ui"):
-        status, headers, body = http("GET", "/")
-        ctype = next((v for k, v in headers.items() if k.lower() == "content-type"), "")
-        checks.append({"name": "home page serves HTML", "passed": status == 200 and "html" in ctype,
-                       "detail": "" if status == 200 and "html" in ctype else f"GET / → {status} {ctype}"})
     saved = {}
     for c in SPEC["checks"]:
         name = c["name"]
@@ -601,11 +623,11 @@ def main():
             log("app log:\n" + app_log_tail())
             result["judge"] = {"status": "skipped", "error": "the app did not start"} if SPEC.get("judge") else {"status": "off"}
             return
-        result["checks"] = run_checks()
-        save()
         if SPEC.get("ui"):
-            screenshots()
+            result["checks"] = ui_checks()
             save()
+        result["checks"] += run_checks()
+        save()
         if not SPEC.get("judge"):
             result["judge"] = {"status": "off"}
             return

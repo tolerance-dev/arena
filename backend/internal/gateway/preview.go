@@ -250,7 +250,7 @@ func page(w http.ResponseWriter, status int, title, text string, refresh bool) {
 		meta = `<meta http-equiv="refresh" content="2">`
 	}
 	_, _ = w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8">` + meta + `<title>` + html.EscapeString(title) +
-		`</title><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#0f172a;color:#e2e8f0}` +
-		`main{max-width:28rem;padding:1.5rem;text-align:center}p{color:#94a3b8}</style></head><body><main><h1>` + html.EscapeString(title) +
+		`</title><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#f2f3f0;color:#1b1f1d}` +
+		`h1{font-size:1.4rem;font-weight:600;letter-spacing:-.01em}main{max-width:28rem;padding:1.5rem;text-align:center}p{color:#5a625d}</style></head><body><main><h1>` + html.EscapeString(title) +
 		`</h1><p>` + html.EscapeString(text) + `</p></main></body></html>`))
 }

@@ -1,7 +1,7 @@
 # Directed graph
 
 Implement a weighted directed graph (adjacency lists) with breadth-first search, topological sort and shortest paths,
-and serve it over a JSON API.
+serve it over a JSON API, and build a page that draws it.
 
 ## Data (`/work/data`)
 
@@ -23,3 +23,14 @@ so the answers are deterministic.
 | `GET /api/bfs?from=X` | `{"order": [ids]}`: the nodes reachable from X in breadth-first order, X first; 404 if X is missing |
 | `GET /api/topo` | `{"order": [ids]}`: a topological order of all nodes; when several nodes are ready, take the smallest id first (Kahn's algorithm with a min-heap). 409 if the graph has a cycle |
 | `GET /api/path?from=X&to=Y` | `{"path": [X, ..., Y], "distance": <sum of weights>}`: the shortest path by weight (Dijkstra); 404 if Y is unreachable or a node is missing |
+
+## The page (`GET /`)
+
+- Draws the graph: nodes as labelled circles, edges as arrows with their weight. Labels and weights are text in the
+  page (HTML or SVG `<text>`), not only pixels on a canvas.
+- A shortest-path panel with "from" and "to" pickers, set to `a` and `l` when the page opens: it shows the path as
+  node ids joined with ` → ` (for example `a → c → f`) and its distance, and highlights the path in the drawing.
+- Buttons for breadth-first search from a picked node and for the topological order, with the result shown in order
+  (and the cycle reported when there is one).
+- Forms to add and delete nodes and edges; the drawing updates after each change.
+- Works on a phone (390 px wide): the drawing scales, nothing is cut off.

@@ -33,9 +33,9 @@ export function RunView({ id }: { id: string }) {
         <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
       )}
       <Verdict run={run} t={t} />
-      <Specs run={run} t={t} />
-      {/* API-only tasks have no preview or screenshots at all, so the section only appears when there is one. */}
+      {/* What the agent built, right under the verdict: the live app, or its screenshots once the snapshot is gone. */}
       {done && (run.preview_url || run.has_shot) && <Preview run={run} t={t} />}
+      <Specs run={run} t={t} />
       {done && run.judge && run.judge.status !== 'off' && <JudgeCard run={run} t={t} />}
       {run.checks.length > 0 && <Checks run={run} t={t} />}
       <Logs run={run} t={t} />
@@ -220,8 +220,8 @@ function Preview({ run, t }: { run: Run; t: RT }) {
   ]
   if (!tabs.some((x) => x.show)) return <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noPreview')}</p>
   return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <section aria-label={t('whatItBuilt')}>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div role="tablist" className="flex gap-4 text-sm">
           {tabs.filter((x) => x.show).map((x) => (
             <button key={x.k} role="tab" aria-selected={view === x.k} onClick={() => setView(x.k)}

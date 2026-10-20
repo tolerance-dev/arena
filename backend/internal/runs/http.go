@@ -40,14 +40,11 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		v := TaskView{TaskMD: t.TaskMD, DataFiles: t.DataNames(), Checks: []string{}}
+		v := TaskView{TaskMD: t.TaskMD, DataFiles: t.DataNames(), Checks: t.CheckNames()}
 		for _, sm := range sums {
 			if sm.Slug == t.Slug {
 				v.TaskSummary = sm
 			}
-		}
-		for _, c := range t.Checks {
-			v.Checks = append(v.Checks, c.Name)
 		}
 		if v.Board, err = s.Leaderboard(r.Context(), t.Slug); err == nil {
 			v.Recent, err = s.Recent(r.Context(), t.Slug, "", 20)
