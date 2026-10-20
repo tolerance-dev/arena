@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogOut, Menu, X } from 'lucide-react'
+import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { Brand } from '@/components/brand'
 import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const t = useT(navMessages)
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const signIn = useSignIn()
   useEffect(() => setOpen(false), [pathname])
 
   const nav = [
@@ -58,7 +60,9 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
               </Button>
             </>
           ) : (
-            <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
+            signIn
+              ? <Button onClick={signIn}>{t('signIn')}</Button>
+              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
           )}
           <Button variant="outline" size="icon" className="md:hidden" aria-label={t('menu')} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             {open ? <X /> : <Menu />}

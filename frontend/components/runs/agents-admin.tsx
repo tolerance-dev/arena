@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Play, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
+import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
 import { Input, fieldClass } from '@/components/ui/input'
@@ -24,6 +25,7 @@ const field = fieldClass
 export function AgentsAdmin() {
   const t = useT(runsMessages)
   const { me, loading } = useMe()
+  const signIn = useSignIn()
   const agents = usePoll<{ items: Agent[] }>(me?.can_admin ? '/admin/agents' : null, 30_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
   const runs = usePoll<{ items: Run[] }>(me ? '/runs?limit=20' : null, 4_000)
@@ -34,7 +36,9 @@ export function AgentsAdmin() {
       <div className="max-w-md space-y-4">
         <h1 className="display text-page">{t('adminTitle')}</h1>
         <p className="text-muted-foreground">{t('signInLead')}</p>
-        <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInButton')}</Button>
+        {signIn
+          ? <Button onClick={signIn}>{t('signInButton')}</Button>
+          : <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInButton')}</Button>}
       </div>
     )
   }
