@@ -1,5 +1,5 @@
 // Package tasks is the catalog of agent-run tasks: what the agent is asked to build (TASK.md + RULES.md), the
-// shared mock data it gets, the automatic API checks, and the judge's checklist.
+// shared mock data it gets, the automatic checks, and the judge's checklist.
 //
 // The catalog is embedded. The judge checklist (judge.md) is optional: without it the run is scored by the checks
 // alone. It can be replaced from ARENA_TASKS_HIDDEN_DIR/<slug>/judge.md so the real one can live in the private
@@ -54,11 +54,29 @@ type Task struct {
 	Checks []Check  `json:"checks"`
 
 	TaskMD    string            `json:"-"` // TASK.md with RULES.md appended: exactly what the agent reads
+	Brief     string            `json:"-"` // what the site shows: the product part of TASK.md (see siteBrief)
 	Judge     string            `json:"-"` // "" = no judge
 	DataFiles map[string][]byte `json:"-"` // name → content, from data/
 }
 
 var all []*Task
+
+// siteBrief is the part of TASK.md people read on the site: the product, without the "# Title" (the page has it)
+// and without the sections from "## Data" on, which are for the agent.
+func siteBrief(md string) string {
+	md = strings.TrimSpace(md)
+	if strings.HasPrefix(md, "# ") {
+		if i := strings.IndexByte(md, '\n'); i >= 0 {
+			md = md[i+1:]
+		} else {
+			md = ""
+		}
+	}
+	if i := strings.Index(md, "\n## Data"); i >= 0 {
+		md = md[:i]
+	}
+	return strings.TrimSpace(md) + "\n"
+}
 
 // Load reads the embedded catalog; hiddenDir ("" = none) overrides judge.md per task.
 func Load(hiddenDir string) error {
@@ -89,6 +107,7 @@ func Load(hiddenDir string) error {
 		if err != nil {
 			return fmt.Errorf("tasks: %s: %w", slug, err)
 		}
+		t.Brief = siteBrief(string(md))
 		t.TaskMD = strings.TrimSpace(string(md)) + "\n\n" + strings.TrimSpace(string(rules)) + "\n"
 		if judge, err := catalog.ReadFile(dir + "/judge.md"); err == nil {
 			t.Judge = string(judge)

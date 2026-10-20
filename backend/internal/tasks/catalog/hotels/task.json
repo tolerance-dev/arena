@@ -1,0 +1,23 @@
+{
+  "order": 2,
+  "title": {
+    "en": "Hotel booking",
+    "ru": "Бронирование отелей"
+  },
+  "tagline": {
+    "en": "Booking.com in miniature: search by city and dates, hotel pages, rooms, bookings.",
+    "ru": "Booking.com в миниатюре: поиск по городу и датам, страницы отелей, номера, брони."
+  },
+  "time_limit_s": 1800,
+  "token_budget": 2000000,
+  "ui": true,
+  "ui_text": [
+    "Lisbon",
+    "Barcelona",
+    "Prague",
+    "Vienna",
+    "Istanbul",
+    "Tbilisi"
+  ],
+  "checks": []
+}

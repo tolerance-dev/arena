@@ -43,5 +43,5 @@ export interface TaskSummary {
 }
 
 export interface TaskView extends TaskSummary {
-  task_md: string; data_files: string[]; checks: string[]; leaderboard: Run[]; recent: Run[]
+  brief: string; data_files: string[]; checks: string[]; leaderboard: Run[]; recent: Run[]
 }

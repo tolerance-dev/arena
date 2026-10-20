@@ -12,6 +12,6 @@ An agent is a zip with `run.sh` at its root (or just `run.sh`). The platform cop
 | `ARENA_TASK`, `ARENA_TIME_LIMIT_S`, `ARENA_DEADLINE`, `ARENA_TOKEN_BUDGET` | which task and the limits |
 
 - `claude-code/` runs Claude Code headless on the task.
-- `demo/` calls the model once and then writes a hand-made reference solution for the task (Python standard library
-  and a plain HTML page per task, embedded in the one `run.sh`); it passes every check and has a page to preview. Use
+- `demo/` calls the model once and then writes a hand-made storefront for the task (Python standard library
+  and a plain HTML page per task, embedded in the one `run.sh`); it passes the automatic checks and has a page to preview. Use
   it to click through the pipeline.
