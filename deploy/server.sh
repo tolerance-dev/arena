@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Runs ON the server (/opt/tolerance) as `deploy`, called by
-# .github/workflows/deploy.yml after it has synced compose.yml, Caddyfile and
-# skills/ next to this file.
+# Runs ON the server (/opt/tolerance) as `deploy`, called by .github/workflows/deploy.yml after it has synced
+# compose.yml and Caddyfile next to this file and logged docker into ghcr.io.
 #
-#   server.sh deploy <sha>   pull images at <sha>, dump the DB, migrate, swap
-#                            api/web, health-check; on a failed health check
-#                            the previous tag is started again (migrations
-#                            are not reverted).
-#   server.sh status         what runs and at which tag
+#   server.sh deploy <sha> [reset]   pull images at <sha>, migrate, swap api/gateway/web,
+#                                    health-check; on a failed health check the previous tag is started again
+#                                    (migrations are not reverted). `reset` wipes the database first: the schema
+#                                    is edited in place, so a schema change needs it.
+#   server.sh status                 what runs and at which tag
 set -euo pipefail
 cd "$(dirname "$0")"
 
-REGISTRY=ghcr.io/artur-gavronchuk
+REGISTRY=ghcr.io/tolerance-dev
 dc() { docker compose -f compose.yml "$@"; }
 
 # setenv KEY VALUE: replace or append a line in .env.
@@ -19,13 +18,8 @@ setenv() {
   if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else echo "$1=$2" >> .env; fi
 }
 
-# The api starts sandbox and bot containers from these fixed local names.
-runtime_images() {
-  docker tag "$REGISTRY/tolerance-bot-runtime:$1" arena-bot-runtime:1
-  docker tag "$REGISTRY/tolerance-skill-go:$1" arena-skill-go:1
-  docker tag "$REGISTRY/tolerance-skill-python:$1" arena-skill-python:1
-  docker tag "$REGISTRY/tolerance-site:$1" arena-site:1
-}
+# The api starts agent and check containers from this fixed local name.
+runtime_image() { docker tag "$REGISTRY/tolerance-runtime:$1" arena-runtime:1; }
 
 healthy() {
   for _ in $(seq 1 60); do
@@ -38,25 +32,29 @@ healthy() {
 }
 
 cmd_deploy() {
-  local tag=$1 prev
+  local tag=$1 reset=${2:-} prev
   prev=$(grep '^TAG=' .env | cut -d= -f2 || true)
-  # Fair play hashes IPs with this key; it must survive restarts.
-  grep -q '^ARENA_FAIRPLAY_SECRET=.' .env || setenv ARENA_FAIRPLAY_SECRET "$(openssl rand -hex 32)"
+  # Seals agents' LLM keys at rest; must survive restarts (a new one makes stored agent keys unreadable).
+  grep -q '^ARENA_SECRET_KEY=.' .env || setenv ARENA_SECRET_KEY "$(openssl rand -hex 32)"
 
   echo "--- pull $tag"
-  for img in backend web bot-runtime skill-go skill-python site; do
+  for img in backend web runtime; do
     docker pull -q "$REGISTRY/tolerance-$img:$tag"
   done
-  runtime_images "$tag"
+  runtime_image "$tag"
+  docker network inspect arena-agents >/dev/null 2>&1 || docker network create --internal arena-agents >/dev/null
 
   # compose.yml needs TAG set for any command, postgres-only ones included.
   setenv TAG "$tag"
 
-  echo "--- backup"
-  mkdir -p backups
+  # No backups: there is no data worth keeping yet.
+  if [ "$reset" = "reset" ]; then
+    echo "--- reset database"
+    dc stop api gateway web || true
+    dc rm -sf postgres
+    docker volume rm -f tolerance_arena-postgres-data
+  fi
   dc up -d --wait postgres
-  dc exec -T postgres pg_dump -U arena_migrate -d arena -Fc > "backups/pre-$tag.dump"
-  ls -1t backups/pre-*.dump | tail -n +11 | xargs -r rm --
 
   echo "--- migrate"
   if ! dc run --rm migrate; then
@@ -66,8 +64,7 @@ cmd_deploy() {
   fi
 
   echo "--- up"
-  # --remove-orphans drops services this file no longer has (the old
-  # separate worker, canaries, the monitoring stack).
+  # --remove-orphans drops services this file no longer has.
   dc up -d --remove-orphans
   docker exec "$(dc ps -q caddy)" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 
@@ -79,11 +76,11 @@ cmd_deploy() {
   fi
 
   echo "health check failed on $tag; logs:" >&2
-  dc logs --tail=80 api web >&2 || true
+  dc logs --tail=80 api gateway web >&2 || true
   if [ -n "$prev" ] && [ "$prev" != "$tag" ]; then
     echo "--- rolling back to $prev" >&2
     setenv TAG "$prev"
-    runtime_images "$prev" || true
+    runtime_image "$prev" || true
     dc up -d
   fi
   exit 1
@@ -95,7 +92,7 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  deploy) cmd_deploy "${2:?usage: server.sh deploy <sha>}" ;;
+  deploy) cmd_deploy "${2:?usage: server.sh deploy <sha> [reset]}" "${3:-}" ;;
   status) cmd_status ;;
-  *) echo "usage: server.sh deploy <sha> | status" >&2; exit 2 ;;
+  *) echo "usage: server.sh deploy <sha> [reset] | status" >&2; exit 2 ;;
 esac

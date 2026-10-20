@@ -1,11 +1,9 @@
-# Production stack on tolerance.cc (/opt/tolerance on the server). Shipped and
-# started by .github/workflows/deploy.yml through deploy/server.sh — not used
-# locally (that's ../docker-compose.yml). Images come from GHCR at ${TAG}, a
-# commit sha; server.sh writes TAG into /opt/tolerance/.env.
+# Production stack on tolerance.cc (/opt/tolerance on 81.27.103.131). Shipped and started by
+# .github/workflows/deploy.yml through deploy/server.sh — not used locally (that's ../docker-compose.yml).
+# Images come from GHCR at ${TAG}, a commit sha; server.sh writes TAG into /opt/tolerance/.env.
 #
-# Volume and network names match the stack this replaced (project
-# `tolerance`), so the database, Caddy's certificates and the
-# tolerance_default network other stacks join (mentor-web) carry over.
+# Project name `tolerance` keeps the volumes and the tolerance_default network that mentor.nualimov.dev's
+# Caddy (mentor-web, /root/nualimov.dev) joins.
 
 name: tolerance
 
@@ -14,6 +12,8 @@ x-logging: &logging
   options:
     max-size: "10m"
     max-file: "5"
+
+x-image: &backend ghcr.io/tolerance-dev/tolerance-backend:${TAG:?}
 
 services:
   postgres:
@@ -24,21 +24,6 @@ services:
       POSTGRES_USER: arena_migrate
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: arena
-    command: >-
-      postgres
-      -c max_connections=${PG_MAX_CONNECTIONS:-200}
-      -c shared_buffers=${PG_SHARED_BUFFERS:-128MB}
-      -c effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-512MB}
-      -c work_mem=${PG_WORK_MEM:-4MB}
-      -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-64MB}
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c checkpoint_completion_target=0.9
-      -c wal_compression=on
-      -c wal_buffers=16MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-    shm_size: ${PG_SHM_SIZE:-256mb}
     volumes:
       - arena-postgres-data:/var/lib/postgresql/data
     ports:
@@ -49,10 +34,9 @@ services:
       timeout: 2s
       retries: 30
 
-  # One-shot, run by server.sh (`run --rm migrate`) before api is replaced;
-  # the profile keeps `up` from starting it.
+  # One-shot, run by server.sh (`run --rm migrate`) before api is replaced; the profile keeps `up` from starting it.
   migrate:
-    image: ghcr.io/artur-gavronchuk/tolerance-backend:${TAG:?}
+    image: *backend
     profiles: [tools]
     command: ["migrate"]
     restart: "no"
@@ -60,61 +44,70 @@ services:
     environment:
       ARENA_MIGRATE_DATABASE_URL: postgres://arena_migrate:${POSTGRES_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
-      ARENA_WORKER_ROLE_PASSWORD: ${ARENA_WORKER_ROLE_PASSWORD:-}
-      ARENA_SKILLS_DIR: /opt/arena/skills
-    # The task catalog (hidden tests included) is mounted, never baked into
-    # the public image. deploy.yml syncs backend/fixtures/skills to ./skills;
-    # ARENA_SKILLS_SOURCE in .env points it elsewhere.
-    volumes:
-      - ${ARENA_SKILLS_SOURCE:-./skills}:/opt/arena/skills:ro
     depends_on:
       postgres:
         condition: service_healthy
 
-  # HTTP plus every worker (submissions, tanks), one process.
+  # HTTP plus the runs worker, one process. Starts agent/check containers from arena-runtime:1 through docker.sock.
   api:
-    image: ghcr.io/artur-gavronchuk/tolerance-backend:${TAG:?}
+    image: *backend
     restart: unless-stopped
     logging: *logging
     environment:
       ARENA_ADDR: 0.0.0.0:8080
       ARENA_ALLOW_NON_LOOPBACK: "true"
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable&pool_max_conns=${ARENA_DB_POOL_MAX:-20}
-      ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
-      ARENA_SANDBOX: docker
-      ARENA_WORK_DIR: /var/lib/arena/work
+      ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}
       ARENA_SECURE_COOKIES: "true"
       ARENA_TRUST_PROXY: "true"
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
-      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL}
+      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
+      ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-1}
+      ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
       ARENA_GOOGLE_CLIENT_SECRET: ${ARENA_GOOGLE_CLIENT_SECRET:-}
-      ARENA_FAIRPLAY_SECRET: ${ARENA_FAIRPLAY_SECRET}
-      ARENA_MATCH_INTERVAL: ${ARENA_MATCH_INTERVAL:-20s}
-      ARENA_MATCH_CONCURRENCY: ${ARENA_MATCH_CONCURRENCY:-1}
-      # Build challenges' hidden tests and references (arena-tasks/builds, synced by deploy.yml).
-      ARENA_BUILDS_TESTS_DIR: /opt/arena/builds
-    # Group that owns docker.sock on the host: sandbox and bot containers.
+    # Group that owns docker.sock on the host.
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - arena-work:/var/lib/arena/work
-      - ${ARENA_BUILDS_SOURCE:-./builds}:/opt/arena/builds:ro
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
 
+  # The sandboxes' only way out (LLM APIs with the real keys, npm/PyPI mirrors). Live previews (8091) stay off in
+  # prod until *.preview DNS/TLS exists; the API-only tasks don't have them anyway.
+  gateway:
+    image: *backend
+    command: ["gateway"]
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
+      ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}
+      ARENA_JUDGE_API_KEY: ${ARENA_JUDGE_API_KEY:-}
+      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
+    group_add: ["${DOCKER_GID:?}"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default: {}
+      agents:
+        aliases: [gateway]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   web:
-    image: ghcr.io/artur-gavronchuk/tolerance-web:${TAG:?}
+    image: ghcr.io/tolerance-dev/tolerance-web:${TAG:?}
     restart: unless-stopped
     logging: *logging
     environment:
       API_URL: http://api:8080
-      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL}
+      ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
@@ -135,30 +128,12 @@ services:
     depends_on:
       - web
 
-  # Daily pg_dump into the arena-backups volume, last 7 kept.
-  backup:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    logging: *logging
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - arena-backups:/backups
-    entrypoint:
-      - sh
-      - -c
-      - |
-        while true; do
-          pg_dump -h postgres -U arena_migrate -d arena -Fc -f "/backups/arena-$$(date +%F).dump" && echo "backup ok $$(date)"
-          ls -1t /backups/arena-*.dump 2>/dev/null | tail -n +8 | xargs -r rm --
-          sleep 86400
-        done
-    depends_on:
-      postgres:
-        condition: service_healthy
-
 volumes:
   arena-postgres-data:
   arena-caddy-data:
-  arena-backups:
-  arena-work:
+
+networks:
+  # Internal (no route out): agent and check containers live here with only the gateway. server.sh creates it.
+  agents:
+    name: arena-agents
+    external: true
