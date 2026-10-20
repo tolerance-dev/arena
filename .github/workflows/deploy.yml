@@ -1,12 +1,10 @@
 name: deploy
 
-# One button: Actions → deploy → Run workflow. Builds every image at the
-# chosen commit (default: HEAD of main), pushes them to GHCR, ships
-# deploy/compose.yml, deploy/Caddyfile, deploy/server.sh and the task catalog
-# to /opt/tolerance, then runs `server.sh deploy <sha>` there: DB dump,
-# migrations, api/web swap, health check, automatic return to the previous
-# tag if the new one is unhealthy. Rollback by hand = run it again with an
-# older sha in `ref`.
+# One button: Actions → deploy → Run workflow (or `gh workflow run deploy [-f ref=<sha>] [-f reset_db=true]`).
+# Builds the backend, web and sandbox runtime images at the chosen commit (default: HEAD of main), pushes them to
+# GHCR, ships deploy/compose.yml, deploy/Caddyfile and deploy/server.sh to /opt/tolerance on the server, then runs
+# `server.sh deploy <sha>` there: DB dump, migrations, api/gateway/web swap, health check, automatic return to the
+# previous tag if the new one is unhealthy. Rollback by hand = run it again with an older sha in `ref`.
 on:
   workflow_dispatch:
     inputs:
@@ -14,13 +12,17 @@ on:
         description: Commit, branch or tag to deploy (empty = main)
         required: false
         default: ""
+      reset_db:
+        description: Wipe the database first (needed after a schema change; there is no data worth keeping)
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io/artur-gavronchuk
+  REGISTRY: ghcr.io/tolerance-dev
 
 jobs:
   deploy:
@@ -71,64 +73,17 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      - name: bot runtime image
+      # arena-runtime:1 on the server: every agent and check container starts from it.
+      - name: sandbox runtime image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend/internal/games/match/runtime
+          context: ./backend/runtime
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/tolerance-bot-runtime:${{ steps.sha.outputs.sha }}
+          tags: ${{ env.REGISTRY }}/tolerance-runtime:${{ steps.sha.outputs.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,scope=bot-runtime
-          cache-to: type=gha,mode=max,scope=bot-runtime
-
-      - name: go sandbox image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend/fixtures/skills/go
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.REGISTRY }}/tolerance-skill-go:${{ steps.sha.outputs.sha }}
-          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,scope=skill-go
-          cache-to: type=gha,mode=max,scope=skill-go
-
-      - name: python sandbox image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend/fixtures/skills/python
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.REGISTRY }}/tolerance-skill-python:${{ steps.sha.outputs.sha }}
-          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,scope=skill-python
-          cache-to: type=gha,mode=max,scope=skill-python
-
-      - name: site sandbox image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend/internal/builds/site
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.REGISTRY }}/tolerance-site:${{ steps.sha.outputs.sha }}
-          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,scope=site
-          cache-to: type=gha,mode=max,scope=site
-
-      # The real daily tasks live in the private repo arena-tasks; with its
-      # deploy key set they replace the practice tasks from backend/fixtures.
-      - name: private task catalog
-        id: tasks
-        env:
-          KEY: ${{ secrets.ARENA_TASKS_DEPLOY_KEY }}
-        run: echo "present=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
-      - if: steps.tasks.outputs.present == 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: artur-gavronchuk/arena-tasks
-          ssh-key: ${{ secrets.ARENA_TASKS_DEPLOY_KEY }}
-          path: arena-tasks
+          cache-from: type=gha,scope=runtime
+          cache-to: type=gha,mode=max,scope=runtime
 
       - name: set up SSH
         env:
@@ -141,22 +96,23 @@ jobs:
           printf 'Host prod\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n  ServerAliveInterval 15\n  ServerAliveCountMax 8\n' \
             "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_USER }}" > ~/.ssh/config
 
-      - name: ship config and tasks
-        run: |
-          set -euo pipefail
-          skills=backend/fixtures/skills
-          [ "${{ steps.tasks.outputs.present }}" = "true" ] && skills=arena-tasks/skills
-          # --inplace: compose.yml and Caddyfile are single-file bind mounts,
-          # a new inode would leave containers on the old content.
-          rsync -c --inplace deploy/compose.yml deploy/Caddyfile deploy/server.sh prod:/opt/tolerance/
-          rsync -ac --delete --chmod=a+rX "$skills/" prod:/opt/tolerance/skills/
-          # Build challenges' hidden tests and references: only from the private catalog, never this repository.
-          if [ "${{ steps.tasks.outputs.present }}" = "true" ] && [ -d arena-tasks/builds ]; then
-            rsync -ac --delete --chmod=a+rX --exclude '_*' arena-tasks/builds/ prod:/opt/tolerance/builds/
-          fi
+      - name: ship config
+        # --inplace: compose.yml and Caddyfile are single-file bind mounts, a new inode would leave containers on
+        # the old content.
+        run: rsync -c --inplace deploy/compose.yml deploy/Caddyfile deploy/server.sh prod:/opt/tolerance/
+
+      # The packages may be private; this job's token lets the server pull them (it expires with the job).
+      - name: registry login on the server
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | ssh prod "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
 
       - name: deploy on the server
-        run: ssh prod "bash /opt/tolerance/server.sh deploy ${{ steps.sha.outputs.sha }}"
+        run: ssh prod "bash /opt/tolerance/server.sh deploy ${{ steps.sha.outputs.sha }} ${{ inputs.reset_db && 'reset' || '' }}"
+
+      - name: registry logout on the server
+        if: always()
+        run: ssh prod "docker logout ghcr.io" || true
 
       - name: purge Cloudflare cache
         env:

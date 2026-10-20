@@ -71,10 +71,10 @@
 	}
 
 	handle /api/* {
-		# The backend enforces per-route caps (5 MiB submission zips, 2 MiB
-		# bot archives); this only keeps Caddy from being the stricter one.
+		# The backend enforces per-route caps (20 MiB agent bundles); this
+		# only keeps Caddy from being the stricter one.
 		request_body {
-			max_size 8MB
+			max_size 24MB
 		}
 		reverse_proxy api:8080 {
 			header_up X-Real-IP {client_ip}
@@ -93,35 +93,10 @@ www.{$ARENA_DOMAIN} {
 
 # mentor.nualimov.dev (repo artur-gavronchuk/nualimov.dev): its own stack runs
 # from /root/nualimov.dev with no public ports; its Caddy joins
-# tolerance_default as mentor-web.
+# tolerance_default as mentor-web. Nothing else is hosted on this server.
 mentor.nualimov.dev {
 	import cloudflare_origin_pull
 	reverse_proxy mentor-web:80 {
-		header_up X-Forwarded-For {client_ip}
-	}
-}
-
-# pijamas.fit (repo artur-gavronchuk/pijamas.fit): its stack runs from
-# /opt/pijaime with no public ports; the app joins tolerance_default as
-# pijaime-app. No origin-pull client auth here: Authenticated Origin Pulls is a
-# per-zone setting and is not enabled for the pijamas.fit zone.
-pijamas.fit, www.pijamas.fit {
-	@www host www.pijamas.fit
-	redir @www https://pijamas.fit{uri} permanent
-
-	encode zstd gzip
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		-Server
-	}
-
-	# Admin photo uploads are up to 40 MB; the app enforces its own limits.
-	request_body {
-		max_size 45MB
-	}
-
-	reverse_proxy pijaime-app:8080 {
 		header_up X-Forwarded-For {client_ip}
 	}
 }

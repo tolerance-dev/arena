@@ -20,12 +20,13 @@ overrides the superpowers skills and any default habits:
 - **Throwing code away is fine.** When the concept changes, delete the old
   feature (code, routes, pages, tests) rather than keeping it compatible.
 - **No ops work** unless asked. Deploy is one button: Actions → deploy → Run
-  workflow (`gh workflow run deploy`; `ref` = older sha to roll back). It
-  builds the images into GHCR and runs `deploy/server.sh` on the host over SSH
-  (secrets in the `production` environment). `deploy/compose.yml` and
-  `deploy/Caddyfile` are the server's source of truth — the Caddyfile also
-  serves `mentor.nualimov.dev`, keep that block.
-  The old canary/monitoring stack is at git tag `ops-snapshot-2026-10-03`.
+  workflow (`gh workflow run deploy`; `-f ref=<sha>` rolls back, `-f reset_db=true` wipes the DB — needed
+  after any schema change). It builds backend, web and `tolerance-runtime` (= `arena-runtime:1`) into
+  `ghcr.io/tolerance-dev` and runs `deploy/server.sh` on the host (81.27.103.131, `/opt/tolerance`, user
+  `deploy`) over SSH (secrets in the `production` environment). `deploy/compose.yml` and `deploy/Caddyfile`
+  are the server's source of truth — the Caddyfile also serves `mentor.nualimov.dev` (its stack is
+  `/root/nualimov.dev`), keep that block. Nothing else lives on that server. No backups (no data to keep).
+  Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what
   would trip up the next session.
 - **Git: only through pull requests.** Pushing to `main` is blocked on GitHub (branch protection,
@@ -72,8 +73,8 @@ reference implementations, so edit checks there and rerun it) + `catalog/RULES.m
 `judge.md` can be overridden from `ARENA_TASKS_HIDDEN_DIR/<slug>/judge.md`. Example agents:
 `examples/agents/{claude-code,demo}`; `demo` is a reference solution that passes every check.
 
-Prod (`deploy/`) is NOT adapted yet: it has no gateway service, no `arena-runtime` image, no
-`arena-agents` network and no `*.preview` DNS/TLS. Don't press deploy until that is done.
+Prod (`deploy/`) runs api + gateway + web + postgres + caddy; live previews are off there (no `*.preview`
+DNS/TLS, `ARENA_PREVIEW_URL` unset) and so is the judge until `ARENA_JUDGE_API_KEY` is in `/opt/tolerance/.env`.
 
 Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks to the backend over HTTP only).
 
