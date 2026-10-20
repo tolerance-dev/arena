@@ -50,9 +50,10 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 12px;
-  /* 1200px minus 24px gutters = Product Hunt's 1152px content column. */
-  --container-page: 75rem;
-  /* Type scale (DESIGN_REFERENCE.md §3): meta 12, UI 13, body 14, lead 15, title 16, section 20, page 28. */
+  /* Product Hunt's 900px feed + 32px gutter + 280px aside, plus 16px gutters. */
+  --container-page: 1244px;
+  /* Type scale (DESIGN_REFERENCE.md §1, §5): meta 12, UI 13, body 14, lead 15, title 16 (feed names and taglines),
+     subtitle 18, section 20, page 24 (H1). */
   --text-meta: 12px;
   --text-meta--line-height: 16px;
   --text-ui: 13px;
@@ -63,10 +64,12 @@
   --text-lead--line-height: 24px;
   --text-title: 16px;
   --text-title--line-height: 24px;
+  --text-subtitle: 18px;
+  --text-subtitle--line-height: 28px;
   --text-section: 20px;
   --text-section--line-height: 28px;
-  --text-page: 28px;
-  --text-page--line-height: 34px;
+  --text-page: 24px;
+  --text-page--line-height: 32px;
 }
 
 /* Product Hunt's catalogue structure in Linear's visual language (see DESIGN_REFERENCE.md). Light: Product Hunt's

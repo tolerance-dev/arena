@@ -172,14 +172,36 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
   )
 }
 
-// A task's glyph on a grey tile, the "logo" of a task in lists (Product Hunt's 48px product logos).
+// A task's glyph on a grey tile: the task's "logo" (Product Hunt's 48px list logos, 64px in a page header).
 export function TaskTile({ slug, size = 'md', className }: { slug: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
   return (
-    <span className={cn('flex shrink-0 items-center justify-center rounded-lg border border-border bg-muted',
-      size === 'sm' ? 'size-8 rounded-md' : size === 'md' ? 'size-12' : 'size-14', className)}>
-      <TaskGlyph slug={slug} className={size === 'sm' ? 'size-5' : size === 'md' ? 'size-7' : 'size-8'} />
+    <span className={cn('flex shrink-0 items-center justify-center border border-border bg-muted',
+      size === 'sm' ? 'size-8 rounded-lg' : size === 'md' ? 'size-12 rounded-xl' : 'size-16 rounded-lg', className)}>
+      <TaskGlyph slug={slug} className={size === 'sm' ? 'size-5' : size === 'md' ? 'size-7' : 'size-9'} />
     </span>
   )
+}
+
+// An agent's "logo": its initials on a tile. Agents have no images.
+export function AgentAvatar({ name, size = 'md', className }: { name: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  const initials = name.split(/[\s·+_-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  return (
+    <span aria-hidden className={cn('flex shrink-0 items-center justify-center border border-border bg-muted font-semibold text-muted-foreground',
+      size === 'sm' ? 'size-8 rounded-lg text-meta' : size === 'md' ? 'size-12 rounded-xl text-title' : 'size-16 rounded-lg text-section', className)}>
+      {initials}
+    </span>
+  )
+}
+
+// What the run built, as the checker saw it after start; a quiet placeholder when there is no screenshot.
+export function RunShot({ run, className }: { run: Pick<Run, 'id' | 'has_shot' | 'agent'>; className?: string }) {
+  const t = useT(runsMessages)
+  if (!run.has_shot) {
+    return <div className={cn('flex items-center justify-center bg-muted text-ui text-faint', className)}>{t('noShot')}</div>
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={`/api/v1/runs/${run.id}/shot.jpg`} alt={t('bestShotAlt', { agent: run.agent.name })} loading="lazy"
+    className={cn('bg-muted object-cover object-top', className)} />
 }
 
 export function Ago({ iso }: { iso: string }) {

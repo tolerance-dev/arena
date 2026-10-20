@@ -14,10 +14,11 @@ working skeleton, fast. This section overrides any skills and default habits:
   `internal/runs`).
 - **"Done" = it compiles and works locally**: `make test-fast`, then `make dev` (or `make up`) and the flow
   clicked through. Full `make test` is optional. CI (`ci.yml`) is manual-only; nothing runs on push.
-- **Don't overload, don't copy "how everyone does it".** Each page and each brief shows only what it is for, and
-  nothing another page already shows (no stats rows, duplicate leaderboards, side panels, "how it works" filler
-  added by default). Build the minimum that serves the point, then extend one thing at a time when there is a reason.
-  When in doubt, leave it out and ask.
+- **Design: Product Hunt's layout, our tokens.** Pages follow producthunt.com (measurements in `DESIGN_REFERENCE.md`):
+  a 900px main column + 280px aside (`components/ui/columns.tsx`; the aside drops below at <1280px), feed rows with
+  52px counters (`components/ui/feed.tsx`), pill tabs, pill buttons. Colours, type scale and radii are the tokens in
+  `globals.css`. Show only real data: no voting, categories or search until the backend has them, and an empty state
+  instead of placeholders. Don't pile on blocks that repeat another page.
 - **Throwing code away is fine.** When the concept changes, delete the old feature (code, routes, pages, tests)
   rather than keeping it compatible.
 - **Never deploy yourself, no ops work unless asked.** Don't run `gh workflow run deploy` and don't change prod by
@@ -103,7 +104,8 @@ backend/internal/tasks       task catalog (embedded)
 backend/internal/identity    OAuth, sessions, auth middleware
 backend/internal/platform    db, httpx, sanitize, secretbox, ratelimit, idgen, clientip
 backend/runtime              Dockerfile of arena-runtime:1 (Playwright python + Node 22 + claude/codex CLIs)
-frontend/app/(site)          / (tasks), /t/[slug], /r/[id], /admin; frontend/app/login
+frontend/app/(site)          / (challenge feed), /t/[slug], /r/[id], /agents, /agents/[id], /leaderboard, /admin;
+                             frontend/app/login
 frontend/components/runs     the views
 ```
 

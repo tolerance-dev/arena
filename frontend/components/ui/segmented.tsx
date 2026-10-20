@@ -23,23 +23,3 @@ export function Segmented<T extends string>({ value, options, onChange, label, c
     </div>
   )
 }
-
-// Underlined tabs for switching views inside a page.
-export function Tabs<T extends string>({ value, options, onChange, className }: {
-  value: T
-  options: { value: T; label: React.ReactNode }[]
-  onChange: (v: T) => void
-  className?: string
-}) {
-  return (
-    <div role="tablist" className={cn('flex gap-5 border-b border-border', className)}>
-      {options.map((o) => (
-        <button key={o.value} type="button" role="tab" aria-selected={o.value === value} onClick={() => onChange(o.value)}
-          className={cn('-mb-px border-b-2 pb-2 text-ui font-medium transition-colors duration-[120ms]',
-            o.value === value ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  )
-}
