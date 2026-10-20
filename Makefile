@@ -1,7 +1,13 @@
 .PHONY: up down logs reset dev db gateway net docker migrate run-api run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
+# Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
+# copied into .env. Loaded first, so a value set in .env still wins.
+LOCAL_SECRETS ?= $(HOME)/.config/tolerance/env
+-include $(LOCAL_SECRETS)
 -include .env
+# docker compose (make up / gateway) reads these from the environment.
+export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
 WEB_PORT ?= 3000
 API_PORT ?= 8080
 PG_PORT ?= 5432
