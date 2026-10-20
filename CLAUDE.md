@@ -27,6 +27,8 @@ overrides the superpowers skills and any default habits:
   are the server's source of truth — the Caddyfile also serves `mentor.nualimov.dev` (its stack is
   `/root/nualimov.dev`), keep that block. Nothing else lives on that server. No backups (no data to keep).
   Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
+  The host is UpCloud `STARTER-2xCPU-4GB` (pl-waw1, 30 GB disk, 3 GB swap, ~$21/month since 2026-10-20): enough
+  for one run at a time (`ARENA_RUN_CONCURRENCY=1`); more parallel runs need a bigger plan first.
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what
   would trip up the next session.
 - **Git: only through pull requests.** Pushing to `main` is blocked on GitHub (branch protection,
