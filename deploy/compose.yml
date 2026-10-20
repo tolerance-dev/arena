@@ -62,6 +62,8 @@ services:
       ARENA_TRUST_PROXY: "true"
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
+      # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
+      ARENA_PREVIEW_URL: https://p-{id}.${ARENA_DOMAIN:?}
       ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-1}
       ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
@@ -78,8 +80,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # The sandboxes' only way out (LLM APIs with the real keys, npm/PyPI mirrors). Live previews (8091) stay off in
-  # prod until *.preview DNS/TLS exists; the API-only tasks don't have them anyway.
+  # The sandboxes' only way out (LLM APIs with the real keys, npm/PyPI mirrors), and the live previews on 8091:
+  # p-<run>.${ARENA_DOMAIN} through Caddy.
   gateway:
     image: *backend
     command: ["gateway"]
@@ -90,6 +92,8 @@ services:
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}
       ARENA_JUDGE_API_KEY: ${ARENA_JUDGE_API_KEY:-}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
+      ARENA_PREVIEW_DOMAIN: ${ARENA_DOMAIN:?}
+      ARENA_PREVIEW_PREFIX: p-
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -124,9 +128,12 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Cloudflare Origin CA certificate for *.${ARENA_DOMAIN} (the previews); made once, see the Caddyfile.
+      - ./origin-tls:/etc/caddy/origin-tls:ro
       - arena-caddy-data:/data
     depends_on:
       - web
+      - gateway
 
 volumes:
   arena-postgres-data:

@@ -22,11 +22,13 @@ import (
 	"tolerance/internal/sandbox"
 )
 
-// Previews serves each finished run's app live at http://<run-hex>.<domain>/. The app is started on demand from
+// Previews serves each finished run's app live at http://<prefix><run-hex>.<domain>/ (locally <hex>.preview.localhost,
+// in prod p-<hex>.tolerance.cc). The app is started on demand from
 // the run's snapshot image (on the sandbox network, so only the gateway can reach it) and stopped when idle.
 type Previews struct {
 	pool      *db.Pool
 	domain    string // e.g. preview.localhost
+	prefix    string // before the run hex in the first label, e.g. "p-"; "" = the label is the hex
 	ancestors string // origin allowed to frame previews (the site)
 	log       *slog.Logger
 
@@ -50,12 +52,12 @@ const (
 
 var labelRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
-func NewPreviews(pool *db.Pool, domain, siteURL string, log *slog.Logger) *Previews {
+func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, log *slog.Logger) *Previews {
 	anc := "'self'"
 	if u, err := url.Parse(siteURL); err == nil && u.Scheme != "" && u.Host != "" {
 		anc = u.Scheme + "://" + u.Host
 	}
-	return &Previews{pool: pool, domain: strings.ToLower(domain), ancestors: anc, log: log.With("component", "preview"),
+	return &Previews{pool: pool, domain: strings.ToLower(domain), prefix: strings.ToLower(prefix), ancestors: anc, log: log.With("component", "preview"),
 		running: map[string]*preview{}}
 }
 
@@ -90,6 +92,9 @@ func (p *Previews) label(host string) string {
 	}
 	host = strings.ToLower(host)
 	label, ok := strings.CutSuffix(host, "."+p.domain)
+	if ok {
+		label, ok = strings.CutPrefix(label, p.prefix)
+	}
 	if !ok || !labelRe.MatchString(label) {
 		return ""
 	}

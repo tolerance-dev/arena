@@ -31,6 +31,9 @@ func main() {
 		log.Error("config", "err", err)
 		os.Exit(1)
 	}
+	if cfg.secureCookies {
+		identity.UseHostPrefix()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
