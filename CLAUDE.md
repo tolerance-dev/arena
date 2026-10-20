@@ -19,7 +19,11 @@ overrides the superpowers skills and any default habits:
   CI (`ci.yml`) is manual-only (`workflow_dispatch`); nothing runs on push.
 - **Throwing code away is fine.** When the concept changes, delete the old
   feature (code, routes, pages, tests) rather than keeping it compatible.
-- **No ops work** unless asked. Deploy is one button: Actions → deploy → Run
+- **Never deploy yourself.** The user deploys. Don't run `gh workflow run deploy` and don't change prod by
+  any other path: no SSH changes on the server, no Cloudflare changes, no workflows that do either. This
+  holds even when asked to "do everything" or "finish it". Prepare the PR, then tell the user what to press,
+  with which inputs, and what has to be set up by hand first.
+- **No ops work** unless asked. Deploy is one button that the user presses: Actions → deploy → Run
   workflow (`gh workflow run deploy`; `-f ref=<sha>` rolls back, `-f reset_db=true` wipes the DB — needed
   after any schema change). It builds backend, web and `tolerance-runtime` (= `arena-runtime:1`) into
   `ghcr.io/tolerance-dev` and runs `deploy/server.sh` on the host (81.27.103.131, `/opt/tolerance`, user
