@@ -93,7 +93,7 @@ func loadConfig() (config, error) {
 	}
 	// No sign-in provider means nobody can sign in on the real site: refuse to start rather than run half-broken.
 	if cfg.githubID == "" && cfg.googleID == "" {
-		return config{}, errors.New("no sign-in provider: set ARENA_GITHUB_CLIENT_ID/SECRET and/or ARENA_GOOGLE_CLIENT_ID/SECRET (the values are in /opt/tolerance/.env on the server)")
+		return config{}, errors.New("no sign-in provider: set ARENA_GITHUB_CLIENT_ID/SECRET and/or ARENA_GOOGLE_CLIENT_ID/SECRET (locally: put them in ~/.config/tolerance/env, values from /opt/tolerance/.env on the server)")
 	}
 	if !strings.HasPrefix(cfg.publicURL, "http://") && !strings.HasPrefix(cfg.publicURL, "https://") {
 		return config{}, errors.New("ARENA_PUBLIC_URL (http:// or https://) is required when a sign-in provider is configured")

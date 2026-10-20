@@ -88,6 +88,8 @@ make gateway     # rebuild + restart the gateway container (after Go changes in 
 make test-fast   # gofmt + go vet + go test + pnpm typecheck
 ```
 
+The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
+(the Makefile loads it before `.env`; values from `/opt/tolerance/.env` on the server).
 Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Admins (upload agents, start runs) are
 `ownerEmail` = alimov.nsm@gmail.com (in `cmd/api/config.go`) + `ARENA_ADMIN_EMAILS`, locally too: the dev login does
 NOT make everyone an admin; dev-sign in as the owner to upload. Others see `/admin` disabled ("In development").
