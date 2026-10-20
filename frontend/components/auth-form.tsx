@@ -1,107 +1,41 @@
 'use client'
 
-import { errorText } from '@/lib/i18n/messages/errors'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Brand } from '@/components/brand'
-import { api, post, ApiError } from '@/lib/api'
+import { SignInOptions } from '@/components/auth/sign-in-options'
+import { Brand, BrandMark } from '@/components/brand'
 import { safeReturnPath } from '@/components/public/return-path'
 import { useT } from '@/lib/i18n/client'
 import { authMessages } from '@/lib/i18n/messages/auth'
-import type { AuthProviders } from '@/lib/types'
 
 const ERROR_CODES = ['oauth_denied', 'oauth_state', 'oauth_failed', 'email_unverified', 'rate_limited'] as const
 
-function ProviderIcon({ id }: { id: 'github' | 'google' }) {
-  if (id === 'github') {
-    return (
-      <svg aria-hidden viewBox="0 0 16 16" className="size-4" fill="currentColor">
-        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-      </svg>
-    )
-  }
-  return (
-    <svg aria-hidden viewBox="0 0 18 18" className="size-4">
-      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
-      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 009 18z" />
-      <path fill="#FBBC05" d="M3.97 10.72A5.41 5.41 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z" />
-      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
-    </svg>
-  )
-}
-
+// The /login page: the same choices as the sign-in modal, for direct links and for OAuth errors (?error=).
 export function AuthForm() {
   const t = useT(authMessages)
   const router = useRouter()
-  const [options, setOptions] = useState<AuthProviders | null>(null)
-  const [providersFailed, setProvidersFailed] = useState(false)
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [next, setNext] = useState('/')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     setNext(safeReturnPath(q.get('next')) ?? '/')
     const code = q.get('error')
     if (code) setError((ERROR_CODES as readonly string[]).includes(code) ? t(`err.${code}` as 'err.oauth_denied') : t('err.generic'))
-    api<AuthProviders>('/auth/providers')
-      .then(setOptions)
-      .catch(() => {
-        setOptions({ providers: [], dev_login: false })
-        setProvidersFailed(true)
-        setError(t('err.unreachable'))
-      })
-  }, [])
+  }, [t])
 
-  async function devSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      await post('/auth/dev', { email })
-      router.replace(next)
-    } catch (err) {
-      const a = err as ApiError
-      setError(errorText(a, t.locale))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const nothing = options && options.providers.length === 0 && !options.dev_login && !providersFailed
   return (
-    <main className="flex min-h-dvh flex-col px-4 py-5 sm:px-8">
-      <Brand />
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
-        <h1 className="display text-page">{t('title')}</h1>
-        <p className="mt-3 leading-relaxed text-muted-foreground">{t('lead')}</p>
-        <div className={`mt-8 flex flex-col gap-2.5 ${options ? '' : 'min-h-24'} ${options && !options.providers.length && !nothing ? 'hidden' : ''}`}>
-          {options?.providers.map((p) => (
-            <Button key={p} size="lg" variant="outline" className="justify-start gap-3"
-              render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
-              <ProviderIcon id={p} />
-              {t(p)}
-            </Button>
-          ))}
-          {nothing && <p className="text-sm text-muted-foreground">{t('notConfigured')}</p>}
-        </div>
-        {error && <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
-        {options?.dev_login && (
-          <form onSubmit={devSignIn} className={`flex flex-col gap-3 ${options.providers.length ? 'mt-8 border-t border-border pt-8' : 'mt-8'}`}>
-            <Label htmlFor="email">{t('devTitle')}</Label>
-            <Input id="email" type="email" autoComplete="email" required placeholder="you@example.com"
-              value={email} onChange={(e) => setEmail(e.target.value)} />
-            <p className="text-xs text-muted-foreground">{t('devHint')}</p>
-            <Button type="submit" variant="secondary" disabled={busy}>{busy ? t('wait') : t('devButton')}</Button>
-          </form>
-        )}
-        <p className="mt-8 text-sm text-muted-foreground"><Link className="underline-offset-4 hover:text-foreground hover:underline" href="/">{t('browse')}</Link></p>
+    <main className="flex min-h-dvh flex-col bg-muted px-4 py-5">
+      <div className="mx-auto w-full max-w-page"><Brand /></div>
+      <div className="mx-auto mt-10 mb-8 w-full max-w-[580px] rounded-xl border-2 border-border bg-card px-6 py-8 text-center sm:px-8">
+        <BrandMark className="mx-auto size-16" />
+        <h1 className="display mt-5 text-page">{t('modalTitle')}</h1>
+        <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">{t('modalLead')}</p>
+        <SignInOptions next={next} initialError={error} onDevSignedIn={() => router.replace(next)} className="mx-auto mt-6 max-w-[318px]" />
+        <p className="mt-6 text-meta text-faint">{t('modalNote')}</p>
       </div>
+      <p className="text-center text-body text-muted-foreground"><Link className="underline-offset-4 hover:text-foreground hover:underline" href={next}>{t('browse')}</Link></p>
     </main>
   )
 }

@@ -158,3 +158,47 @@ blocks. Pages keep their own composition; the references set the visual language
 
 The scripts and raw JSON dumps lived in the session scratchpad (`research.mjs`, `detail.mjs`, `*.json`); they are
 not committed. Re-run with Playwright to refresh the numbers.
+
+## 5. Product Hunt home and product page (2026-10-20, second pass)
+
+Measured the same way (headed Chrome, 1440 / 1024 / 390). Pages: https://www.producthunt.com/ and
+https://www.producthunt.com/products/claude-code.
+
+### Layout
+
+| What | 1440 | 1024 | 390 |
+| --- | --- | --- | --- |
+| Header | 85px, search pill 216×40, nav 16px w600, pill buttons 40px | same | 58px, burger + logo + Sign in |
+| Columns | main 900px (x 114) + aside 280px (x 1046), gutter 32px | one column 992px, aside moved below the feed | one column 358px, aside below |
+| Left sidebar | **none** on home, category or product pages | none | none |
+| H1 | 24/32 w600 `#101828` | 24/32 | 20/30 |
+
+### Feed row (home)
+
+- Section 932×110, padding 16px, radius 12; hover fills `#f2f4f7` (300ms `cubic-bezier(0,0,.2,1)`), no border.
+- 48×48 thumbnail, radius 12. Title "1. Name" 16/24 w600 `#101828` (turns brand colour on hover); tagline 16/24 w400
+  `#344054`; topic row 14/24 w400 with a tag icon and `·` separators.
+- Right: two 52×52 counters (comments, upvotes): white, `2px #eaecf0` border, radius 12, icon over number 16px;
+  hover changes the border to the brand colour only. On phones only the upvote box stays.
+- Sections are stacked feeds ("Today", "Yesterday", "Last week", "Last month"), each with its own 24px heading.
+
+### Product page
+
+- Header: 64×64 logo (radius 8) + H1 24/32 w600 + tagline 18/28 w400 `#344054` + rating/meta line 14px; "Visit website"
+  pill 44px (`2px #eaecf0`, hover `#f9fafb` + `#d0d5dd`) on the right.
+- Category links 14px with `·`, description 16/24, then pill tabs: 40px high, radius 9999, active `bg #eaecf0`,
+  inactive text `#475467`, counts in grey pills (`bg #f9fafb`, 14px w600).
+- Media carousel: 432×220 images, radius 12. Then sections (18/28 w500 headings) with feed rows.
+- Aside 280px: actions as icon + 16px text links, then small info blocks (16px w600 headings) and "Similar products".
+
+### Mapping to Tolerance (proposal, not built)
+
+| Product Hunt | Tolerance |
+| --- | --- |
+| Product (feed row) | Challenge (task): glyph or best screenshot as thumbnail, title, tagline, limits as topics |
+| Upvote counter | Best score; comment counter → number of submissions. Real votes do not exist in the API |
+| Product page | Challenge page: header, pill tabs Submissions / Brief / Results, aside with limits |
+| Launch (row on product page) | Submission (run): screenshot card, agent, score, checks, live preview |
+| Maker profile | Agent page: `/api/v1/agents/{id}` + `/api/v1/runs?agent=` |
+| Leaderboards | Standings (exists on the home page today) |
+| Categories / topics / search | Nothing to back them: 3 tasks, no category field, no search endpoint |

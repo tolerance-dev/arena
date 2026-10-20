@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
+import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { Brand } from '@/components/brand'
 import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
@@ -13,15 +15,21 @@ import { useT } from '@/lib/i18n/client'
 import { navMessages } from '@/lib/i18n/messages/nav'
 import { LocaleSwitch } from '@/components/public/locale-switch'
 
-// returnTo overrides the post-sign-in destination, for pages whose own URL is not a place to return to (404).
+// Product Hunt's header: logo, 16px semibold nav that takes the accent colour on hover, pill buttons on the right.
+// Phones get a menu button instead of the nav. returnTo overrides the post-sign-in destination (404).
 export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const { me, loading } = useMe()
   const t = useT(navMessages)
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const signIn = useSignIn()
+  useEffect(() => setOpen(false), [pathname])
 
   const nav = [
     { label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
-    { label: t('agents'), href: '/admin', active: pathname.startsWith('/admin') },
+    { label: t('agents'), href: '/agents', active: pathname.startsWith('/agents') },
+    { label: t('leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
+    ...(me?.can_admin ? [{ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
   ]
 
   async function signOut() {
@@ -31,36 +39,48 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-page items-center gap-4 px-4 sm:gap-6 sm:px-6">
-        <div className="flex min-w-0 shrink items-center max-sm:[&_span]:hidden"><Brand /></div>
-        <nav className="flex items-center gap-0.5">
+      <div className="mx-auto flex h-[58px] max-w-page items-center gap-6 px-4 md:h-[72px] md:gap-10">
+        <Brand />
+        <nav className="hidden items-center gap-7 md:flex">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
-              className={cn('flex h-8 shrink-0 items-center rounded-full px-3 text-ui font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-secondary hover:text-foreground',
-                item.active && 'bg-secondary text-foreground')}>
+              className={cn('text-title font-semibold transition-colors duration-150 hover:text-primary',
+                item.active ? 'text-foreground' : 'text-muted-foreground')}>
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <LocaleSwitch />
-          {loading ? <span className="block h-7 w-16" /> : me ? (
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          <LocaleSwitch className="max-sm:hidden" />
+          {loading ? <span className="block h-9 w-20" /> : me ? (
             <>
-              <span className="flex h-7 items-center gap-2 pl-1 text-ui font-medium">
-                <span aria-hidden className="flex size-6 items-center justify-center rounded-full bg-secondary text-meta font-semibold uppercase text-muted-foreground">
-                  {me.user.handle.charAt(0)}
-                </span>
-                <span className="hidden max-w-[10rem] truncate sm:block">{me.user.handle}</span>
-              </span>
-              <Button variant="ghost" size="icon-sm" onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}>
+              <span className="hidden max-w-[10rem] truncate text-body font-semibold sm:block">{me.user.handle}</span>
+              <Button variant="outline" size="icon" onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}>
                 <LogOut />
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="ink" render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
+            signIn
+              ? <Button onClick={signIn}>{t('signIn')}</Button>
+              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
           )}
+          <Button variant="outline" size="icon" className="md:hidden" aria-label={t('menu')} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+            {open ? <X /> : <Menu />}
+          </Button>
         </div>
       </div>
+      {open && (
+        <nav className="border-t border-border px-4 pt-2 pb-4 md:hidden">
+          {nav.map((item) => (
+            <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
+              className={cn('flex h-11 items-center rounded-xl px-3 text-title font-semibold',
+                item.active ? 'bg-secondary text-foreground' : 'text-muted-foreground')}>
+              {item.label}
+            </Link>
+          ))}
+          <LocaleSwitch className="mt-3 ml-3 sm:hidden" />
+        </nav>
+      )}
     </header>
   )
 }
