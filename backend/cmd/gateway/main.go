@@ -52,7 +52,8 @@ func main() {
 		SelfURL:      env("ARENA_GATEWAY_SELF_URL", "http://gateway:8090"),
 	}
 	gw := gateway.New(pool, box, cfg, log)
-	previews := gateway.NewPreviews(pool, env("ARENA_PREVIEW_DOMAIN", "preview.localhost"), os.Getenv("ARENA_PUBLIC_URL"), log)
+	previews := gateway.NewPreviews(pool, env("ARENA_PREVIEW_DOMAIN", "preview.localhost"), os.Getenv("ARENA_PREVIEW_PREFIX"),
+		os.Getenv("ARENA_PUBLIC_URL"), log)
 	go previews.Run(ctx)
 
 	servers := []*http.Server{

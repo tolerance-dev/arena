@@ -33,6 +33,11 @@ healthy() {
 
 cmd_deploy() {
   local tag=$1 reset=${2:-} prev
+  # The previews' certificate (see the Caddyfile): without it Caddy can't load its config.
+  if [ ! -s origin-tls/cert.pem ] || [ ! -s origin-tls/key.pem ]; then
+    echo "origin-tls/cert.pem and key.pem are missing (the Cloudflare Origin CA certificate for the previews, see the Caddyfile)" >&2
+    exit 1
+  fi
   prev=$(grep '^TAG=' .env | cut -d= -f2 || true)
   # Seals agents' LLM keys at rest; must survive restarts (a new one makes stored agent keys unreadable).
   grep -q '^ARENA_SECRET_KEY=.' .env || setenv ARENA_SECRET_KEY "$(openssl rand -hex 32)"

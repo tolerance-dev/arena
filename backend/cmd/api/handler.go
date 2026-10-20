@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -70,8 +71,31 @@ func newHandler(cfg config, d deps) http.Handler {
 		}
 		httpx.Respond(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-	top.Handle("/api/", api)
+	top.Handle("/api/", sameOrigin(cfg.publicURL, api))
 	return withMiddleware(top, d.log, cfg.trustProxy)
+}
+
+// sameOrigin refuses state-changing API requests that a browser sent from another origin. Live previews run
+// agent-written pages on p-<run>.<domain>, which browsers count as the same site, so SameSite=Lax cookies alone
+// would let such a page act as the admin viewing it. Requests without these headers (curl, server to server) pass:
+// only a browser carries someone else's cookies.
+func sameOrigin(publicURL string, next http.Handler) http.Handler {
+	want := ""
+	if u, err := url.Parse(publicURL); err == nil && u.Scheme != "" && u.Host != "" {
+		want = u.Scheme + "://" + u.Host
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+		default:
+			site, origin := r.Header.Get("Sec-Fetch-Site"), r.Header.Get("Origin")
+			if (site != "" && site != "same-origin" && site != "none") || (origin != "" && want != "" && origin != want) {
+				httpx.WriteError(w, r, httpx.New(http.StatusForbidden, "cross_origin", "This request must come from the site itself"))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 type statusWriter struct {

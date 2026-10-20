@@ -75,8 +75,12 @@ reference implementations, so edit checks there and rerun it) + `catalog/RULES.m
 `examples/agents/{claude-code,demo}`; `demo` is a reference solution (one run.sh, pages embedded) that passes every
 check. The task page's check list comes from `Task.CheckNames()`; keep it in step with verify.py's check names.
 
-Prod (`deploy/`) runs api + gateway + web + postgres + caddy; live previews are off there (no `*.preview`
-DNS/TLS, `ARENA_PREVIEW_URL` unset) and so is the judge until `ARENA_JUDGE_API_KEY` is in `/opt/tolerance/.env`.
+Prod (`deploy/`) runs api + gateway + web + postgres + caddy. Live previews are `https://p-<hex>.tolerance.cc`:
+a proxied wildcard `*` A record in Cloudflare and a Cloudflare Origin CA cert for `*.tolerance.cc` in
+`/opt/tolerance/origin-tls/` (both made once, not by deploys; `server.sh` refuses to deploy without the cert).
+Previews are agent code on a sibling subdomain, so the api refuses cross-origin writes (`sameOrigin` in
+`cmd/api/handler.go`) and the session cookie is `__Host-arena_session` in prod: keep both. The judge is off until
+`ARENA_JUDGE_API_KEY` is in `/opt/tolerance/.env`.
 
 Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks to the backend over HTTP only).
 
