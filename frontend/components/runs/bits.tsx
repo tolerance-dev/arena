@@ -8,6 +8,7 @@ import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Check, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
 import { TaskGlyph } from './task-glyph'
 
 export type RT = ReturnType<typeof useT<typeof runsMessages.en>>
@@ -52,11 +53,12 @@ export function StatusPill({ run, className }: { run: Pick<Run, 'status' | 'fail
   const active = isActive(run)
   const cancelled = run.status === 'infra_error' && run.failure_reason === 'cancelled'
   return (
-    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium whitespace-nowrap',
-      active && 'bg-accent text-accent-foreground',
-      run.status === 'done' && 'bg-success/12 text-success',
-      run.status === 'infra_error' && (cancelled ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive'), className)}>
-      <span className={cn('size-1.5 rounded-full bg-current', active && 'animate-status-pulse')} />
+    <span className={cn('inline-flex h-5 items-center gap-1.5 rounded-sm border border-border bg-card px-1.5 text-meta font-medium whitespace-nowrap text-muted-foreground',
+      className)}>
+      <span className={cn('size-1.5 rounded-full',
+        active && 'animate-status-pulse bg-primary',
+        run.status === 'done' && 'bg-success',
+        run.status === 'infra_error' && (cancelled ? 'bg-faint' : 'bg-destructive'))} />
       {cancelled ? t('cancelled') : t(`status.${run.status}`)}
     </span>
   )
@@ -74,16 +76,16 @@ export function Score({ score, className }: { score: number | null; className?: 
 
 // The run's checks in the order they ran, one cell each: the arena's signature. Small in tables, large on a
 // run page (with each check's name on hover).
-export function CheckStrip({ checks, size = 'sm', className }: { checks: Check[]; size?: 'sm' | 'lg'; className?: string }) {
+export function CheckStrip({ checks, size = 'sm', className }: { checks: Check[]; size?: 'xs' | 'sm' | 'lg'; className?: string }) {
   const t = useT(runsMessages)
   if (checks.length === 0) return null
   const ok = checks.filter((c) => c.passed).length
   return (
     <span role="img" aria-label={t.plural('checksPassed', checks.length, { ok })}
-      className={cn('flex', size === 'sm' ? 'gap-[2px]' : 'flex-wrap gap-[3px]', className)}>
+      className={cn('flex', size === 'xs' ? 'gap-px' : size === 'sm' ? 'gap-[2px]' : 'flex-wrap gap-[3px]', className)}>
       {checks.map((c, i) => (
         <span key={`${i}-${c.name}`} title={size === 'lg' ? `${i + 1}. ${c.name}` : undefined}
-          className={cn('shrink-0', size === 'sm' ? 'h-3 w-[5px] rounded-[1px]' : 'h-7 w-[18px] rounded-[2px]',
+          className={cn('shrink-0', size === 'xs' ? 'h-3 w-[3px] rounded-[1px]' : size === 'sm' ? 'h-3 w-[5px] rounded-[1px]' : 'h-7 w-[18px] rounded-[2px]',
             c.passed ? 'bg-success' : 'bg-destructive')} />
       ))}
     </span>
@@ -109,21 +111,19 @@ function passed(r: Run) {
   return { ok: r.checks.filter((c) => c.passed).length, all: r.checks.length }
 }
 
-const th = 'px-3 py-2 font-medium'
+const th = 'h-9 px-3 font-medium'
 const td = 'px-3 py-2.5'
 
 // Runs as a table: the leaderboard (ranked) or a plain list. Scrolls sideways inside itself on phones.
 export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boolean; showTask?: boolean }) {
   const t = useT(runsMessages)
-  if (runs.length === 0) {
-    return <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noRuns')}</p>
-  }
+  if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
   const judged = runs.some((r) => r.judge?.status === 'ok')
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <table className="w-full min-w-[680px] text-sm">
+      <table className="w-full min-w-[680px] text-body">
         <thead>
-          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+          <tr className="border-b border-border bg-muted text-left text-meta text-faint">
             {ranked && <th className={cn(th, 'w-10 pl-4')}>#</th>}
             <th className={cn(th, !ranked && 'pl-4')}>{t('colAgent')}</th>
             <th className={cn(th, 'text-right')}>{t('colScore')}</th>
@@ -140,35 +140,45 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
             const c = passed(r)
             const done = r.status === 'done'
             return (
-              <tr key={r.id} className="relative border-b border-border last:border-0 hover:bg-muted/60">
-                {ranked && <td className={cn(td, 'pl-4 text-muted-foreground tnum')}>{i + 1}</td>}
+              <tr key={r.id} className="relative border-b border-border transition-colors duration-[120ms] last:border-0 hover:bg-muted">
+                {ranked && <td className={cn(td, 'pl-4 text-faint tnum')}>{i + 1}</td>}
                 <td className={cn(td, !ranked && 'pl-4')}>
-                  <Link href={`/r/${r.id}`} className="font-medium whitespace-nowrap after:absolute after:inset-0 hover:underline">{r.agent.name}</Link>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground">
-                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r.task, t.locale)}</span><span aria-hidden>/</span></>}
+                  <Link href={`/r/${r.id}`} className="font-medium whitespace-nowrap after:absolute after:inset-0">{r.agent.name}</Link>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-meta whitespace-nowrap text-faint">
+                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r.task, t.locale)}</span><span aria-hidden>·</span></>}
                     <span>{r.agent.owner}</span>
                   </div>
                 </td>
-                <td className={cn(td, 'text-right text-base')}>{done ? <Score score={r.score} /> : <StatusPill run={r} />}</td>
+                <td className={cn(td, 'text-right text-lead')}>{done ? <Score score={r.score} /> : <StatusPill run={r} />}</td>
                 <td className={td}>
                   {c.all ? (
                     <div className="flex items-center gap-2.5">
                       <CheckStrip checks={r.checks} />
-                      <span className="text-xs text-muted-foreground tnum">{c.ok}/{c.all}</span>
+                      <span className="text-meta text-faint tnum">{c.ok}/{c.all}</span>
                     </div>
-                  ) : <span className="text-muted-foreground">—</span>}
+                  ) : <span className="text-faint">—</span>}
                 </td>
                 <td className={cn(td, 'text-right tnum')}>{done ? compact(r.stats.loc) : '—'}</td>
                 <td className={cn(td, 'text-right tnum')}>{duration(r.agent_seconds)}</td>
                 <td className={cn(td, 'text-right tnum')}>{compact(usedTokens(r.tokens))}</td>
                 {judged && <td className={cn(td, 'text-right tnum')}>{r.judge?.status === 'ok' ? r.judge.score : '—'}</td>}
-                <td className={cn(td, 'pr-4 text-right text-xs whitespace-nowrap text-muted-foreground')}><Ago iso={r.created_at} /></td>
+                <td className={cn(td, 'pr-4 text-right text-meta whitespace-nowrap text-faint')}><Ago iso={r.created_at} /></td>
               </tr>
             )
           })}
         </tbody>
       </table>
     </div>
+  )
+}
+
+// A task's glyph on a grey tile, the "logo" of a task in lists (Product Hunt's 48px product logos).
+export function TaskTile({ slug, size = 'md', className }: { slug: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  return (
+    <span className={cn('flex shrink-0 items-center justify-center rounded-lg border border-border bg-muted',
+      size === 'sm' ? 'size-8 rounded-md' : size === 'md' ? 'size-12' : 'size-14', className)}>
+      <TaskGlyph slug={slug} className={size === 'sm' ? 'size-5' : size === 'md' ? 'size-7' : 'size-8'} />
+    </span>
   )
 }
 

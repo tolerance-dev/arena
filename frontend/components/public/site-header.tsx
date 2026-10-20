@@ -30,30 +30,34 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   }
 
   return (
-    <header className="border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-6xl items-stretch gap-6 px-4 sm:px-6">
-        <div className="flex min-w-0 shrink items-center max-[400px]:[&_span]:hidden"><Brand /></div>
-        <nav className="flex items-stretch gap-5">
+    <header className="sticky top-0 z-20 border-b border-border bg-background">
+      <div className="mx-auto flex h-14 max-w-page items-center gap-4 px-4 sm:gap-6 sm:px-6">
+        <div className="flex min-w-0 shrink items-center max-sm:[&_span]:hidden"><Brand /></div>
+        <nav className="flex items-center gap-0.5">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
-              className={cn('-mb-px flex shrink-0 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                item.active && 'border-primary text-foreground')}>
+              className={cn('flex h-8 shrink-0 items-center rounded-full px-3 text-ui font-medium text-muted-foreground transition-colors duration-[120ms] hover:bg-secondary hover:text-foreground',
+                item.active && 'bg-secondary text-foreground')}>
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <LocaleSwitch />
-          {loading ? null : me ? (
+          {loading ? <span className="block h-7 w-16" /> : me ? (
             <>
-              <span className="hidden max-w-[10rem] truncate text-sm font-medium sm:block">{me.user.handle}</span>
-              <button onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}
-                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
-                <LogOut className="size-4" />
-              </button>
+              <span className="flex h-7 items-center gap-2 pl-1 text-ui font-medium">
+                <span aria-hidden className="flex size-6 items-center justify-center rounded-full bg-secondary text-meta font-semibold uppercase text-muted-foreground">
+                  {me.user.handle.charAt(0)}
+                </span>
+                <span className="hidden max-w-[10rem] truncate sm:block">{me.user.handle}</span>
+              </span>
+              <Button variant="ghost" size="icon-sm" onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}>
+                <LogOut />
+              </Button>
             </>
           ) : (
-            <Button size="sm" render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
+            <Button size="sm" variant="ink" render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
           )}
         </div>
       </div>
