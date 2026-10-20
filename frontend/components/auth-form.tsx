@@ -78,7 +78,7 @@ export function AuthForm() {
     <main className="flex min-h-dvh flex-col px-4 py-5 sm:px-8">
       <Brand />
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
-        <h1 className="display text-[2.25rem]">{t('title')}</h1>
+        <h1 className="display text-page">{t('title')}</h1>
         <p className="mt-3 leading-relaxed text-muted-foreground">{t('lead')}</p>
         <div className={`mt-8 flex flex-col gap-2.5 ${options ? '' : 'min-h-24'} ${options && !options.providers.length && !nothing ? 'hidden' : ''}`}>
           {options?.providers.map((p) => (
@@ -90,7 +90,7 @@ export function AuthForm() {
           ))}
           {nothing && <p className="text-sm text-muted-foreground">{t('notConfigured')}</p>}
         </div>
-        {error && <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
         {options?.dev_login && (
           <form onSubmit={devSignIn} className={`flex flex-col gap-3 ${options.providers.length ? 'mt-8 border-t border-border pt-8' : 'mt-8'}`}>
             <Label htmlFor="email">{t('devTitle')}</Label>

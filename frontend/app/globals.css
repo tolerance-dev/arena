@@ -5,7 +5,7 @@
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
-  --font-sans: var(--font-geologica), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -39,97 +39,121 @@
   --color-terminal-accent: var(--terminal-accent);
   --color-arena: var(--arena);
   --color-pending: var(--pending);
+  --color-faint: var(--faint);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
   --color-series-4: var(--series-4);
+  /* Linear's radii: chips and code 4, controls 6, cards and rows 8, large frames 12. */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 14px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  /* 1200px minus 24px gutters = Product Hunt's 1152px content column. */
+  --container-page: 75rem;
+  /* Type scale (DESIGN_REFERENCE.md §3): meta 12, UI 13, body 14, lead 15, title 16, section 20, page 28. */
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-ui: 13px;
+  --text-ui--line-height: 20px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-lead: 15px;
+  --text-lead--line-height: 24px;
+  --text-title: 16px;
+  --text-title--line-height: 24px;
+  --text-section: 20px;
+  --text-section--line-height: 28px;
+  --text-page: 28px;
+  --text-page--line-height: 34px;
 }
 
-/* A measuring room: steel-grey paper, graphite ink and one layout-fluid blue (the paint machinists scribe
-   through). Pass and fail own green and red; nothing decorative competes with them. Text pairs hold 4.5:1,
-   control borders 3:1, in both themes. */
+/* Product Hunt's catalogue structure in Linear's visual language (see DESIGN_REFERENCE.md). Light: Product Hunt's
+   measured grey scale on white. Dark: Linear's measured scale. One blue for actions, links and focus; pass and
+   fail own green and red. Text pairs hold 4.5:1, control borders 3:1, in both themes. */
 :root {
   color-scheme: light;
-  --background: #f2f3f0;
-  --foreground: #1b1f1d;
+  --background: #ffffff;
+  --foreground: #101828;
   --card: #ffffff;
-  --card-foreground: #1b1f1d;
+  --card-foreground: #101828;
   --popover: #ffffff;
-  --popover-foreground: #1b1f1d;
+  --popover-foreground: #101828;
   --primary: #2a3fb8;
   --primary-foreground: #ffffff;
-  --secondary: #e6e8e4;
-  --secondary-foreground: #1b1f1d;
-  --muted: #e9ebe7;
-  --muted-foreground: #5a625d;
-  --accent: #e7eafa;
+  /* Hover fill and pressed segments. */
+  --secondary: #f2f4f7;
+  --secondary-foreground: #101828;
+  /* Panels: stat panels, table heads, skeletons. */
+  --muted: #f9fafb;
+  --muted-foreground: #475467;
+  /* Meta text: dates, counts, column heads. */
+  --faint: #667085;
+  --accent: #eef0fb;
   --accent-foreground: #22339a;
   --destructive: #c2412d;
-  --border: #dcdfda;
-  --border-strong: #c6cac4;
-  --input: #858d88;
+  --border: #eaecf0;
+  --border-strong: #d0d5dd;
+  --input: #868e9c;
   --ring: #2a3fb8;
-  --success: #1e8a55;
+  --success: #15803d;
   --success-foreground: #ffffff;
   --warning: #a2650a;
   --warning-foreground: #ffffff;
-  --pending: #d3d7d1;
-  --ink: #1b1f1d;
-  --ink-foreground: #f2f3f0;
+  --pending: #e4e7ec;
+  --ink: #101828;
+  --ink-foreground: #ffffff;
   --mark-check: #8f9dff;
   /* Code and log surfaces stay graphite in both themes. */
-  --terminal: #1d2220;
-  --terminal-foreground: #e9ece8;
+  --terminal: #16181d;
+  --terminal-foreground: #e9ebef;
   --terminal-success: #7fd3a6;
   --terminal-accent: #a9b4ff;
-  --arena: #151917;
+  --arena: #111316;
   /* Stacked bars (languages): ink, blue, and two greys that stay apart from pass/fail. */
-  --series-1: #1b1f1d;
+  --series-1: #101828;
   --series-2: #2a3fb8;
-  --series-3: #8b938e;
-  --series-4: #bcc2bd;
+  --series-3: #8b93a1;
+  --series-4: #c4cad3;
   --radius: 0.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --background: #121514;
-    --foreground: #e5e8e4;
-    --card: #191d1b;
-    --card-foreground: #e5e8e4;
-    --popover: #191d1b;
-    --popover-foreground: #e5e8e4;
+    --background: #08090a;
+    --foreground: #f7f8f8;
+    --card: #0f1011;
+    --card-foreground: #f7f8f8;
+    --popover: #0f1011;
+    --popover-foreground: #f7f8f8;
     --primary: #8f9dff;
     --primary-foreground: #0d1240;
-    --secondary: #222725;
-    --secondary-foreground: #e5e8e4;
-    --muted: #202523;
-    --muted-foreground: #959d98;
-    --accent: #1c2250;
+    --secondary: #1c1d20;
+    --secondary-foreground: #f7f8f8;
+    --muted: #121315;
+    --muted-foreground: #8a8f98;
+    --faint: #7d828b;
+    --accent: #1a1f45;
     --accent-foreground: #c3caff;
     --destructive: #ff7a64;
-    --border: #2a302d;
-    --border-strong: #363d39;
-    --input: #66706a;
+    --border: #1f2023;
+    --border-strong: #2c2e33;
+    --input: #5c6068;
     --ring: #8f9dff;
     --success: #4cc98a;
     --success-foreground: #06170e;
     --warning: #e3a648;
     --warning-foreground: #1d1203;
-    --pending: #343b37;
-    --ink: #e5e8e4;
-    --ink-foreground: #121514;
+    --pending: #26282c;
+    --ink: #f7f8f8;
+    --ink-foreground: #08090a;
     --mark-check: #2a3fb8;
-    --series-1: #e5e8e4;
+    --series-1: #f7f8f8;
     --series-2: #8f9dff;
-    --series-3: #7b847f;
-    --series-4: #4a524e;
+    --series-3: #7b8089;
+    --series-4: #3f434a;
   }
 }
 
@@ -144,8 +168,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 20px;
+    font-feature-settings: 'cv11', 'ss01';
   }
   h1,
   h2,
@@ -162,26 +187,21 @@
   .tnum {
     font-variant-numeric: tabular-nums;
   }
-  /* Headings use Geologica's sharp cut: square terminals read as machined rather than drawn. */
+  /* Linear sets large type at weight ~510-590 with -0.022em tracking; nothing heavier than 600. */
   .display {
-    font-weight: 640;
-    font-variation-settings: 'SHRP' 100;
-    letter-spacing: -0.035em;
-    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.022em;
   }
   .heading {
-    font-weight: 620;
-    font-variation-settings: 'SHRP' 60;
-    letter-spacing: -0.015em;
-    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.011em;
   }
   /* Big result numerals. */
   .numeral {
-    font-weight: 560;
-    font-variation-settings: 'SHRP' 100;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.04em;
-    line-height: 0.9;
+    letter-spacing: -0.03em;
+    line-height: 1;
   }
 }
 

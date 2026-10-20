@@ -7,8 +7,9 @@ import { Play, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
 import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, fieldClass } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EmptyState } from '@/components/ui/empty-state'
 import { del, post, put, upload } from '@/lib/api'
 import { useT } from '@/lib/i18n/client'
 import { errorText } from '@/lib/i18n/messages/errors'
@@ -18,7 +19,7 @@ import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { RunTable, Score, usePoll, type RT } from './bits'
 
-const field = 'h-10 w-full rounded-md border border-input bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50'
+const field = fieldClass
 
 export function AgentsAdmin() {
   const t = useT(runsMessages)
@@ -31,7 +32,7 @@ export function AgentsAdmin() {
   if (!me) {
     return (
       <div className="max-w-md space-y-4">
-        <h1 className="display text-[2rem]">{t('adminTitle')}</h1>
+        <h1 className="display text-page">{t('adminTitle')}</h1>
         <p className="text-muted-foreground">{t('signInLead')}</p>
         <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInButton')}</Button>
       </div>
@@ -47,7 +48,7 @@ export function AgentsAdmin() {
       <section>
         <SectionTitle>{t('yourAgents')}</SectionTitle>
         {(!canUpload || agents.data?.items.length === 0) && (
-          <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noAgents')}</p>
+          <EmptyState>{t('noAgents')}</EmptyState>
         )}
         <div className="space-y-3">
           {agents.data?.items.map((a) => <AgentCard key={a.id} agent={a} tasks={tasks.data?.items ?? []} t={t} onChange={refresh} />)}
@@ -82,7 +83,7 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
   return (
     <section className="grid gap-6 rounded-lg border border-border bg-card p-5 sm:p-7 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
       <div>
-        <h2 className="heading text-[1.2rem]">{t('newAgent')}</h2>
+        <h2 className="heading text-title">{t('newAgent')}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('newAgentHint')}</p>
       </div>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
@@ -110,7 +111,7 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="bundle">{t('agentBundle')}</Label>
           <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
-            className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-10 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
+            className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-8 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
           <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
@@ -177,7 +178,7 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="heading text-[1.15rem]">{agent.name}</h3>
+            <h3 className="heading text-title">{agent.name}</h3>
             {agent.best_score != null && <span className="text-sm text-muted-foreground">{t('bestScore')} <Score score={agent.best_score} /></span>}
           </div>
           {agent.description && <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>}

@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, Download, ExternalLink, X } from 'lucide-react'
+import { Check, ChevronRight, Download, ExternalLink, X } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
+import { EmptyState, Skeleton } from '@/components/ui/empty-state'
+import { Tabs } from '@/components/ui/segmented'
 import { del, post } from '@/lib/api'
 import { compact, duration, grouped, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
@@ -20,17 +22,17 @@ import { TaskGlyph } from './task-glyph'
 export function RunView({ id }: { id: string }) {
   const t = useT(runsMessages)
   const { data: run, error, reload } = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
-  if (error?.status === 404) return <p className="text-muted-foreground">{t('runMissing')}</p>
-  if (!run) return <div className="h-96 animate-pulse rounded-lg bg-muted" />
+  if (error?.status === 404) return <EmptyState>{t('runMissing')}</EmptyState>
+  if (!run) return <div className="space-y-4"><Skeleton className="h-28" /><Skeleton className="h-96" /></div>
   const done = run.status === 'done'
   const platformFailed = run.status === 'infra_error' && run.failure_reason !== 'cancelled'
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <Header run={run} t={t} onChange={() => void reload()} />
       {!done && <Timeline run={run} t={t} />}
       {platformFailed && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-body text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
       )}
       <Verdict run={run} t={t} />
       {/* What the agent built, right under the verdict: the live app, or its screenshots once the snapshot is gone. */}
@@ -64,23 +66,23 @@ function Header({ run, t, onChange }: { run: Run; t: RT; onChange: () => void })
   }
   return (
     <header>
-      <nav className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/" className="hover:text-foreground hover:underline">{t('tasksTitle')}</Link>
-        <span aria-hidden>/</span>
-        <Link href={`/t/${run.task}`} className="inline-flex items-center gap-1.5 hover:text-foreground hover:underline">
-          <TaskGlyph slug={run.task} className="size-4" />{taskTitle(run.task, t.locale)}
-        </Link>
-      </nav>
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <Breadcrumbs items={[
+        { label: t('tasksTitle'), href: '/' },
+        { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run.task, t.locale)}</>, href: `/t/${run.task}` },
+        { label: run.agent.name },
+      ]} />
+      <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="display text-[2.1rem] break-words sm:text-[2.75rem]">{run.agent.name}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+          <h1 className="display text-[24px] leading-[30px] break-words sm:text-page">{run.agent.name}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-ui text-faint">
             <StatusPill run={run} />
             <span>{t('by', { owner: run.agent.owner })}</span>
+            <span aria-hidden>·</span>
             <span>{run.agent.provider === 'openai' ? 'OpenAI' : 'Anthropic'}</span>
+            <span aria-hidden>·</span>
             <span><Ago iso={run.created_at} /></span>
           </div>
-          {run.agent.description && <p className="mt-2 max-w-[70ch] text-sm text-muted-foreground">{run.agent.description}</p>}
+          {run.agent.description && <p className="mt-2 max-w-[70ch] text-body text-muted-foreground">{run.agent.description}</p>}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {run.has_source && (
@@ -99,7 +101,7 @@ function Header({ run, t, onChange }: { run: Run; t: RT; onChange: () => void })
           )}
         </div>
       </div>
-      {err && <p role="alert" className="mt-3 text-sm text-destructive">{err}</p>}
+      {err && <p role="alert" className="mt-3 text-body text-destructive">{err}</p>}
     </header>
   )
 }
@@ -115,8 +117,8 @@ function Timeline({ run, t }: { run: Run; t: RT }) {
         const state = at === -1 ? 'off' : i < at ? 'past' : i === at ? 'now' : 'next'
         return (
           <li key={label} className="min-w-0" aria-current={state === 'now' ? 'step' : undefined}>
-            <div className={cn('h-1 bg-pending', state === 'past' && 'bg-foreground', state === 'now' && 'animate-status-pulse bg-primary')} />
-            <div className={cn('mt-2 truncate text-xs', state === 'now' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>{label}</div>
+            <div className={cn('h-1 rounded-full bg-pending', state === 'past' && 'bg-foreground', state === 'now' && 'animate-status-pulse bg-primary')} />
+            <div className={cn('mt-2 truncate text-meta', state === 'now' ? 'font-medium text-foreground' : 'text-faint')}>{label}</div>
           </li>
         )
       })}
@@ -131,23 +133,23 @@ function Verdict({ run, t }: { run: Run; t: RT }) {
   const judged = run.judge?.status === 'ok'
   const failed = run.checks.length - passed
   return (
-    <section aria-label={t('score')} className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-[minmax(12rem,auto)_minmax(0,1fr)]">
-      <div className="border-border p-6 max-sm:border-b sm:border-r sm:px-8">
-        <div className="text-sm text-muted-foreground">{t('score')}</div>
-        <div className={cn('numeral mt-3 text-[5.5rem]', done && run.score != null ? scoreTone(run.score) : 'text-pending')}>
+    <section aria-label={t('score')} className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-[minmax(11rem,auto)_minmax(0,1fr)]">
+      <div className="border-border px-5 py-4 max-sm:border-b sm:border-r">
+        <div className="text-meta text-faint">{t('score')}</div>
+        <div className={cn('numeral mt-2 text-[56px]', done && run.score != null ? scoreTone(run.score) : 'text-pending')}>
           {done && run.score != null ? run.score : '—'}
         </div>
-        <p className="mt-3 max-w-[22ch] text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-[24ch] text-meta leading-[18px] text-muted-foreground">
           {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? t('scoreFormula') : t('scoreChecksOnly')}
         </p>
       </div>
-      <div className="flex min-w-0 flex-col justify-between gap-6 p-6 sm:px-8">
+      <div className="flex min-w-0 flex-col justify-between gap-5 px-5 py-4">
         <div>
-          <div className="text-sm text-muted-foreground">{t('checksTitle')}</div>
-          <div className="heading mt-2 text-[1.35rem]">
+          <div className="text-meta text-faint">{t('checksTitle')}</div>
+          <div className="heading mt-1.5 text-section">
             {run.checks.length ? t.plural('checksPassed', run.checks.length, { ok: passed }) : done ? t('noChecks') : t('checksPending')}
           </div>
-          {failed > 0 && <p className="mt-1 text-sm text-destructive">{t.plural('failedChecks', failed)}</p>}
+          {failed > 0 && <p className="mt-0.5 text-body text-destructive">{t.plural('failedChecks', failed)}</p>}
         </div>
         <CheckStrip checks={run.checks} size="lg" />
       </div>
@@ -162,15 +164,15 @@ function Specs({ run, t }: { run: Run; t: RT }) {
   const langs = Object.entries(run.stats.languages ?? {}).sort((a, b) => b[1] - a[1])
   const total = langs.reduce((s, [, n]) => s + n, 0)
   return (
-    <section className="border-y border-border">
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 py-5 lg:grid-cols-4">
+    <section className="rounded-lg bg-muted px-5">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 py-4 lg:grid-cols-4">
         <Spec label={t('metricLoc')} value={done ? grouped(run.stats.loc, t.locale) : '—'} sub={done ? t('metricFiles', { n: run.stats.files }) : undefined} />
         <Spec label={t('metricTime')} value={duration(run.agent_seconds)}
           sub={[t('metricOf', { limit: duration(run.time_limit_s) }), run.agent_exit && exitLabel(t, run.agent_exit)].filter(Boolean).join(', ')} />
         <Spec label={t('metricTokens')} value={compact(used)}
           sub={
             <>
-              <span className="mt-2 block h-1 overflow-hidden bg-pending">
+              <span className="mt-2 block h-1 overflow-hidden rounded-full bg-pending">
                 <span className={cn('block h-full', pct >= 100 ? 'bg-destructive' : 'bg-primary')} style={{ width: `${Math.min(100, pct)}%` }} />
               </span>
               <span className="mt-1.5 block">{t('metricBudget', { pct })}, {t('metricRequests', { n: run.tokens.requests })}</span>
@@ -181,17 +183,15 @@ function Specs({ run, t }: { run: Run; t: RT }) {
       </dl>
       {total > 0 && (
         <div className="border-t border-border py-4">
-          <div className="flex items-baseline justify-between gap-4">
-            <div className="text-xs text-muted-foreground">{t('languages')}</div>
-          </div>
-          <div className="mt-2 flex h-1.5 gap-px overflow-hidden">
+          <div className="text-meta text-faint">{t('languages')}</div>
+          <div className="mt-2 flex h-1.5 gap-px overflow-hidden rounded-full">
             {langs.map(([l, n], i) => <div key={l} style={{ width: `${(100 * n) / total}%`, background: `var(--series-${(i % 4) + 1})` }} />)}
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-meta">
             {langs.map(([l, n], i) => (
               <span key={l} className="flex items-center gap-1.5">
-                <span className="size-2" style={{ background: `var(--series-${(i % 4) + 1})` }} />
-                <span className="font-medium">{l}</span><span className="text-muted-foreground tnum">{grouped(n, t.locale)}</span>
+                <span className="size-2 rounded-[2px]" style={{ background: `var(--series-${(i % 4) + 1})` }} />
+                <span className="font-medium">{l}</span><span className="text-faint tnum">{grouped(n, t.locale)}</span>
               </span>
             ))}
           </div>
@@ -204,9 +204,9 @@ function Specs({ run, t }: { run: Run; t: RT }) {
 function Spec({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-[1.6rem] leading-none font-medium tracking-[-0.02em] tnum">{value}</dd>
-      {sub && <dd className="mt-1.5 text-xs text-muted-foreground">{sub}</dd>}
+      <dt className="text-meta text-faint">{label}</dt>
+      <dd className="mt-1 text-section font-semibold tracking-[-0.015em] tnum">{value}</dd>
+      {sub && <dd className="mt-1 text-meta text-muted-foreground">{sub}</dd>}
     </div>
   )
 }
@@ -218,16 +218,11 @@ function Preview({ run, t }: { run: Run; t: RT }) {
     { k: 'desktop', label: t('desktop'), show: run.has_shot },
     { k: 'mobile', label: t('mobile'), show: run.has_shot_mobile },
   ]
-  if (!tabs.some((x) => x.show)) return <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noPreview')}</p>
+  if (!tabs.some((x) => x.show)) return <EmptyState>{t('noPreview')}</EmptyState>
   return (
     <section aria-label={t('whatItBuilt')}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div role="tablist" className="flex gap-4 text-sm">
-          {tabs.filter((x) => x.show).map((x) => (
-            <button key={x.k} role="tab" aria-selected={view === x.k} onClick={() => setView(x.k)}
-              className={cn('border-b-2 pb-1 font-medium', view === x.k ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{x.label}</button>
-          ))}
-        </div>
+        <Tabs value={view} onChange={setView} options={tabs.filter((x) => x.show).map((x) => ({ value: x.k, label: x.label }))} />
         {run.preview_url && (
           <Button variant="outline" size="sm" render={<a href={run.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
             <ExternalLink /> {t('openPreview')}
@@ -237,13 +232,14 @@ function Preview({ run, t }: { run: Run; t: RT }) {
       {view === 'live' && run.preview_url && (
         <>
           <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <div className="border-b border-border bg-muted px-3 py-2">
-              <span className="truncate font-mono text-xs text-muted-foreground">{run.preview_url}</span>
+            <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
+              <span aria-hidden className="flex gap-1.5"><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /></span>
+              <span className="truncate font-mono text-meta text-faint">{run.preview_url}</span>
             </div>
             <iframe src={run.preview_url} title={t('preview')} className="block h-[70vh] min-h-[420px] w-full bg-white"
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups" />
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{t('previewHint')}</p>
+          <p className="mt-2 text-meta text-faint">{t('previewHint')}</p>
         </>
       )}
       {view === 'desktop' && (
@@ -252,7 +248,7 @@ function Preview({ run, t }: { run: Run; t: RT }) {
       )}
       {view === 'mobile' && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/api/v1/runs/${run.id}/shot-mobile.jpg`} alt={t('mobile')} className="mx-auto w-full max-w-[390px] rounded-[1.5rem] border-8 border-ink" />
+        <img src={`/api/v1/runs/${run.id}/shot-mobile.jpg`} alt={t('mobile')} className="mx-auto w-full max-w-[390px] rounded-xl border border-border" />
       )}
     </section>
   )
@@ -264,13 +260,13 @@ function JudgeCard({ run, t }: { run: Run; t: RT }) {
     <section>
       <SectionTitle>{t('judgeTitle')}</SectionTitle>
       {j.status !== 'ok' ? (
-        <p className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border bg-card px-4 py-3 text-body text-muted-foreground">
           {j.status === 'skipped' ? t('judgeSkipped', { reason: j.error ?? '' }) : t('judgeError', { reason: j.error ?? '' })}
         </p>
       ) : (
         <div className="rounded-lg border border-border bg-card">
           <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:gap-6">
-            <div className={cn('numeral text-[3rem]', scoreTone(j.score))}>{j.score}</div>
+            <div className={cn('numeral text-[40px]', scoreTone(j.score))}>{j.score}</div>
             <div className="min-w-0">
               <p className="leading-relaxed">{j.summary}</p>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -309,13 +305,13 @@ function Checks({ run, t }: { run: Run; t: RT }) {
       <ol className="grid overflow-hidden rounded-lg border border-border bg-card md:grid-cols-2">
         {run.checks.map((c, i) => (
           <li key={`${i}-${c.name}`}
-            className={cn('flex items-start gap-3 border-border px-4 py-2.5 text-sm max-md:not-first:border-t md:nth-[n+3]:border-t md:even:border-l',
-              !c.passed && 'bg-destructive/6')}>
-            <span className="w-5 shrink-0 text-right text-muted-foreground tnum">{i + 1}</span>
+            className={cn('flex items-start gap-3 border-border px-4 py-2 text-body max-md:not-first:border-t md:nth-[n+3]:border-t md:even:border-l',
+              !c.passed && 'bg-destructive/5')}>
+            <span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span>
             {c.passed ? <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label={t('passed')} /> : <X className="mt-0.5 size-4 shrink-0 text-destructive" aria-label={t('failed')} />}
             <div className="min-w-0">
               <div className={cn(!c.passed && 'font-medium')}>{c.name}</div>
-              {!c.passed && c.detail && <div className="mt-0.5 font-mono text-xs break-words text-muted-foreground">{c.detail}</div>}
+              {!c.passed && c.detail && <div className="mt-0.5 font-mono text-meta break-words text-muted-foreground">{c.detail}</div>}
             </div>
           </li>
         ))}
@@ -329,8 +325,8 @@ function Logs({ run, t }: { run: Run; t: RT }) {
     <section className="space-y-2">
       {([['agentLog', run.agent_log], ['checkLog', run.check_log]] as const).map(([k, text]) => (
         <details key={k} className="group overflow-hidden rounded-lg border border-border bg-card" open={k === 'agentLog' && isActive(run)}>
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
-            <span aria-hidden className="text-muted-foreground transition-transform group-open:rotate-90">›</span>
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-ui font-medium transition-colors duration-[120ms] hover:bg-muted [&::-webkit-details-marker]:hidden">
+            <ChevronRight aria-hidden className="size-3.5 text-faint transition-transform group-open:rotate-90" />
             {t(k)}
           </summary>
           <pre className="max-h-[32rem] overflow-auto bg-terminal p-4 font-mono text-xs leading-5 whitespace-pre-wrap text-terminal-foreground [overflow-wrap:anywhere]">
