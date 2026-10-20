@@ -1,0 +1,962 @@
+[
+  {
+    "id": "r1",
+    "product_id": "p1",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-07-22T12:00:00Z"
+  },
+  {
+    "id": "r2",
+    "product_id": "p4",
+    "user_id": "u1",
+    "rating": 5,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-07-13T12:00:00Z"
+  },
+  {
+    "id": "r3",
+    "product_id": "p53",
+    "user_id": "u6",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-02-10T12:00:00Z"
+  },
+  {
+    "id": "r4",
+    "product_id": "p11",
+    "user_id": "u5",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-09-17T12:00:00Z"
+  },
+  {
+    "id": "r5",
+    "product_id": "p54",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-01-10T12:00:00Z"
+  },
+  {
+    "id": "r6",
+    "product_id": "p27",
+    "user_id": "u4",
+    "rating": 5,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-07-27T12:00:00Z"
+  },
+  {
+    "id": "r7",
+    "product_id": "p15",
+    "user_id": "u6",
+    "rating": 3,
+    "text": "Love it!",
+    "created_at": "2026-09-10T12:00:00Z"
+  },
+  {
+    "id": "r8",
+    "product_id": "p57",
+    "user_id": "u4",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-02-16T12:00:00Z"
+  },
+  {
+    "id": "r9",
+    "product_id": "p41",
+    "user_id": "u8",
+    "rating": 3,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-08-28T12:00:00Z"
+  },
+  {
+    "id": "r10",
+    "product_id": "p35",
+    "user_id": "u7",
+    "rating": 5,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-08-15T12:00:00Z"
+  },
+  {
+    "id": "r11",
+    "product_id": "p59",
+    "user_id": "u7",
+    "rating": 3,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-01-13T12:00:00Z"
+  },
+  {
+    "id": "r12",
+    "product_id": "p51",
+    "user_id": "u5",
+    "rating": 4,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-09-18T12:00:00Z"
+  },
+  {
+    "id": "r13",
+    "product_id": "p48",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Love it!",
+    "created_at": "2026-07-22T12:00:00Z"
+  },
+  {
+    "id": "r14",
+    "product_id": "p7",
+    "user_id": "u8",
+    "rating": 4,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-07-16T12:00:00Z"
+  },
+  {
+    "id": "r15",
+    "product_id": "p37",
+    "user_id": "u4",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-04-18T12:00:00Z"
+  },
+  {
+    "id": "r16",
+    "product_id": "p28",
+    "user_id": "u8",
+    "rating": 3,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-14T12:00:00Z"
+  },
+  {
+    "id": "r17",
+    "product_id": "p10",
+    "user_id": "u4",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-02-19T12:00:00Z"
+  },
+  {
+    "id": "r18",
+    "product_id": "p53",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Would buy again.",
+    "created_at": "2026-03-24T12:00:00Z"
+  },
+  {
+    "id": "r19",
+    "product_id": "p44",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "Exactly as described.",
+    "created_at": "2026-07-22T12:00:00Z"
+  },
+  {
+    "id": "r20",
+    "product_id": "p4",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Good quality for the price.",
+    "created_at": "2026-06-18T12:00:00Z"
+  },
+  {
+    "id": "r21",
+    "product_id": "p39",
+    "user_id": "u6",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-08-13T12:00:00Z"
+  },
+  {
+    "id": "r22",
+    "product_id": "p36",
+    "user_id": "u7",
+    "rating": 3,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-04-16T12:00:00Z"
+  },
+  {
+    "id": "r23",
+    "product_id": "p17",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-04-11T12:00:00Z"
+  },
+  {
+    "id": "r24",
+    "product_id": "p34",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-03-16T12:00:00Z"
+  },
+  {
+    "id": "r25",
+    "product_id": "p25",
+    "user_id": "u3",
+    "rating": 3,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-06-20T12:00:00Z"
+  },
+  {
+    "id": "r26",
+    "product_id": "p56",
+    "user_id": "u7",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-04-14T12:00:00Z"
+  },
+  {
+    "id": "r27",
+    "product_id": "p59",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-02-23T12:00:00Z"
+  },
+  {
+    "id": "r28",
+    "product_id": "p9",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "r29",
+    "product_id": "p3",
+    "user_id": "u7",
+    "rating": 3,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-19T12:00:00Z"
+  },
+  {
+    "id": "r30",
+    "product_id": "p56",
+    "user_id": "u8",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-08-25T12:00:00Z"
+  },
+  {
+    "id": "r31",
+    "product_id": "p35",
+    "user_id": "u6",
+    "rating": 5,
+    "text": "Exactly as described.",
+    "created_at": "2026-03-26T12:00:00Z"
+  },
+  {
+    "id": "r32",
+    "product_id": "p40",
+    "user_id": "u8",
+    "rating": 4,
+    "text": "Good quality for the price.",
+    "created_at": "2026-02-22T12:00:00Z"
+  },
+  {
+    "id": "r33",
+    "product_id": "p45",
+    "user_id": "u4",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-03-13T12:00:00Z"
+  },
+  {
+    "id": "r34",
+    "product_id": "p49",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Exactly as described.",
+    "created_at": "2026-04-28T12:00:00Z"
+  },
+  {
+    "id": "r35",
+    "product_id": "p6",
+    "user_id": "u8",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-09-16T12:00:00Z"
+  },
+  {
+    "id": "r36",
+    "product_id": "p19",
+    "user_id": "u3",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-02-27T12:00:00Z"
+  },
+  {
+    "id": "r37",
+    "product_id": "p40",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-06-25T12:00:00Z"
+  },
+  {
+    "id": "r38",
+    "product_id": "p30",
+    "user_id": "u1",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-08-28T12:00:00Z"
+  },
+  {
+    "id": "r39",
+    "product_id": "p40",
+    "user_id": "u4",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-01-16T12:00:00Z"
+  },
+  {
+    "id": "r40",
+    "product_id": "p22",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-09-21T12:00:00Z"
+  },
+  {
+    "id": "r41",
+    "product_id": "p12",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-02-21T12:00:00Z"
+  },
+  {
+    "id": "r42",
+    "product_id": "p5",
+    "user_id": "u3",
+    "rating": 5,
+    "text": "Love it!",
+    "created_at": "2026-02-15T12:00:00Z"
+  },
+  {
+    "id": "r43",
+    "product_id": "p41",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-07-16T12:00:00Z"
+  },
+  {
+    "id": "r44",
+    "product_id": "p4",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Love it!",
+    "created_at": "2026-01-16T12:00:00Z"
+  },
+  {
+    "id": "r45",
+    "product_id": "p54",
+    "user_id": "u2",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-04-12T12:00:00Z"
+  },
+  {
+    "id": "r46",
+    "product_id": "p40",
+    "user_id": "u4",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-09-25T12:00:00Z"
+  },
+  {
+    "id": "r47",
+    "product_id": "p21",
+    "user_id": "u3",
+    "rating": 3,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-08-26T12:00:00Z"
+  },
+  {
+    "id": "r48",
+    "product_id": "p51",
+    "user_id": "u8",
+    "rating": 3,
+    "text": "Love it!",
+    "created_at": "2026-08-26T12:00:00Z"
+  },
+  {
+    "id": "r49",
+    "product_id": "p52",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "r50",
+    "product_id": "p37",
+    "user_id": "u3",
+    "rating": 5,
+    "text": "Love it!",
+    "created_at": "2026-09-20T12:00:00Z"
+  },
+  {
+    "id": "r51",
+    "product_id": "p51",
+    "user_id": "u8",
+    "rating": 2,
+    "text": "Love it!",
+    "created_at": "2026-06-13T12:00:00Z"
+  },
+  {
+    "id": "r52",
+    "product_id": "p41",
+    "user_id": "u1",
+    "rating": 5,
+    "text": "Love it!",
+    "created_at": "2026-01-21T12:00:00Z"
+  },
+  {
+    "id": "r53",
+    "product_id": "p27",
+    "user_id": "u1",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-01-15T12:00:00Z"
+  },
+  {
+    "id": "r54",
+    "product_id": "p58",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-05-25T12:00:00Z"
+  },
+  {
+    "id": "r55",
+    "product_id": "p14",
+    "user_id": "u4",
+    "rating": 4,
+    "text": "Good quality for the price.",
+    "created_at": "2026-05-11T12:00:00Z"
+  },
+  {
+    "id": "r56",
+    "product_id": "p30",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-03-28T12:00:00Z"
+  },
+  {
+    "id": "r57",
+    "product_id": "p23",
+    "user_id": "u7",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-28T12:00:00Z"
+  },
+  {
+    "id": "r58",
+    "product_id": "p55",
+    "user_id": "u3",
+    "rating": 5,
+    "text": "Exactly as described.",
+    "created_at": "2026-06-15T12:00:00Z"
+  },
+  {
+    "id": "r59",
+    "product_id": "p10",
+    "user_id": "u8",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-01-27T12:00:00Z"
+  },
+  {
+    "id": "r60",
+    "product_id": "p52",
+    "user_id": "u2",
+    "rating": 3,
+    "text": "Exactly as described.",
+    "created_at": "2026-09-18T12:00:00Z"
+  },
+  {
+    "id": "r61",
+    "product_id": "p18",
+    "user_id": "u7",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-04-23T12:00:00Z"
+  },
+  {
+    "id": "r62",
+    "product_id": "p40",
+    "user_id": "u8",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-03-15T12:00:00Z"
+  },
+  {
+    "id": "r63",
+    "product_id": "p41",
+    "user_id": "u6",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-05-25T12:00:00Z"
+  },
+  {
+    "id": "r64",
+    "product_id": "p10",
+    "user_id": "u8",
+    "rating": 2,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-05-17T12:00:00Z"
+  },
+  {
+    "id": "r65",
+    "product_id": "p35",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-06-27T12:00:00Z"
+  },
+  {
+    "id": "r66",
+    "product_id": "p59",
+    "user_id": "u8",
+    "rating": 4,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-16T12:00:00Z"
+  },
+  {
+    "id": "r67",
+    "product_id": "p15",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-09-18T12:00:00Z"
+  },
+  {
+    "id": "r68",
+    "product_id": "p59",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-09-19T12:00:00Z"
+  },
+  {
+    "id": "r69",
+    "product_id": "p57",
+    "user_id": "u1",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-04-21T12:00:00Z"
+  },
+  {
+    "id": "r70",
+    "product_id": "p25",
+    "user_id": "u8",
+    "rating": 3,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-26T12:00:00Z"
+  },
+  {
+    "id": "r71",
+    "product_id": "p33",
+    "user_id": "u7",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-05-20T12:00:00Z"
+  },
+  {
+    "id": "r72",
+    "product_id": "p31",
+    "user_id": "u1",
+    "rating": 5,
+    "text": "Exactly as described.",
+    "created_at": "2026-05-28T12:00:00Z"
+  },
+  {
+    "id": "r73",
+    "product_id": "p33",
+    "user_id": "u3",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-05-12T12:00:00Z"
+  },
+  {
+    "id": "r74",
+    "product_id": "p12",
+    "user_id": "u7",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-09-19T12:00:00Z"
+  },
+  {
+    "id": "r75",
+    "product_id": "p57",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-02-16T12:00:00Z"
+  },
+  {
+    "id": "r76",
+    "product_id": "p9",
+    "user_id": "u8",
+    "rating": 5,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-07-17T12:00:00Z"
+  },
+  {
+    "id": "r77",
+    "product_id": "p55",
+    "user_id": "u7",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-02-22T12:00:00Z"
+  },
+  {
+    "id": "r78",
+    "product_id": "p11",
+    "user_id": "u7",
+    "rating": 5,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-05-10T12:00:00Z"
+  },
+  {
+    "id": "r79",
+    "product_id": "p12",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "Would buy again.",
+    "created_at": "2026-07-16T12:00:00Z"
+  },
+  {
+    "id": "r80",
+    "product_id": "p3",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Would buy again.",
+    "created_at": "2026-06-26T12:00:00Z"
+  },
+  {
+    "id": "r81",
+    "product_id": "p28",
+    "user_id": "u1",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-06-16T12:00:00Z"
+  },
+  {
+    "id": "r82",
+    "product_id": "p32",
+    "user_id": "u8",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-09-12T12:00:00Z"
+  },
+  {
+    "id": "r83",
+    "product_id": "p22",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Love it!",
+    "created_at": "2026-01-11T12:00:00Z"
+  },
+  {
+    "id": "r84",
+    "product_id": "p59",
+    "user_id": "u3",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-03-11T12:00:00Z"
+  },
+  {
+    "id": "r85",
+    "product_id": "p39",
+    "user_id": "u6",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-02-15T12:00:00Z"
+  },
+  {
+    "id": "r86",
+    "product_id": "p2",
+    "user_id": "u4",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-06-10T12:00:00Z"
+  },
+  {
+    "id": "r87",
+    "product_id": "p26",
+    "user_id": "u8",
+    "rating": 3,
+    "text": "Exactly as described.",
+    "created_at": "2026-05-21T12:00:00Z"
+  },
+  {
+    "id": "r88",
+    "product_id": "p29",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-03-14T12:00:00Z"
+  },
+  {
+    "id": "r89",
+    "product_id": "p34",
+    "user_id": "u5",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-02-17T12:00:00Z"
+  },
+  {
+    "id": "r90",
+    "product_id": "p16",
+    "user_id": "u5",
+    "rating": 4,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-05-24T12:00:00Z"
+  },
+  {
+    "id": "r91",
+    "product_id": "p45",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-04-17T12:00:00Z"
+  },
+  {
+    "id": "r92",
+    "product_id": "p53",
+    "user_id": "u6",
+    "rating": 5,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-03-21T12:00:00Z"
+  },
+  {
+    "id": "r93",
+    "product_id": "p16",
+    "user_id": "u5",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-09-15T12:00:00Z"
+  },
+  {
+    "id": "r94",
+    "product_id": "p2",
+    "user_id": "u6",
+    "rating": 4,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-01-16T12:00:00Z"
+  },
+  {
+    "id": "r95",
+    "product_id": "p40",
+    "user_id": "u1",
+    "rating": 4,
+    "text": "Love it!",
+    "created_at": "2026-04-22T12:00:00Z"
+  },
+  {
+    "id": "r96",
+    "product_id": "p6",
+    "user_id": "u6",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-02-17T12:00:00Z"
+  },
+  {
+    "id": "r97",
+    "product_id": "p48",
+    "user_id": "u1",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-01-27T12:00:00Z"
+  },
+  {
+    "id": "r98",
+    "product_id": "p5",
+    "user_id": "u6",
+    "rating": 2,
+    "text": "Good quality for the price.",
+    "created_at": "2026-07-26T12:00:00Z"
+  },
+  {
+    "id": "r99",
+    "product_id": "p37",
+    "user_id": "u7",
+    "rating": 5,
+    "text": "Good quality for the price.",
+    "created_at": "2026-09-13T12:00:00Z"
+  },
+  {
+    "id": "r100",
+    "product_id": "p14",
+    "user_id": "u8",
+    "rating": 2,
+    "text": "Love it!",
+    "created_at": "2026-05-13T12:00:00Z"
+  },
+  {
+    "id": "r101",
+    "product_id": "p12",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-07-17T12:00:00Z"
+  },
+  {
+    "id": "r102",
+    "product_id": "p58",
+    "user_id": "u1",
+    "rating": 4,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-09-26T12:00:00Z"
+  },
+  {
+    "id": "r103",
+    "product_id": "p16",
+    "user_id": "u5",
+    "rating": 2,
+    "text": "Would buy again.",
+    "created_at": "2026-08-18T12:00:00Z"
+  },
+  {
+    "id": "r104",
+    "product_id": "p42",
+    "user_id": "u4",
+    "rating": 2,
+    "text": "A bit smaller than expected.",
+    "created_at": "2026-09-20T12:00:00Z"
+  },
+  {
+    "id": "r105",
+    "product_id": "p8",
+    "user_id": "u5",
+    "rating": 3,
+    "text": "Exactly as described.",
+    "created_at": "2026-07-19T12:00:00Z"
+  },
+  {
+    "id": "r106",
+    "product_id": "p29",
+    "user_id": "u8",
+    "rating": 2,
+    "text": "Exactly as described.",
+    "created_at": "2026-02-17T12:00:00Z"
+  },
+  {
+    "id": "r107",
+    "product_id": "p26",
+    "user_id": "u1",
+    "rating": 3,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-08-26T12:00:00Z"
+  },
+  {
+    "id": "r108",
+    "product_id": "p39",
+    "user_id": "u2",
+    "rating": 5,
+    "text": "Exactly as described.",
+    "created_at": "2026-01-20T12:00:00Z"
+  },
+  {
+    "id": "r109",
+    "product_id": "p8",
+    "user_id": "u1",
+    "rating": 4,
+    "text": "Good quality for the price.",
+    "created_at": "2026-07-28T12:00:00Z"
+  },
+  {
+    "id": "r110",
+    "product_id": "p42",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-06-15T12:00:00Z"
+  },
+  {
+    "id": "r111",
+    "product_id": "p3",
+    "user_id": "u3",
+    "rating": 2,
+    "text": "Would buy again.",
+    "created_at": "2026-09-10T12:00:00Z"
+  },
+  {
+    "id": "r112",
+    "product_id": "p49",
+    "user_id": "u4",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-03-21T12:00:00Z"
+  },
+  {
+    "id": "r113",
+    "product_id": "p2",
+    "user_id": "u1",
+    "rating": 5,
+    "text": "Love it!",
+    "created_at": "2026-03-28T12:00:00Z"
+  },
+  {
+    "id": "r114",
+    "product_id": "p56",
+    "user_id": "u2",
+    "rating": 2,
+    "text": "Would buy again.",
+    "created_at": "2026-05-16T12:00:00Z"
+  },
+  {
+    "id": "r115",
+    "product_id": "p28",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-02-20T12:00:00Z"
+  },
+  {
+    "id": "r116",
+    "product_id": "p9",
+    "user_id": "u1",
+    "rating": 3,
+    "text": "Good quality for the price.",
+    "created_at": "2026-02-16T12:00:00Z"
+  },
+  {
+    "id": "r117",
+    "product_id": "p55",
+    "user_id": "u7",
+    "rating": 4,
+    "text": "Fast delivery, works great.",
+    "created_at": "2026-05-14T12:00:00Z"
+  },
+  {
+    "id": "r118",
+    "product_id": "p16",
+    "user_id": "u6",
+    "rating": 4,
+    "text": "Exactly as described.",
+    "created_at": "2026-02-13T12:00:00Z"
+  },
+  {
+    "id": "r119",
+    "product_id": "p43",
+    "user_id": "u2",
+    "rating": 4,
+    "text": "Would buy again.",
+    "created_at": "2026-05-25T12:00:00Z"
+  },
+  {
+    "id": "r120",
+    "product_id": "p3",
+    "user_id": "u6",
+    "rating": 5,
+    "text": "Would buy again.",
+    "created_at": "2026-06-26T12:00:00Z"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "u1",
+    "name": "Anna Novak",
+    "email": "anna.novak@example.com",
+    "password": "pass001"
+  },
+  {
+    "id": "u2",
+    "name": "Boris Rossi",
+    "email": "boris.rossi@example.com",
+    "password": "pass002"
+  },
+  {
+    "id": "u3",
+    "name": "Clara Silva",
+    "email": "clara.silva@example.com",
+    "password": "pass003"
+  },
+  {
+    "id": "u4",
+    "name": "David Smith",
+    "email": "david.smith@example.com",
+    "password": "pass004"
+  },
+  {
+    "id": "u5",
+    "name": "Elena Muller",
+    "email": "elena.muller@example.com",
+    "password": "pass005"
+  },
+  {
+    "id": "u6",
+    "name": "Felix Berg",
+    "email": "felix.berg@example.com",
+    "password": "pass006"
+  },
+  {
+    "id": "u7",
+    "name": "Greta Petrov",
+    "email": "greta.petrov@example.com",
+    "password": "pass007"
+  },
+  {
+    "id": "u8",
+    "name": "Hugo Garcia",
+    "email": "hugo.garcia@example.com",
+    "password": "pass008"
+  }
+]

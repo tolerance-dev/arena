@@ -1,0 +1,792 @@
+[
+  {
+    "id": "r1",
+    "hotel_id": "h1",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 382,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r2",
+    "hotel_id": "h1",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 127,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 single"
+  },
+  {
+    "id": "r3",
+    "hotel_id": "h1",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 178,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double"
+  },
+  {
+    "id": "r4",
+    "hotel_id": "h2",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 118,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r5",
+    "hotel_id": "h2",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 84,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 single"
+  },
+  {
+    "id": "r6",
+    "hotel_id": "h2",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 177,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r7",
+    "hotel_id": "h2",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 253,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r8",
+    "hotel_id": "h3",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 60,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double"
+  },
+  {
+    "id": "r9",
+    "hotel_id": "h3",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 60,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r10",
+    "hotel_id": "h3",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 90,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r11",
+    "hotel_id": "h3",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 128,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r12",
+    "hotel_id": "h4",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 540,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r13",
+    "hotel_id": "h4",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 772,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r14",
+    "hotel_id": "h4",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 360,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double"
+  },
+  {
+    "id": "r15",
+    "hotel_id": "h4",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 360,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r16",
+    "hotel_id": "h5",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 102,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 single"
+  },
+  {
+    "id": "r17",
+    "hotel_id": "h5",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 142,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r18",
+    "hotel_id": "h6",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 361,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r19",
+    "hotel_id": "h6",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 169,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r20",
+    "hotel_id": "h6",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 120,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 single"
+  },
+  {
+    "id": "r21",
+    "hotel_id": "h7",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 232,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r22",
+    "hotel_id": "h7",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 108,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r23",
+    "hotel_id": "h7",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 77,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 single"
+  },
+  {
+    "id": "r24",
+    "hotel_id": "h7",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 162,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r25",
+    "hotel_id": "h8",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 176,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r26",
+    "hotel_id": "h8",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 263,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r27",
+    "hotel_id": "h8",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 125,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 single"
+  },
+  {
+    "id": "r28",
+    "hotel_id": "h8",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 376,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r29",
+    "hotel_id": "h9",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 226,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r30",
+    "hotel_id": "h9",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 151,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r31",
+    "hotel_id": "h9",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 151,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 double"
+  },
+  {
+    "id": "r32",
+    "hotel_id": "h10",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 184,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 double"
+  },
+  {
+    "id": "r33",
+    "hotel_id": "h10",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 276,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r34",
+    "hotel_id": "h10",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 131,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 single"
+  },
+  {
+    "id": "r35",
+    "hotel_id": "h11",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 48,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 single"
+  },
+  {
+    "id": "r36",
+    "hotel_id": "h11",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 145,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r37",
+    "hotel_id": "h11",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 68,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double"
+  },
+  {
+    "id": "r38",
+    "hotel_id": "h11",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 102,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r39",
+    "hotel_id": "h12",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 76,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r40",
+    "hotel_id": "h12",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 114,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r41",
+    "hotel_id": "h12",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 76,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double"
+  },
+  {
+    "id": "r42",
+    "hotel_id": "h13",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 64,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 single"
+  },
+  {
+    "id": "r43",
+    "hotel_id": "h13",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 134,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r44",
+    "hotel_id": "h14",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 312,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r45",
+    "hotel_id": "h14",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 312,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double"
+  },
+  {
+    "id": "r46",
+    "hotel_id": "h14",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 223,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 single"
+  },
+  {
+    "id": "r47",
+    "hotel_id": "h15",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 106,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r48",
+    "hotel_id": "h15",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 106,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double"
+  },
+  {
+    "id": "r49",
+    "hotel_id": "h15",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 76,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 single"
+  },
+  {
+    "id": "r50",
+    "hotel_id": "h15",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 159,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r51",
+    "hotel_id": "h16",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 361,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r52",
+    "hotel_id": "h16",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 168,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r53",
+    "hotel_id": "h17",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 167,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r54",
+    "hotel_id": "h17",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 238,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r55",
+    "hotel_id": "h17",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 79,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 single"
+  },
+  {
+    "id": "r56",
+    "hotel_id": "h18",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 63,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 single"
+  },
+  {
+    "id": "r57",
+    "hotel_id": "h18",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 188,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r58",
+    "hotel_id": "h18",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 132,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r59",
+    "hotel_id": "h18",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 88,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r60",
+    "hotel_id": "h19",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 144,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double"
+  },
+  {
+    "id": "r61",
+    "hotel_id": "h19",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 216,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r62",
+    "hotel_id": "h19",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 144,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r63",
+    "hotel_id": "h19",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 308,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r64",
+    "hotel_id": "h20",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 100,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double"
+  },
+  {
+    "id": "r65",
+    "hotel_id": "h20",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 72,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 single"
+  },
+  {
+    "id": "r66",
+    "hotel_id": "h20",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 215,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r67",
+    "hotel_id": "h20",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 100,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r68",
+    "hotel_id": "h21",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 308,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r69",
+    "hotel_id": "h21",
+    "type": "double",
+    "capacity": 2,
+    "price_per_night": 144,
+    "currency": "EUR",
+    "inventory": 1,
+    "beds": "1 double"
+  },
+  {
+    "id": "r70",
+    "hotel_id": "h22",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 78,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "1 single"
+  },
+  {
+    "id": "r71",
+    "hotel_id": "h22",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 235,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r72",
+    "hotel_id": "h22",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 110,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r73",
+    "hotel_id": "h23",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 711,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r74",
+    "hotel_id": "h23",
+    "type": "single",
+    "capacity": 1,
+    "price_per_night": 237,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 single"
+  },
+  {
+    "id": "r75",
+    "hotel_id": "h23",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 497,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r76",
+    "hotel_id": "h23",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 332,
+    "currency": "EUR",
+    "inventory": 3,
+    "beds": "2 singles"
+  },
+  {
+    "id": "r77",
+    "hotel_id": "h24",
+    "type": "suite",
+    "capacity": 3,
+    "price_per_night": 294,
+    "currency": "EUR",
+    "inventory": 5,
+    "beds": "1 king + sofa bed"
+  },
+  {
+    "id": "r78",
+    "hotel_id": "h24",
+    "type": "family",
+    "capacity": 4,
+    "price_per_night": 206,
+    "currency": "EUR",
+    "inventory": 4,
+    "beds": "1 double + 2 singles"
+  },
+  {
+    "id": "r79",
+    "hotel_id": "h24",
+    "type": "twin",
+    "capacity": 2,
+    "price_per_night": 137,
+    "currency": "EUR",
+    "inventory": 2,
+    "beds": "2 singles"
+  }
+]

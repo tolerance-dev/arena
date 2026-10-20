@@ -1,0 +1,23 @@
+{
+  "order": 1,
+  "title": {
+    "en": "Marketplace",
+    "ru": "Маркетплейс"
+  },
+  "tagline": {
+    "en": "A storefront with many sellers: catalog, search, product pages, cart, checkout, orders.",
+    "ru": "Витрина с продавцами: каталог, поиск, карточки товаров, корзина, оформление заказа, история."
+  },
+  "time_limit_s": 1800,
+  "token_budget": 2000000,
+  "ui": true,
+  "ui_text": [
+    "Electronics",
+    "Home & Kitchen",
+    "Fashion",
+    "Sports & Outdoors",
+    "Books",
+    "Toys & Games"
+  ],
+  "checks": []
+}

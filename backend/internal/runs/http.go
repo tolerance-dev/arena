@@ -12,7 +12,7 @@ import (
 // TaskView is a task page: the brief as the agents get it, the data files, the leaderboard and the latest runs.
 type TaskView struct {
 	TaskSummary
-	TaskMD    string   `json:"task_md"`
+	Brief     string   `json:"brief"`
 	DataFiles []string `json:"data_files"`
 	Checks    []string `json:"checks"`
 	Board     []Run    `json:"leaderboard"`
@@ -40,7 +40,7 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		v := TaskView{TaskMD: t.TaskMD, DataFiles: t.DataNames(), Checks: t.CheckNames()}
+		v := TaskView{Brief: t.Brief, DataFiles: t.DataNames(), Checks: t.CheckNames()}
 		for _, sm := range sums {
 			if sm.Slug == t.Slug {
 				v.TaskSummary = sm

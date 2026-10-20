@@ -68,7 +68,7 @@ export function TaskView({ slug }: { slug: string }) {
       <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="min-w-0">
           <SectionTitle aside={t('briefHint')}>{t('theBrief')}</SectionTitle>
-          <div className="rounded-lg border border-border bg-card px-5 py-6 sm:px-8 sm:py-8"><Markdown>{data.task_md}</Markdown></div>
+          <div className="rounded-lg border border-border bg-card px-5 py-6 sm:px-8 sm:py-8"><Markdown>{data.brief}</Markdown></div>
         </div>
         <aside className="space-y-8 lg:sticky lg:top-6 lg:self-start">
           <div>

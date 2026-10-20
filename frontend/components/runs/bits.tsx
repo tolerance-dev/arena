@@ -98,8 +98,8 @@ export function exitLabel(t: RT, exit: string | null) {
 
 export function taskTitle(slug: string, locale: 'en' | 'ru') {
   const titles: Record<string, [string, string]> = {
-    rbtree: ['Red-black tree', 'Красно-чёрное дерево'], 'linked-list': ['Doubly linked list', 'Двусвязный список'],
-    digraph: ['Directed graph', 'Ориентированный граф'],
+    marketplace: ['Marketplace', 'Маркетплейс'], hotels: ['Hotel booking', 'Бронирование отелей'],
+    cinema: ['Online cinema', 'Онлайн-кинотеатр'],
   }
   const p = titles[slug]
   return p ? p[locale === 'ru' ? 1 : 0] : slug
