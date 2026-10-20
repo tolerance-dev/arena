@@ -16,9 +16,9 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { RunTable, ScoreBadge, usePoll, type RT } from './bits'
+import { RunTable, Score, usePoll, type RT } from './bits'
 
-const field = 'h-10 w-full rounded-[9px] border border-input bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50'
+const field = 'h-10 w-full rounded-md border border-input bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50'
 
 export function AgentsAdmin() {
   const t = useT(runsMessages)
@@ -27,12 +27,13 @@ export function AgentsAdmin() {
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
   const runs = usePoll<{ items: Run[] }>(me ? '/runs?limit=20' : null, 4_000)
 
-  if (loading) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+  if (loading) return <div className="h-96 animate-pulse rounded-lg bg-muted" />
   if (!me) {
     return (
-      <div className="space-y-4">
-        <p>{t('signInFirst')}</p>
-        <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInFirst')}</Button>
+      <div className="max-w-md space-y-4">
+        <h1 className="display text-[2rem]">{t('adminTitle')}</h1>
+        <p className="text-muted-foreground">{t('signInLead')}</p>
+        <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInButton')}</Button>
       </div>
     )
   }
@@ -46,9 +47,9 @@ export function AgentsAdmin() {
       <section>
         <SectionTitle>{t('yourAgents')}</SectionTitle>
         {(!canUpload || agents.data?.items.length === 0) && (
-          <p className="rounded-xl border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noAgents')}</p>
+          <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noAgents')}</p>
         )}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {agents.data?.items.map((a) => <AgentCard key={a.id} agent={a} tasks={tasks.data?.items ?? []} t={t} onChange={refresh} />)}
         </div>
       </section>
@@ -79,8 +80,11 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
     }
   }
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 sm:p-7">
-      <h2 className="heading mb-5 text-lg">{t('newAgent')}</h2>
+    <section className="grid gap-6 rounded-lg border border-border bg-card p-5 sm:p-7 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+      <div>
+        <h2 className="heading text-[1.2rem]">{t('newAgent')}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('newAgentHint')}</p>
+      </div>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <fieldset disabled={disabled} className="contents">
         <div className="space-y-1.5">
@@ -106,12 +110,12 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="bundle">{t('agentBundle')}</Label>
           <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
-            className="block w-full rounded-[9px] border border-input bg-card text-sm file:mr-3 file:h-10 file:border-0 file:bg-muted file:px-4 file:font-semibold disabled:cursor-not-allowed disabled:opacity-50" />
+            className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-10 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
           <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
           <Button type="submit" disabled={busy || disabled}><Upload /> {busy ? t('uploading') : t('upload')}</Button>
-          {disabled && <span className="text-sm font-semibold text-muted-foreground">{t('inDevelopment')}</span>}
+          {disabled && <span className="text-sm text-muted-foreground">{t('inDevelopment')}</span>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
         </fieldset>
@@ -169,19 +173,22 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="heading text-lg">{agent.name}</h3>
-            {agent.best_score != null && <ScoreBadge score={agent.best_score} />}
+            <h3 className="heading text-[1.15rem]">{agent.name}</h3>
+            {agent.best_score != null && <span className="text-sm text-muted-foreground">{t('bestScore')} <Score score={agent.best_score} /></span>}
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {[agent.description, agent.provider, agent.key_hint && t('keyHint', { hint: agent.key_hint }), t.plural('runs', agent.runs)].filter(Boolean).join(' · ')}
-          </p>
+          {agent.description && <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>}
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>{agent.provider === 'openai' ? 'OpenAI' : 'Anthropic'}</span>
+            {agent.key_hint && <span className="font-mono">{t('keyHint', { hint: agent.key_hint })}</span>}
+            <span>{t.plural('runs', agent.runs)}</span>
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setKeyOpen((v) => !v)}>{t('replaceKey')}</Button>
+          <Button variant="outline" size="sm" onClick={() => setKeyOpen((v) => !v)}>{t('replaceKey')}</Button>
           <Button variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>{armed ? t('confirmAgain') : t('deleteAgent')}</Button>
         </div>
       </div>

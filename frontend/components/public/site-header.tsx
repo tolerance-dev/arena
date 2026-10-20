@@ -19,8 +19,10 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const t = useT(navMessages)
   const pathname = usePathname()
 
-  const nav = [{ label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') }]
-  nav.push({ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') })
+  const nav = [
+    { label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
+    { label: t('agents'), href: '/admin', active: pathname.startsWith('/admin') },
+  ]
 
   async function signOut() {
     await post('/auth/logout')
@@ -28,32 +30,30 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   }
 
   return (
-    <header className="border-b border-border bg-card/80 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <div className="min-w-0 shrink overflow-hidden max-[400px]:[&_span]:hidden"><Brand /></div>
-        <nav className="ml-1 flex items-center gap-1">
+    <header className="border-b border-border bg-background">
+      <div className="mx-auto flex h-14 max-w-6xl items-stretch gap-6 px-4 sm:px-6">
+        <div className="flex min-w-0 shrink items-center max-[400px]:[&_span]:hidden"><Brand /></div>
+        <nav className="flex items-stretch gap-5">
           {nav.map((item) => (
-            <Link key={item.href} href={item.href}
-              className={cn('shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground',
-                item.active && 'bg-muted text-foreground')}>
+            <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
+              className={cn('-mb-px flex shrink-0 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                item.active && 'border-primary text-foreground')}>
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <LocaleSwitch />
           {loading ? null : me ? (
             <>
-              <span className="hidden h-9 items-center rounded-full border border-border bg-card px-3 text-sm font-bold sm:flex">
-                <span className="max-w-[8rem] truncate">{me.user.handle}</span>
-              </span>
+              <span className="hidden max-w-[10rem] truncate text-sm font-medium sm:block">{me.user.handle}</span>
               <button onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}
-                className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
                 <LogOut className="size-4" />
               </button>
             </>
           ) : (
-            <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
+            <Button size="sm" render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
           )}
         </div>
       </div>

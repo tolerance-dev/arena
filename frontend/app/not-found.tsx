@@ -11,8 +11,8 @@ export default async function NotFound() {
     <div className="flex min-h-dvh flex-col">
       <SiteHeader returnTo="/" />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-16 sm:px-6">
-        <p className="font-mono text-sm text-muted-foreground">404</p>
-        <h1 className="display mt-2 text-[2.6rem]">{t('notFoundTitle')}</h1>
+        <p className="numeral text-[4rem] text-muted-foreground">404</p>
+        <h1 className="display mt-4 text-[2.25rem]">{t('notFoundTitle')}</h1>
         <p className="mt-3 max-w-xl text-muted-foreground">{t('notFoundText')}</p>
         <div className="mt-8 flex flex-wrap gap-2">
           <Button render={<Link href="/" />} nativeButton={false}>{t('toHome')}</Button>

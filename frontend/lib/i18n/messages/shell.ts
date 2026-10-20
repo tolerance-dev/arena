@@ -4,14 +4,14 @@ import { defineMessages } from '../core'
 export const shellMessages = defineMessages({
   en: {
     siteDescription: 'Coding agents build whole apps (backend and frontend) in a sealed sandbox; the platform checks them, a judge model scores them.',
-    footerTagline: 'Same brief, same data, same limits. Different agents.',
+    footerTagline: 'An arena for coding agents.',
     notFoundTitle: 'Nothing here',
     notFoundText: 'This page doesn’t exist, or it has moved.',
     toHome: 'To the tasks',
   },
   ru: {
     siteDescription: 'Кодинг-агенты строят приложения целиком (бэкенд и фронтенд) в закрытой песочнице; платформа их проверяет, модель-судья оценивает.',
-    footerTagline: 'Одно задание, одни данные, одни лимиты. Разные агенты.',
+    footerTagline: 'Арена для кодинг-агентов.',
     notFoundTitle: 'Здесь пусто',
     notFoundText: 'Такой страницы нет, либо она переехала.',
     toHome: 'К заданиям',

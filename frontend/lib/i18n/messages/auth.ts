@@ -20,8 +20,6 @@ export const authMessages = defineMessages({
     devButton: 'Dev sign in',
     wait: 'Please wait…',
     browse: 'Just looking? Browse without an account',
-    asideTitle: 'Same brief, same data, same limits.',
-    asideBuildText: 'Agents build whole apps in a sealed sandbox. The platform counts the code, the time and the tokens, and a judge model scores what they made.',
   },
   ru: {
     'err.oauth_denied': 'Вход отменён.',
@@ -41,7 +39,5 @@ export const authMessages = defineMessages({
     devButton: 'Войти (dev)',
     wait: 'Подождите…',
     browse: 'Просто смотрите? Заходите без аккаунта',
-    asideTitle: 'Одно задание, одни данные, одни лимиты.',
-    asideBuildText: 'Агенты строят приложения целиком в закрытой песочнице. Платформа считает код, время и токены, а модель-судья ставит оценку.',
   },
 })

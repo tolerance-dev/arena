@@ -6,8 +6,9 @@ import { api, ApiError } from '@/lib/api'
 import { compact, duration, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
-import type { Run, RunStatus } from '@/lib/types'
+import type { Check, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { TaskGlyph } from './task-glyph'
 
 export type RT = ReturnType<typeof useT<typeof runsMessages.en>>
 
@@ -51,24 +52,40 @@ export function StatusPill({ run, className }: { run: Pick<Run, 'status' | 'fail
   const active = isActive(run)
   const cancelled = run.status === 'infra_error' && run.failure_reason === 'cancelled'
   return (
-    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold whitespace-nowrap',
+    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium whitespace-nowrap',
       active && 'bg-accent text-accent-foreground',
       run.status === 'done' && 'bg-success/12 text-success',
-      run.status === 'infra_error' && 'bg-destructive/10 text-destructive', className)}>
+      run.status === 'infra_error' && (cancelled ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive'), className)}>
       <span className={cn('size-1.5 rounded-full bg-current', active && 'animate-status-pulse')} />
       {cancelled ? t('cancelled') : t(`status.${run.status}`)}
     </span>
   )
 }
 
-// The score as a number on a colour that reads at a glance: green from 75, amber from 45, red below.
-export function ScoreBadge({ score, size = 'md' }: { score: number | null; size?: 'md' | 'lg' }) {
-  if (score == null) return <span className="text-muted-foreground">—</span>
-  const tone = score >= 75 ? 'bg-success text-success-foreground' : score >= 45 ? 'bg-warning text-warning-foreground' : 'bg-destructive text-white dark:text-background'
+// Green from 75, amber from 45, red below.
+export function scoreTone(score: number) {
+  return score >= 75 ? 'text-success' : score >= 45 ? 'text-warning' : 'text-destructive'
+}
+
+export function Score({ score, className }: { score: number | null; className?: string }) {
+  if (score == null) return <span className={cn('text-muted-foreground', className)}>—</span>
+  return <span className={cn('font-semibold tnum', scoreTone(score), className)}>{score}</span>
+}
+
+// The run's checks in the order they ran, one cell each: the arena's signature. Small in tables, large on a
+// run page (with each check's name on hover).
+export function CheckStrip({ checks, size = 'sm', className }: { checks: Check[]; size?: 'sm' | 'lg'; className?: string }) {
+  const t = useT(runsMessages)
+  if (checks.length === 0) return null
+  const ok = checks.filter((c) => c.passed).length
   return (
-    <span className={cn('inline-flex items-center justify-center rounded-lg font-mono font-bold tabular-nums', tone,
-      size === 'lg' ? 'h-16 min-w-20 px-3 text-4xl' : 'h-7 min-w-10 px-1.5 text-sm')}>
-      {score}
+    <span role="img" aria-label={t.plural('checksPassed', checks.length, { ok })}
+      className={cn('flex', size === 'sm' ? 'gap-[2px]' : 'flex-wrap gap-[3px]', className)}>
+      {checks.map((c, i) => (
+        <span key={`${i}-${c.name}`} title={size === 'lg' ? `${i + 1}. ${c.name}` : undefined}
+          className={cn('shrink-0', size === 'sm' ? 'h-3 w-[5px] rounded-[1px]' : 'h-7 w-[18px] rounded-[2px]',
+            c.passed ? 'bg-success' : 'bg-destructive')} />
+      ))}
     </span>
   )
 }
@@ -88,55 +105,64 @@ export function taskTitle(slug: string, locale: 'en' | 'ru') {
   return p ? p[locale === 'ru' ? 1 : 0] : slug
 }
 
-// One accent per task, used for the poster cards and small markers.
-export const TASK_ACCENT: Record<string, string> = { rbtree: 'var(--pop-1)', 'linked-list': 'var(--pop-4)', digraph: 'var(--pop-2)' }
-
 function passed(r: Run) {
   return { ok: r.checks.filter((c) => c.passed).length, all: r.checks.length }
 }
+
+const th = 'px-3 py-2 font-medium'
+const td = 'px-3 py-2.5'
 
 // Runs as a table: the leaderboard (ranked) or a plain list. Scrolls sideways inside itself on phones.
 export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boolean; showTask?: boolean }) {
   const t = useT(runsMessages)
   if (runs.length === 0) {
-    return <p className="rounded-xl border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noRuns')}</p>
+    return <p className="rounded-lg border border-dashed border-border-strong px-4 py-8 text-center text-sm text-muted-foreground">{t('noRuns')}</p>
   }
+  const judged = runs.some((r) => r.judge?.status === 'ok')
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card">
-      <table className="w-full min-w-[640px] text-sm">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <table className="w-full min-w-[680px] text-sm">
         <thead>
-          <tr className="border-b border-border text-left text-xs font-semibold text-muted-foreground">
-            {ranked && <th className="w-10 py-2.5 pl-4">#</th>}
-            <th className="py-2.5 pl-4">{t('colAgent')}</th>
-            <th className="px-2 py-2.5">{t('colScore')}</th>
-            <th className="px-2 py-2.5 text-right">{t('colLoc')}</th>
-            <th className="px-2 py-2.5 text-right">{t('colTime')}</th>
-            <th className="px-2 py-2.5 text-right">{t('colTokens')}</th>
-            <th className="px-2 py-2.5 text-right">{t('colChecks')}</th>
-            <th className="px-2 py-2.5 text-right">{t('colJudge')}</th>
-            <th className="py-2.5 pr-4 pl-2 text-right">{t('colWhen')}</th>
+          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+            {ranked && <th className={cn(th, 'w-10 pl-4')}>#</th>}
+            <th className={cn(th, !ranked && 'pl-4')}>{t('colAgent')}</th>
+            <th className={cn(th, 'text-right')}>{t('colScore')}</th>
+            <th className={th}>{t('colChecks')}</th>
+            <th className={cn(th, 'text-right')}>{t('colLoc')}</th>
+            <th className={cn(th, 'text-right')}>{t('colTime')}</th>
+            <th className={cn(th, 'text-right')}>{t('colTokens')}</th>
+            {judged && <th className={cn(th, 'text-right')}>{t('colJudge')}</th>}
+            <th className={cn(th, 'pr-4 text-right')}>{t('colWhen')}</th>
           </tr>
         </thead>
         <tbody>
           {runs.map((r, i) => {
             const c = passed(r)
+            const done = r.status === 'done'
             return (
-              <tr key={r.id} className="group relative border-b border-border last:border-0 hover:bg-muted/50">
-                {ranked && <td className="py-3 pl-4 font-mono text-muted-foreground tabular-nums">{i + 1}</td>}
-                <td className="py-3 pl-4">
-                  <Link href={`/r/${r.id}`} className="font-bold after:absolute after:inset-0 hover:underline">{r.agent.name}</Link>
-                  <div className="text-xs text-muted-foreground">
-                    {showTask && <span className="mr-1.5 inline-block size-2 rounded-full align-middle" style={{ background: TASK_ACCENT[r.task] }} />}
-                    {showTask ? taskTitle(r.task, t.locale) + ' · ' : ''}{r.agent.owner}
+              <tr key={r.id} className="relative border-b border-border last:border-0 hover:bg-muted/60">
+                {ranked && <td className={cn(td, 'pl-4 text-muted-foreground tnum')}>{i + 1}</td>}
+                <td className={cn(td, !ranked && 'pl-4')}>
+                  <Link href={`/r/${r.id}`} className="font-medium whitespace-nowrap after:absolute after:inset-0 hover:underline">{r.agent.name}</Link>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground">
+                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r.task, t.locale)}</span><span aria-hidden>/</span></>}
+                    <span>{r.agent.owner}</span>
                   </div>
                 </td>
-                <td className="px-2 py-3">{r.status === 'done' ? <ScoreBadge score={r.score} /> : <StatusPill run={r} />}</td>
-                <td className="px-2 py-3 text-right font-mono tabular-nums">{r.status === 'done' ? compact(r.stats.loc) : '—'}</td>
-                <td className="px-2 py-3 text-right font-mono tabular-nums">{duration(r.agent_seconds)}</td>
-                <td className="px-2 py-3 text-right font-mono tabular-nums">{compact(usedTokens(r.tokens))}</td>
-                <td className="px-2 py-3 text-right font-mono tabular-nums">{c.all ? `${c.ok}/${c.all}` : '—'}</td>
-                <td className="px-2 py-3 text-right font-mono tabular-nums">{r.judge?.status === 'ok' ? r.judge.score : '—'}</td>
-                <td className="py-3 pr-4 pl-2 text-right text-xs whitespace-nowrap text-muted-foreground"><Ago iso={r.created_at} /></td>
+                <td className={cn(td, 'text-right text-base')}>{done ? <Score score={r.score} /> : <StatusPill run={r} />}</td>
+                <td className={td}>
+                  {c.all ? (
+                    <div className="flex items-center gap-2.5">
+                      <CheckStrip checks={r.checks} />
+                      <span className="text-xs text-muted-foreground tnum">{c.ok}/{c.all}</span>
+                    </div>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className={cn(td, 'text-right tnum')}>{done ? compact(r.stats.loc) : '—'}</td>
+                <td className={cn(td, 'text-right tnum')}>{duration(r.agent_seconds)}</td>
+                <td className={cn(td, 'text-right tnum')}>{compact(usedTokens(r.tokens))}</td>
+                {judged && <td className={cn(td, 'text-right tnum')}>{r.judge?.status === 'ok' ? r.judge.score : '—'}</td>}
+                <td className={cn(td, 'pr-4 text-right text-xs whitespace-nowrap text-muted-foreground')}><Ago iso={r.created_at} /></td>
               </tr>
             )
           })}
