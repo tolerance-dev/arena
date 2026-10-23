@@ -28,4 +28,4 @@ in the brief working end to end, and a polished look on a desktop and a phone. N
 at start (no CDN). Look at your pages with the installed Playwright (screenshots on desktop and 390 px), fix what
 looks broken, then stop."
 
-kimi --auto --prompt "$PROMPT"
+kimi --prompt "$PROMPT"

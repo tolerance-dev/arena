@@ -83,3 +83,17 @@ func TestWebSocketRefused(t *testing.T) {
 		}
 	}
 }
+
+// chatgpt.com streams events without a Content-Type: they must still be read as a stream and metered.
+func TestStreamWithoutContentType(t *testing.T) {
+	meter := &usage{}
+	resp := &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(sseUsage))}
+	if err := meterResponse(meter)(resp); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !meter.seen || meter.in != 1200 || meter.out != 30 {
+		t.Errorf("metered in=%d out=%d seen=%v", meter.in, meter.out, meter.seen)
+	}
+}
