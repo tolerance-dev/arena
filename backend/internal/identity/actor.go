@@ -70,3 +70,13 @@ func actorLogFromContext(ctx context.Context) *ActorLog {
 	h, _ := ctx.Value(actorLogKey{}).(*ActorLog)
 	return h
 }
+
+// OwnerScope is the owner filter for the signed-in user's own things (agents, runs): their user id, or "" for an
+// admin, who may manage everyone's.
+func OwnerScope(ctx context.Context) string {
+	a := MustFromContext(ctx)
+	if a.Role == "admin" {
+		return ""
+	}
+	return a.UserID
+}

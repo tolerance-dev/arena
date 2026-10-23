@@ -184,7 +184,7 @@ export function TaskTile({ slug, size = 'md', className }: { slug: string; size?
 
 // An agent's "logo": its initials on a tile. Agents have no images.
 export function AgentAvatar({ name, size = 'md', className }: { name: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  const initials = name.split(/[\s·+_-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const initials = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
   return (
     <span aria-hidden className={cn('flex shrink-0 items-center justify-center border border-border bg-muted font-semibold text-muted-foreground',
       size === 'sm' ? 'size-8 rounded-lg text-meta' : size === 'md' ? 'size-12 rounded-xl text-title' : 'size-16 rounded-lg text-section', className)}>

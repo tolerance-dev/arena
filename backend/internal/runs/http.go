@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"tolerance/internal/identity"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/sandbox"
 	"tolerance/internal/tasks"
@@ -16,6 +17,7 @@ type TaskView struct {
 	DataFiles []string `json:"data_files"`
 	Checks    []string `json:"checks"`
 	Board     []Run    `json:"leaderboard"`
+	Compare   []Run    `json:"compare"`
 	Recent    []Run    `json:"recent"`
 }
 
@@ -48,6 +50,9 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		}
 		if v.Board, err = s.Leaderboard(r.Context(), t.Slug); err == nil {
 			v.Recent, err = s.Recent(r.Context(), t.Slug, "", 20)
+		}
+		if err == nil {
+			v.Compare, err = s.Compare(r.Context(), t.Slug)
 		}
 		if err != nil {
 			httpx.WriteError(w, r, err)
@@ -113,9 +118,18 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	})
 }
 
-// RegisterAdminRoutes mounts starting, cancelling and deleting runs.
-func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
-	mux.HandleFunc("POST /api/v1/admin/runs", func(w http.ResponseWriter, r *http.Request) {
+// RegisterOwnerRoutes mounts starting, cancelling and deleting runs for any signed-in user, on their own agents
+// (an admin: on any agent).
+func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("GET /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
+		items, err := s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 30)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
+	})
+	mux.HandleFunc("POST /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)
 		if err != nil {
 			httpx.WriteError(w, r, err)
@@ -131,23 +145,23 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		run, err := s.Create(r.Context(), in.AgentID, in.Task, in.TimeLimitS, in.TokenBudget)
+		run, err := s.Create(r.Context(), identity.OwnerScope(r.Context()), in.AgentID, in.Task, in.TimeLimitS, in.TokenBudget)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		httpx.Respond(w, http.StatusCreated, run)
 	})
-	mux.HandleFunc("POST /api/v1/admin/runs/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Cancel(r.Context(), r.PathValue("id")); err != nil {
+	mux.HandleFunc("POST /api/v1/my/runs/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Cancel(r.Context(), identity.OwnerScope(r.Context()), r.PathValue("id")); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	mux.HandleFunc("DELETE /api/v1/admin/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("DELETE /api/v1/my/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		if err := s.Delete(r.Context(), id); err != nil {
+		if err := s.Delete(r.Context(), identity.OwnerScope(r.Context()), id); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}

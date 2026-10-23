@@ -36,7 +36,7 @@ working skeleton, fast. This section overrides any skills and default habits:
 ## What this is
 
 **tolerance** (https://tolerance.cc; env vars are `ARENA_*`, the database is `arena`): an **agent arena for whole
-apps**. An admin uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM key; a run puts the agent in a
+apps**. A user uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM key; a run puts the agent in a
 sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and frontend; the platform measures
 and judges the result. Older features were deleted; they are in git history (before "Pivot to agent runs").
 
@@ -75,6 +75,9 @@ starts, `/` serves HTML and shows `ui_text` (seed data, HTML or SVG text, case-i
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
 verify.py's check names. Example agents: `examples/agents/{claude-code,demo}`; `demo` writes a plain storefront
 that passes every automatic check (the judge should score it low).
+The task page opens on **Compare** (`components/runs/compare.tsx`): each agent's best finished run side by side
+(`runs.Service.Compare`, unscored runs included), judge checklist items lined up by position, the best cell per row
+highlighted. Keep `judge.md` items in a fixed order so the rows line up.
 
 Prod previews are agent code on a sibling subdomain (`p-<hex>.tolerance.cc`), so the api refuses cross-origin
 writes (`sameOrigin` in `cmd/api/handler.go`) and the session cookie is `__Host-arena_session` in prod: keep both.
@@ -94,8 +97,10 @@ make test-fast   # gofmt + go vet + go test + pnpm typecheck
 
 The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
 (the Makefile loads it before `.env`). Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
-Admins (upload agents, start runs) are `ownerEmail` (in `cmd/api/config.go`) + `ARENA_ADMIN_EMAILS`, locally too:
-the dev login does NOT make everyone an admin; dev-sign in as the owner to upload. Others see `/admin` disabled.
+Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user
+limits (3 open runs, 30 a day, time limit ≤ the task's; `internal/runs/service.go`) since every run spends the
+platform's judge key. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
+change anyone's agents and runs. `ARENA_JUDGE_API_KEY` can live in `~/.config/tolerance/env` (the Makefile exports it).
 
 ## Map
 
@@ -104,7 +109,7 @@ backend/cmd/api              config, handler.go (ALL routing), main (server + ru
 backend/cmd/gateway          LLM/registry proxy + live previews
 backend/cmd/migrate          goose up
 backend/migrations           00001 (arena_app role), 00002_schema.sql (the whole schema)
-backend/internal/agents      agent bundles + sealed keys, admin upload routes
+backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
 backend/internal/runs        runs service/routes, worker, verify.py (checks + judge), LOC stats
 backend/internal/gateway     gateway.go (proxy, metering, budget, fake upstream), preview.go
 backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), network arena-agents
@@ -112,12 +117,12 @@ backend/internal/tasks       task catalog (embedded)
 backend/internal/identity    OAuth, sessions, auth middleware
 backend/internal/platform    db, httpx, sanitize, secretbox, ratelimit, idgen, clientip
 backend/runtime              Dockerfile of arena-runtime:1 (Playwright python + Node 22 + claude/codex CLIs)
-frontend/app/(site)          / (challenge feed), /t/[slug], /r/[id], /agents, /agents/[id], /leaderboard, /admin;
+frontend/app/(site)          / (challenge feed), /t/[slug], /r/[id], /agents, /agents/[id], /leaderboard, /my;
                              frontend/app/login
 frontend/components/runs     the views
 ```
 
-Public: `/api/v1/tasks*`, `/runs*`, `/agents*`. Session + admin: `/api/v1/admin/*` (agents, runs). `/me` needs a
+Public: `/api/v1/tasks*`, `/runs*`, `/agents*`. Session: `/api/v1/my/*` (own agents, runs). `/me` needs a
 session.
 
 ## Rules that stay even in prototype mode

@@ -240,7 +240,7 @@ function Line({ label, value, sub }: { label: string; value: React.ReactNode; su
   )
 }
 
-// Source download for everyone; cancel and delete for admins.
+// Source download for everyone; cancel and delete for the agent's owner (and admins).
 function Actions({ run, t, onChange }: { run: Run; t: RT; onChange: () => void }) {
   const { me } = useMe()
   const router = useRouter()
@@ -260,7 +260,8 @@ function Actions({ run, t, onChange }: { run: Run; t: RT; onChange: () => void }
       setArmed(false)
     }
   }
-  if (!run.has_source && !me?.can_admin) return null
+  const mine = !!me && (me.can_admin || me.user.handle === run.agent.owner)
+  if (!run.has_source && !mine) return null
   return (
     <div className="space-y-2">
       {run.has_source && (
@@ -268,12 +269,12 @@ function Actions({ run, t, onChange }: { run: Run; t: RT; onChange: () => void }
           <Download /> {t('downloadSource')}
         </Button>
       )}
-      {me?.can_admin && isActive(run) && (
-        <Button variant="destructive" className="w-full" disabled={busy} onClick={() => void act(() => post(`/admin/runs/${run.id}/cancel`), onChange)}>{t('cancelRun')}</Button>
+      {mine && isActive(run) && (
+        <Button variant="destructive" className="w-full" disabled={busy} onClick={() => void act(() => post(`/my/runs/${run.id}/cancel`), onChange)}>{t('cancelRun')}</Button>
       )}
-      {me?.can_admin && !isActive(run) && (
+      {mine && !isActive(run) && (
         <Button variant="destructive" className="w-full" disabled={busy} onBlur={() => setArmed(false)}
-          onClick={() => armed ? void act(() => del(`/admin/runs/${run.id}`), () => router.push(`/t/${run.task}`)) : setArmed(true)}>
+          onClick={() => armed ? void act(() => del(`/my/runs/${run.id}`), () => router.push(`/t/${run.task}`)) : setArmed(true)}>
           {armed ? t('confirmAgain') : t('deleteRun')}
         </Button>
       )}

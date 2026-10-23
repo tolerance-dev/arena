@@ -29,7 +29,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
     { label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
     { label: t('agents'), href: '/agents', active: pathname.startsWith('/agents') },
     { label: t('leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
-    ...(me?.can_admin ? [{ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
+    { label: t('myAgents'), href: '/my', active: pathname.startsWith('/my') },
   ]
 
   async function signOut() {

@@ -7,16 +7,6 @@ import (
 	"tolerance/internal/platform/httpx"
 )
 
-func RequireAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if MustFromContext(r.Context()).Role != "admin" {
-			httpx.WriteError(w, r, httpx.New(http.StatusForbidden, "forbidden", "Admin role required"))
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 // RequireSession authenticates the arena_session cookie and attaches a user Actor.
 func RequireSession(s *Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
