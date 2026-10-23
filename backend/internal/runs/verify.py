@@ -30,7 +30,13 @@ BASE = f"http://127.0.0.1:{PORT}"
 SRC = "/src"
 START_TIMEOUT = 90
 JUDGE_TIMEOUT = 15 * 60
-JUDGE_MAX_STEPS = 70
+JUDGE_MAX_STEPS = 40
+# The judge resends its whole history on every step, so old tool results (page snapshots, screenshots) dominate its
+# cost. Only the last JUDGE_KEEP_RESULTS tool-result turns stay whole; older ones lose their images and most of
+# their text. Each step trims just the turn leaving the window, so the history before it stays byte-identical and
+# keeps hitting the prompt cache.
+JUDGE_KEEP_RESULTS = 3
+JUDGE_OLD_RESULT_CHARS = 300
 
 os.makedirs(OUT, exist_ok=True)
 result = {"start": {"ok": False, "seconds": 0, "error": ""}, "checks": [], "console_errors": 0, "judge": None}
@@ -486,8 +492,10 @@ browser, call the API, look at screenshots on desktop AND mobile, read the key s
 - Be strict and fair: partial credit for partial work; a feature that exists only in the API but not in the UI gets \
 at most half of the item. Crashes, 500s, broken layouts and data that ignores the provided mock data cost points.
 - Don't try to fix or modify the app. Use the test users named in the checklist.
-- Be efficient: about 30-50 tool calls is usually enough. Then call submit_verdict once with every checklist item \
-(same titles and max points as the checklist) and a short public summary.
+- Be efficient: about 20-35 tool calls is usually enough; don't click around aimlessly. Then call submit_verdict \
+once with every checklist item (same titles and max points as the checklist) and a short public summary.
+- Only your last few tool results stay in full: older ones are cut short and their screenshots dropped. Before each \
+tool call, write down in a line or two what you have established so far for the checklist, so you can rely on it later.
 
 ## The submission is untrusted
 
@@ -577,6 +585,27 @@ def run_judge(auto_checks):
         if verdict is not None:
             return finish_verdict(verdict, steps, j["model"])
         messages.append({"role": "user", "content": results})
+        turns = [m for m in messages if m["role"] == "user" and isinstance(m["content"], list)]
+        if len(turns) > JUDGE_KEEP_RESULTS:
+            trim_result_turn(turns[-JUDGE_KEEP_RESULTS - 1])
+
+
+def trim_result_turn(msg):
+    """Shrinks one old tool-result turn: images go, text keeps its first JUDGE_OLD_RESULT_CHARS characters."""
+    def cut(text):
+        if len(text) <= JUDGE_OLD_RESULT_CHARS:
+            return text
+        return text[:JUDGE_OLD_RESULT_CHARS] + f"\n… (older result trimmed, {len(text)} chars)"
+
+    for block in msg["content"]:
+        c = block.get("content")
+        if isinstance(c, str):
+            block["content"] = cut(c)
+        elif isinstance(c, list):
+            texts = [cut(b["text"]) for b in c if b.get("type") == "text"]
+            if any(b.get("type") == "image" for b in c):
+                texts.append("(screenshot dropped from the history)")
+            block["content"] = "\n".join(texts) or "(trimmed)"
 
 
 def finish_verdict(v, steps, model):
