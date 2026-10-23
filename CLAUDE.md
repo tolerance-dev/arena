@@ -21,17 +21,18 @@ working skeleton, fast. This section overrides any skills and default habits:
   instead of placeholders. Don't pile on blocks that repeat another page.
 - **Throwing code away is fine.** When the concept changes, delete the old feature (code, routes, pages, tests)
   rather than keeping it compatible.
-- **Never deploy yourself, no ops work unless asked.** Don't run `gh workflow run deploy` and don't change prod by
-  any other path: no SSH changes on the server, no Cloudflare changes, no workflows that do either — even when
-  asked to "do everything". Prepare the PR, then tell the user what to press (Actions → deploy → Run workflow), with
-  which inputs (`ref=<sha>` rolls back, `reset_db=true` wipes the DB — needed after any schema change), and what has
-  to be set up by hand first. Server details: `deploy/README.md`.
+- **Deploys and prod work are allowed** (standing permission from the user since 2026-10-23): run
+  `gh workflow run deploy` yourself (`-f ref=<sha>` rolls back, `-f reset_db=true` wipes the DB — needed after any
+  schema change), and do ops on the server or in Cloudflare when a task needs it. Watch the run to the end
+  (`gh run watch`) and check https://tolerance.cc afterwards. Say in the reply what went out, with which inputs. A
+  hand change on the server that must survive goes into `deploy/` (server details: `deploy/README.md`).
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what would
   trip up the next session.
-- **Git: only through pull requests.** Pushing to `main` is blocked (branch protection, admins included). Work on a
-  branch (`git fetch && git checkout -b <name> origin/main`), push it, open a PR with `gh pr create` and stop
-  there: **never merge a PR yourself** (no `gh pr merge`, no auto-merge). Give the PR link in the reply. Never try
-  to push to `main` or weaken the protection.
+- **Git: through pull requests, merged by you.** Pushing to `main` is blocked (branch protection, admins
+  included). Work on a branch (`git fetch && git checkout -b <name> origin/main`), push it, open a PR with
+  `gh pr create`, then merge it yourself with `gh pr merge --squash` (standing permission since 2026-10-23) once it
+  is clean against fresh `main` and `make test-fast` passes; resolve conflicts on the PR branch first. Give the PR
+  link in the reply. Never push to `main` directly or weaken the protection.
 
 ## What this is
 
