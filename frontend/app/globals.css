@@ -44,6 +44,14 @@
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
   --color-series-4: var(--series-4);
+  --color-vendor-anthropic: var(--vendor-anthropic);
+  --color-vendor-openai: var(--vendor-openai);
+  --color-vendor-google: var(--vendor-google);
+  --color-vendor-moonshot: var(--vendor-moonshot);
+  --color-vendor-deepseek: var(--vendor-deepseek);
+  --color-vendor-zhipu: var(--vendor-zhipu);
+  --color-vendor-alibaba: var(--vendor-alibaba);
+  --color-vendor-tencent: var(--vendor-tencent);
   /* Linear's radii: chips and code 4, controls 6, cards and rows 8, large frames 12. */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -77,12 +85,6 @@
    fail own green and red. Text pairs hold 4.5:1, control borders 3:1, in both themes. */
 :root {
   color-scheme: light;
-  --home-background: #f3f4f1;
-  --home-foreground: #151916;
-  --home-card: #ffffff;
-  --home-muted: #e9ece8;
-  --home-muted-foreground: #626b66;
-  --home-border: #dce1dc;
   --background: #ffffff;
   --foreground: #101828;
   --card: #ffffff;
@@ -125,19 +127,22 @@
   --series-2: #2a3fb8;
   --series-3: #8b93a1;
   --series-4: #c4cad3;
+  /* Model vendors (agent avatars): one hue each, 4.5:1 on their own 10% tint. No logos. */
+  --vendor-anthropic: #b04a28;
+  --vendor-openai: #11765a;
+  --vendor-google: #1d5ccc;
+  --vendor-moonshot: #ad2e66;
+  --vendor-deepseek: #0b6f80;
+  --vendor-zhipu: #4a3fcf;
+  --vendor-alibaba: #7f36b8;
+  --vendor-tencent: #8a5d00;
   --radius: 0.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --home-background: #121514;
-    --home-foreground: #e5e8e4;
-    --home-card: #191d1b;
-    --home-muted: #222725;
-    --home-muted-foreground: #a2aaa5;
-    --home-border: #303733;
-    --background: #08090a;
+                --background: #08090a;
     --foreground: #f7f8f8;
     --card: #0f1011;
     --card-foreground: #f7f8f8;
@@ -169,6 +174,14 @@
     --series-2: #8f9dff;
     --series-3: #7b8089;
     --series-4: #3f434a;
+    --vendor-anthropic: #f0946f;
+    --vendor-openai: #5cd0a2;
+    --vendor-google: #7eabff;
+    --vendor-moonshot: #f38db8;
+    --vendor-deepseek: #5ec6d8;
+    --vendor-zhipu: #a9a3ff;
+    --vendor-alibaba: #cf9df4;
+    --vendor-tencent: #e2b45a;
   }
 }
 

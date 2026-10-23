@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Layers, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
@@ -32,6 +32,9 @@ export function MyAgents() {
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
   const runs = usePoll<{ items: Run[] }>(me ? '/my/runs' : null, 3_000)
   const [adding, setAdding] = useState<boolean | null>(null)
+  // /my?task=<slug> (the task page's "Run your agent"): that task comes preselected in every agent's row.
+  const [preset, setPreset] = useState('')
+  useEffect(() => setPreset(new URLSearchParams(window.location.search).get('task') ?? ''), [])
 
   if (loading) return <div className="h-96 animate-pulse rounded-lg bg-muted" />
   if (!me) {
@@ -61,7 +64,7 @@ export function MyAgents() {
         {none && !showForm && <EmptyState>{t('noAgents')}</EmptyState>}
         {!!agents.data?.items.length && (
           <ul className={cn('divide-y divide-border rounded-xl border-2 border-border', showForm && 'mt-6')}>
-            {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} tasks={tasks.data?.items ?? []} t={t} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
+            {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} tasks={tasks.data?.items ?? []} preset={preset} t={t} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
           </ul>
         )}
       </section>
@@ -138,8 +141,8 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
 }
 
 // One agent in one row: who it is, then a task and "Start". Limits, the key and deleting hide behind "⋯".
-function AgentRow({ agent, tasks, t, onChange, onStarted, subscriptions }: {
-  agent: Agent; tasks: TaskSummary[]; t: RT; onChange: () => void; onStarted: () => void; subscriptions: boolean
+function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions }: {
+  agent: Agent; tasks: TaskSummary[]; preset: string; t: RT; onChange: () => void; onStarted: () => void; subscriptions: boolean
 }) {
   const [task, setTask] = useState('')
   const [minutes, setMinutes] = useState('')
@@ -150,7 +153,7 @@ function AgentRow({ agent, tasks, t, onChange, onStarted, subscriptions }: {
   const [more, setMore] = useState(false)
   const [key, setKey] = useState('')
   const [provider, setProvider] = useState<string>(agent.provider)
-  const chosen = task || tasks[0]?.slug || ''
+  const chosen = task || (tasks.some((x) => x.slug === preset) ? preset : '') || tasks[0]?.slug || ''
   const limits = { time_limit_s: minutes ? Math.round(Number(minutes) * 60) : 0, token_budget: budgetK ? Math.round(Number(budgetK) * 1000) : 0 }
 
   async function launch(slugs: string[]) {
