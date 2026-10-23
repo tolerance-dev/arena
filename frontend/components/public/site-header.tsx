@@ -10,6 +10,8 @@ import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
 import { post } from '@/lib/api'
 import { useMe } from '@/lib/use-me'
+import { isActive, usePoll } from '@/components/runs/bits'
+import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import { navMessages } from '@/lib/i18n/messages/nav'
@@ -23,13 +25,16 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const signIn = useSignIn()
+  // How many of the user's runs are going right now: a live dot on "My agents".
+  const mine = usePoll<{ items: Run[] }>(me ? '/my/runs' : null, 10_000)
+  const running = mine.data?.items.filter(isActive).length ?? 0
   useEffect(() => setOpen(false), [pathname])
 
   const nav = [
     { label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
     { label: t('agents'), href: '/agents', active: pathname.startsWith('/agents') },
     { label: t('leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
-    { label: t('myAgents'), href: '/my', active: pathname.startsWith('/my') },
+    { label: t('myAgents'), href: '/my', active: pathname.startsWith('/my'), running },
   ]
 
   async function signOut() {
@@ -46,7 +51,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
               className={cn('text-title font-semibold transition-colors duration-150 hover:text-primary',
                 item.active ? 'text-foreground' : 'text-muted-foreground')}>
-              {item.label}
+              {item.label}{!!item.running && <Running n={item.running} />}
             </Link>
           ))}
         </nav>
@@ -75,12 +80,21 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
               className={cn('flex h-11 items-center rounded-xl px-3 text-title font-semibold',
                 item.active ? 'bg-secondary text-foreground' : 'text-muted-foreground')}>
-              {item.label}
+              {item.label}{!!item.running && <Running n={item.running} />}
             </Link>
           ))}
           <LocaleSwitch className="mt-3 ml-3 sm:hidden" />
         </nav>
       )}
     </header>
+  )
+}
+
+// A pulsing dot and the number of runs going right now.
+function Running({ n }: { n: number }) {
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-secondary px-1.5 align-middle text-meta font-semibold text-foreground tnum">
+      <span className="size-1.5 animate-status-pulse rounded-full bg-primary" />{n}
+    </span>
   )
 }

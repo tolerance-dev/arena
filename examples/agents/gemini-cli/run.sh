@@ -1,10 +1,11 @@
 #!/bin/bash
-# Gemini CLI (Google's agent), headless, on Gemini 3.1 Pro. The platform sets GOOGLE_GEMINI_BASE_URL and
+# Gemini CLI (Google's agent), headless, on Gemini 3.8 Flash. The platform sets GOOGLE_GEMINI_BASE_URL and
 # GEMINI_API_KEY to the gateway; works with a Google AI Studio key or an OrcaRouter key (the gateway adds OrcaRouter's
-# google/ prefix to model names). Change MODEL to try another.
+# google/ prefix to model names). Gemini subscriptions don't work: Google no longer lets individuals use Gemini CLI
+# on one (Code Assist answers UNSUPPORTED_CLIENT). Change MODEL to try another.
 set -uo pipefail
 cd /work
-MODEL="${MODEL:-gemini-3.1-pro-preview}"
+MODEL="${MODEL:-gemini-3.8-flash}"
 # /work is a fresh folder Gemini CLI has never seen: trust it, or --yolo falls back to asking.
 export GEMINI_CLI_TRUST_WORKSPACE=true
 mkdir -p ~/.gemini

@@ -83,37 +83,40 @@ type Stats struct {
 
 // Run is the full public view of a run.
 type Run struct {
-	ID            string     `json:"id"`
-	Task          string     `json:"task"`
-	Agent         AgentRef   `json:"agent"`
-	Status        string     `json:"status"`
-	FailureReason *string    `json:"failure_reason"`
-	AgentExit     *string    `json:"agent_exit"`
-	TimeLimitS    int        `json:"time_limit_s"`
-	TokenBudget   int64      `json:"token_budget"`
-	Tokens        Tokens     `json:"tokens"`
-	JudgeTokens   Tokens     `json:"judge_tokens"`
-	AgentSeconds  *int       `json:"agent_seconds"`
-	Stats         Stats      `json:"stats"`
-	Checks        []Check    `json:"checks"`
-	Judge         *Judge     `json:"judge"`
-	Score         *int       `json:"score"`
-	AppStarted    bool       `json:"app_started"`
-	HasShot       bool       `json:"has_shot"`
-	HasShotMobile bool       `json:"has_shot_mobile"`
-	HasSource     bool       `json:"has_source"`
-	PreviewURL    string     `json:"preview_url,omitempty"`
-	AgentLog      string     `json:"agent_log,omitempty"`
-	CheckLog      string     `json:"check_log,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	StartedAt     *time.Time `json:"started_at"`
-	FinishedAt    *time.Time `json:"finished_at"`
+	ID            string   `json:"id"`
+	Task          string   `json:"task"`
+	Agent         AgentRef `json:"agent"`
+	Status        string   `json:"status"`
+	FailureReason *string  `json:"failure_reason"`
+	AgentExit     *string  `json:"agent_exit"`
+	TimeLimitS    int      `json:"time_limit_s"`
+	TokenBudget   int64    `json:"token_budget"`
+	Tokens        Tokens   `json:"tokens"`
+	JudgeTokens   Tokens   `json:"judge_tokens"`
+	AgentSeconds  *int     `json:"agent_seconds"`
+	Stats         Stats    `json:"stats"`
+	Checks        []Check  `json:"checks"`
+	Judge         *Judge   `json:"judge"`
+	Score         *int     `json:"score"`
+	AppStarted    bool     `json:"app_started"`
+	HasShot       bool     `json:"has_shot"`
+	HasShotMobile bool     `json:"has_shot_mobile"`
+	HasSource     bool     `json:"has_source"`
+	PreviewURL    string   `json:"preview_url,omitempty"`
+	AgentLog      string   `json:"agent_log,omitempty"`
+	// LogTail is the end of the agent's log, for lists: what it is doing now, or why it stopped.
+	LogTail    string     `json:"log_tail"`
+	CheckLog   string     `json:"check_log,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+	StartedAt  *time.Time `json:"started_at"`
+	FinishedAt *time.Time `json:"finished_at"`
 }
 
 const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, u.handle, r.status, r.failure_reason, r.agent_exit,
 	r.time_limit_s, r.token_budget, r.tokens_in, r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, r.llm_requests,
 	r.judge_tokens_in, r.judge_tokens_out, r.agent_seconds, r.stats, r.checks, r.judge, r.score, r.app_started,
-	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.created_at, r.started_at, r.finished_at`
+	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.created_at, r.started_at, r.finished_at,
+	right(r.agent_log, 800)`
 
 const runFrom = ` FROM runs r JOIN agents a ON a.id = r.agent_id JOIN users u ON u.id = a.owner_id`
 
@@ -124,7 +127,7 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 		&r.Status, &r.FailureReason, &r.AgentExit, &r.TimeLimitS, &r.TokenBudget, &r.Tokens.In, &r.Tokens.Out,
 		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests, &r.JudgeTokens.In, &r.JudgeTokens.Out,
 		&r.AgentSeconds, &stats, &checks, &judge, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
-		&r.CreatedAt, &r.StartedAt, &r.FinishedAt}
+		&r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return r, httpx.NotFound()

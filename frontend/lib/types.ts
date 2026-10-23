@@ -34,7 +34,7 @@ export interface Run {
   stats: { loc: number; files: number; languages: Record<string, number>; start_seconds?: number; console_errors: number }
   checks: Check[]; judge: Judge | null; score: number | null; app_started: boolean
   has_shot: boolean; has_shot_mobile: boolean; has_source: boolean
-  preview_url?: string; agent_log?: string; check_log?: string
+  preview_url?: string; agent_log?: string; check_log?: string; log_tail?: string
   created_at: string; started_at: string | null; finished_at: string | null
 }
 
