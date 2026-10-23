@@ -10,7 +10,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
 import { AgentAvatar, Score, scoreTone, usePoll, providerLabel } from './bits'
 import { RunRow } from './run-row'
-import { rankAgents, useBoards } from './standings'
+import { rankAgents } from './standings'
 
 
 // Every agent as a Product Hunt feed row; the counters are its runs and best score.
@@ -52,13 +52,12 @@ export function AgentView({ id }: { id: string }) {
   const agent = usePoll<Agent>(`/agents/${encodeURIComponent(id)}`, 30_000)
   const runs = usePoll<{ items: Run[] }>(`/runs?agent=${encodeURIComponent(id)}&limit=100`, 15_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
-  const boards = useBoards(tasks.data?.items)
   if (agent.error?.status === 404) return <EmptyState>{t('agentMissing')}</EmptyState>
   const a = agent.data
   if (!a) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
 
   const list = runs.data?.items
-  const ranked = tasks.data && boards ? rankAgents(tasks.data.items, boards) : null
+  const ranked = tasks.data ? rankAgents(tasks.data.items) : null
   const mine = ranked?.find((r) => r.id === id)
   const finished = list?.filter((r) => r.status === 'done') ?? []
   const completed = new Set(finished.filter((r) => r.score != null).map((r) => r.task)).size

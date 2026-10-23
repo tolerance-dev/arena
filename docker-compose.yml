@@ -1,6 +1,6 @@
 # Local stack: `make up` (or `docker compose up --build`) → site on
 # :${WEB_PORT}, api on :${API_PORT}, live previews on :${GATEWAY_PORT}.
-# `migrate` runs goose once and exits; `api` serves HTTP and runs the runs
+# `migrate` sets up the role and the schema once and exits; `api` serves HTTP and runs the runs
 # worker (it starts sandbox containers, so it needs docker.sock); `gateway` is
 # the sandboxes' only way out (LLM APIs, npm, PyPI) and serves the previews.
 # `make dev` starts only postgres and gateway here and runs api/web natively.

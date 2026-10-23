@@ -41,11 +41,11 @@ export interface Run {
 
 export interface TaskSummary {
   slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number
-  runs: number; agents: number; best: Run | null
+  runs: number; agents: number; best: Run | null; leaderboard: Run[]
 }
 
 export interface TaskView extends TaskSummary {
-  brief: string; data_files: string[]; checks: string[]; leaderboard: Run[]; compare: Run[]; recent: Run[]
+  brief: string; data_files: string[]; checks: string[]; compare: Run[]; recent: Run[]
 }
 
 export interface AdminSettings { runs_paused: boolean; user_runs: boolean; judge: boolean }

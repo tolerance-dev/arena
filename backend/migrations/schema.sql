@@ -1,7 +1,5 @@
--- +goose Up
-
--- The whole schema. There is no data worth keeping yet: change this file freely and recreate the database
--- (make reset locally) instead of adding migrations.
+-- The whole schema, applied by cmd/migrate to an empty database. There is no data worth keeping yet: change this
+-- file freely and recreate the database (make reset locally, reset_db=true on prod) instead of adding migrations.
 
 CREATE TABLE users (
     id         text PRIMARY KEY,
@@ -113,5 +111,3 @@ INSERT INTO settings DEFAULT VALUES;
 GRANT USAGE ON SCHEMA public TO arena_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, settings TO arena_app;
 
--- +goose Down
-DROP TABLE settings, gateway_tokens, runs, agents, sessions, user_identities, users;
