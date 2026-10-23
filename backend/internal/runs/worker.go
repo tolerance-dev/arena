@@ -472,7 +472,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	}
 	spec, err := json.Marshal(map[string]any{
 		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "ui_text": task.UIText,
-		"judge": judge, "app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
+		"judge_mode": task.JudgeMode, "pages": task.Pages, "judge": judge, "app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
 	})
 	if err != nil {
 		return err
@@ -521,7 +521,14 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if vr.Judge == nil {
 		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}
 	}
-	score := Score(checks, vr.Start.OK, vr.Judge, task.Judge != "")
+	weight := 0.0
+	if task.Judge != "" {
+		weight = task.JudgeWeight
+	}
+	score := Score(checks, vr.Start.OK, vr.Judge, weight)
+	if vr.Judge.Status == "ok" {
+		vr.Judge.Weight = weight
+	}
 	statsJSON, _ := json.Marshal(stats)
 	checksJSON, _ := json.Marshal(checks)
 	judgeJSON, _ := json.Marshal(vr.Judge)
@@ -557,10 +564,11 @@ func (w *Worker) watchStatus(ctx context.Context, id, status string) (<-chan str
 	return stop, cancel
 }
 
-// Score is 0 when the app doesn't start. Otherwise a task with a judge scores 30% automatic checks + 70% judge, and
-// no score at all (nil: the run stays off the leaderboard) when the judge gave no verdict, since the checks alone
-// can't tell a working product from a page that shows the seed data. A task without a judge scores the checks.
-func Score(checks []Check, started bool, j *Judge, judged bool) *int {
+// Score is 0 when the app doesn't start. Otherwise a task with a judge (judgeWeight > 0) scores
+// (1 − judgeWeight) × automatic checks + judgeWeight × judge, and no score at all (nil: the run stays off the
+// leaderboard) when the judge gave no verdict: a half-scored run must not rank next to fully scored ones. A task
+// without a judge scores the checks.
+func Score(checks []Check, started bool, j *Judge, judgeWeight float64) *int {
 	score := func(v float64) *int { n := int(math.Round(v)); return &n }
 	if !started {
 		return score(0)
@@ -572,13 +580,13 @@ func Score(checks []Check, started bool, j *Judge, judged bool) *int {
 		}
 	}
 	auto := 100 * float64(passed) / float64(max(1, len(checks)))
-	if !judged {
+	if judgeWeight <= 0 {
 		return score(auto)
 	}
 	if j == nil || j.Status != "ok" {
 		return nil
 	}
-	return score(0.3*auto + 0.7*float64(j.Score))
+	return score((1-judgeWeight)*auto + judgeWeight*float64(j.Score))
 }
 
 func untar(b []byte) map[string][]byte {

@@ -740,7 +740,8 @@ func fake(w http.ResponseWriter, r *http.Request, body []byte, provider, path st
 	stop := "end_turn"
 	if judge {
 		stop = "tool_use"
-		if len(req.Messages) < 3 {
+		// The agent judge browses first; the screens judge has only submit_verdict and answers at once.
+		if len(req.Messages) < 3 && len(req.Tools) > 1 {
 			content = []any{map[string]any{"type": "tool_use", "id": "toolu_fake1", "name": "browser_goto", "input": map[string]any{"path": "/"}}}
 		} else {
 			content = []any{map[string]any{"type": "tool_use", "id": "toolu_fake2", "name": "submit_verdict", "input": map[string]any{
