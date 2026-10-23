@@ -59,7 +59,7 @@ func main() {
 
 	d := deps{
 		pool: pool, log: log, users: identity.NewService(pool, cfg.adminEmails),
-		agents: agents.NewService(pool, box), runs: runs.NewService(pool, cfg.previewURL),
+		agents: agentService(pool, box, cfg.subscriptions), runs: runs.NewService(pool, cfg.previewURL),
 		limiter: ratelimit.New(nil), providers: providersFromConfig(cfg),
 	}
 
@@ -105,4 +105,10 @@ func checkSchema(ctx context.Context, pool *db.Pool) error {
 		return errors.New("database schema is out of date: the runs table is missing; run make migrate")
 	}
 	return nil
+}
+
+func agentService(pool *db.Pool, box *secretbox.Box, subscriptions bool) *agents.Service {
+	s := agents.NewService(pool, box)
+	s.Subscriptions = subscriptions
+	return s
 }

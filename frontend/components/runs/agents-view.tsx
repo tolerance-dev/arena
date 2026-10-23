@@ -9,10 +9,9 @@ import { Counter, Feed, FeedRow, Meta } from '@/components/ui/feed'
 import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
-import { AgentAvatar, Ago, RunShot, Score, scoreTone, taskTitle, usePoll, type RT } from './bits'
+import { AgentAvatar, Ago, RunShot, Score, scoreTone, taskTitle, usePoll, type RT, providerLabel } from './bits'
 import { rankAgents, useBoards } from './standings'
 
-const provider = (p: string) => (p === 'openai' ? 'OpenAI' : 'Anthropic')
 
 // Every agent as a Product Hunt feed row; the counters are its runs and best score.
 export function AgentsView() {
@@ -31,7 +30,7 @@ export function AgentsView() {
                 {[...items].sort((a, b) => (b.best_score ?? -1) - (a.best_score ?? -1) || b.runs - a.runs).map((a) => (
                   <FeedRow key={a.id} href={`/agents/${a.id}`} thumb={<AgentAvatar name={a.name} />} title={a.name}
                     subtitle={a.description || undefined}
-                    meta={[provider(a.provider), t('by', { owner: a.owner })]}
+                    meta={[providerLabel(a.provider), t('by', { owner: a.owner })]}
                     counters={<>
                       <Counter icon={<Play />} value={a.runs} label={t('counterRuns')} className="max-sm:hidden" />
                       <Counter icon={<Trophy />} value={a.best_score ?? '—'} label={t('factBest')}
@@ -76,7 +75,7 @@ export function AgentView({ id }: { id: string }) {
               <div className="min-w-0">
                 <h1 className="display text-page break-words">{a.name}</h1>
                 {a.description && <p className="text-subtitle text-muted-foreground">{a.description}</p>}
-                <Meta className="mt-1" items={[provider(a.provider), t('by', { owner: a.owner }), t.plural('runs', a.runs)]} />
+                <Meta className="mt-1" items={[providerLabel(a.provider), t('by', { owner: a.owner }), t.plural('runs', a.runs)]} />
               </div>
             </header>
             <section className="mt-10" aria-labelledby="work-title">

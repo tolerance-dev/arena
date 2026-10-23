@@ -13,6 +13,26 @@ import { TaskGlyph } from './task-glyph'
 
 export type RT = ReturnType<typeof useT<typeof runsMessages.en>>
 
+// Where an agent's key is spent (the gateway's providers). OrcaRouter takes one key for many vendors' models.
+export const PROVIDERS = [
+  { value: 'anthropic', label: 'Anthropic' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'google', label: 'Google Gemini' },
+  { value: 'orcarouter', label: 'OrcaRouter' },
+] as const
+
+// Personal subscriptions: offered to admins on a local stack only (me.subscriptions).
+export const SUBSCRIPTIONS = [
+  { value: 'claude-sub', label: 'Claude subscription' },
+  { value: 'chatgpt-sub', label: 'ChatGPT subscription' },
+] as const
+
+export const providerLabel = (p: string) => [...PROVIDERS, ...SUBSCRIPTIONS].find((x) => x.value === p)?.label ?? p
+
+export function ProviderOptions({ subscriptions }: { subscriptions?: boolean }) {
+  return <>{[...PROVIDERS, ...(subscriptions ? SUBSCRIPTIONS : [])].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
+}
+
 // Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted).
 export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean) {
   const [data, setData] = useState<T | null>(null)

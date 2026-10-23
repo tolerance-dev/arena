@@ -2,12 +2,12 @@
 
 export interface AuthProviders { providers: ('github' | 'google')[]; dev_login: boolean }
 export interface User { id: string; email: string; handle: string; role: 'user' | 'admin'; created_at: string }
-export interface Me { user: User; can_admin?: boolean }
+export interface Me { user: User; can_admin?: boolean; subscriptions?: boolean }
 
 export interface Text { en: string; ru: string }
 
 export interface Agent {
-  id: string; name: string; description: string; provider: 'anthropic' | 'openai'
+  id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
 }
 

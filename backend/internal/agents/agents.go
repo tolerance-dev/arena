@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -33,6 +34,9 @@ const (
 type Service struct {
 	pool *db.Pool
 	box  *secretbox.Box
+	// Subscriptions lets admins use their personal Claude / ChatGPT subscriptions as an agent's key
+	// (ARENA_SUBSCRIPTIONS=true, local only: a subscription is for its owner's own use, never a public arena).
+	Subscriptions bool
 }
 
 func NewService(pool *db.Pool, box *secretbox.Box) *Service { return &Service{pool: pool, box: box} }
@@ -52,6 +56,47 @@ type Agent struct {
 }
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_agent", msg) }
+
+// Providers: where the agent's key is spent. The gateway maps each one to the protocols it speaks
+// (gateway.providers): orcarouter takes the Anthropic, OpenAI and Gemini protocols with one key. claude-sub and
+// chatgpt-sub are personal subscriptions (admins only, with Service.Subscriptions on).
+
+// sealKey checks the key for the provider and returns what to seal and a short hint. For chatgpt-sub the key is
+// Codex's ~/.codex/auth.json: only the access token and the account id are kept. The refresh token is dropped on
+// purpose: refreshing it here would log the owner's own Codex out (refresh tokens rotate).
+func (s *Service) sealKey(provider, key string, admin bool) (sealed []byte, hint string, err error) {
+	key = strings.TrimSpace(key)
+	switch provider {
+	case "anthropic", "openai", "google", "orcarouter":
+	case "claude-sub", "chatgpt-sub":
+		if !s.Subscriptions || !admin {
+			return nil, "", invalid("Subscriptions are off here: use an API key")
+		}
+	default:
+		return nil, "", invalid("The provider must be anthropic, openai, google or orcarouter")
+	}
+	if provider == "chatgpt-sub" {
+		var auth struct {
+			Tokens struct {
+				AccessToken string `json:"access_token"`
+				AccountID   string `json:"account_id"`
+			} `json:"tokens"`
+		}
+		if json.Unmarshal([]byte(key), &auth) != nil || auth.Tokens.AccessToken == "" || auth.Tokens.AccountID == "" {
+			return nil, "", invalid("Paste the whole ~/.codex/auth.json of a Codex signed in with ChatGPT")
+		}
+		b, _ := json.Marshal(map[string]string{"access_token": auth.Tokens.AccessToken, "account_id": auth.Tokens.AccountID})
+		key = string(b)
+		hint = "…" + auth.Tokens.AccessToken[len(auth.Tokens.AccessToken)-4:]
+	} else {
+		if len(key) < 20 || strings.ContainsAny(key, " \n\t") {
+			return nil, "", invalid("That doesn't look like an API key")
+		}
+		hint = "…" + key[len(key)-4:]
+	}
+	sealed, err = s.box.Seal(key)
+	return sealed, hint, err
+}
 
 // BundleFiles unpacks a bundle into the files for /agent: run.sh must be at the root or inside a single top-level
 // folder (which is then stripped). Executable bits are kept.
@@ -130,11 +175,9 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	if len([]rune(in.Description)) > 500 {
 		return Agent{}, invalid("The description is longer than 500 characters")
 	}
-	if in.Provider != "anthropic" && in.Provider != "openai" {
-		return Agent{}, invalid("The provider must be anthropic or openai")
-	}
-	if len(in.APIKey) < 20 || strings.ContainsAny(in.APIKey, " \n\t") {
-		return Agent{}, invalid("That doesn't look like an API key")
+	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, !limited)
+	if err != nil {
+		return Agent{}, err
 	}
 	if !bytes.HasPrefix(in.Bundle, []byte("PK")) {
 		// A bare run.sh is a one-file bundle.
@@ -161,12 +204,7 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	if err != nil {
 		return Agent{}, err
 	}
-	sealed, err := s.box.Seal(in.APIKey)
-	if err != nil {
-		return Agent{}, err
-	}
 	id := idgen.New("agent")
-	hint := "…" + in.APIKey[len(in.APIKey)-4:]
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if limited {
 			var n int
@@ -239,20 +277,13 @@ func (s *Service) List(ctx context.Context, ownerID string, withKey bool) ([]Age
 
 // UpdateKey replaces the agent's key (and provider). ownerID "" (an admin) may change any agent.
 func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key string) (Agent, error) {
-	key = strings.TrimSpace(key)
-	if provider != "anthropic" && provider != "openai" {
-		return Agent{}, invalid("The provider must be anthropic or openai")
-	}
-	if len(key) < 20 || strings.ContainsAny(key, " \n\t") {
-		return Agent{}, invalid("That doesn't look like an API key")
-	}
-	sealed, err := s.box.Seal(key)
+	sealed, hint, err := s.sealKey(provider, key, ownerID == "")
 	if err != nil {
 		return Agent{}, err
 	}
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `UPDATE agents SET provider = $2, api_key = $3, key_hint = $4, updated_at = now()
-			WHERE id = $1 AND ($5 = '' OR owner_id = $5)`, id, provider, sealed, "…"+key[len(key)-4:], ownerID)
+			WHERE id = $1 AND ($5 = '' OR owner_id = $5)`, id, provider, sealed, hint, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.NotFound()
 		}

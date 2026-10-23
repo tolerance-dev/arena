@@ -1,7 +1,9 @@
 // Package gateway is the only way out of a sandbox. Agents (and the judge) on the internal arena-agents network
 // reach it as http://gateway:8090:
 //
-//   - /anthropic/*, /openai/*: LLM APIs, only the generation endpoints (llmRoutes). The run token the sandbox holds
+//   - /anthropic/*, /openai/*, /gemini/*: LLM APIs by protocol, only the generation endpoints (allowedRoute). The
+//     agent's provider (providers) says where each protocol goes: Anthropic, OpenAI and Google directly, or OrcaRouter
+//     for all three. The run token the sandbox holds
 //     is swapped for the agent's real key (or the platform's judge key), usage is counted into the run, the run's
 //     token budget is enforced, and a run has at most maxParallel requests in flight (more wait their turn), so the
 //     budget can't be overrun by firing many requests at once.
@@ -20,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,9 +36,13 @@ import (
 )
 
 type Config struct {
-	JudgeKey     string // Anthropic key the judge spends; "" = judging off
-	FakeUpstream bool   // answer LLM calls locally (dev without keys)
-	SelfURL      string // how sandboxes reach the gateway, for rewriting PyPI links
+	JudgeKey string // Anthropic key the judge spends; "" = judging off
+	JudgeURL string // where the judge's Anthropic requests go ("" = api.anthropic.com), e.g. https://api.orcarouter.ai
+	// Subscriptions passes agents keyed with a personal Claude or ChatGPT subscription (ARENA_SUBSCRIPTIONS, local
+	// only; the api lets only admins create them).
+	Subscriptions bool
+	FakeUpstream  bool   // answer LLM calls locally (dev without keys)
+	SelfURL       string // how sandboxes reach the gateway, for rewriting PyPI links
 }
 
 type Gateway struct {
@@ -86,16 +93,26 @@ func (g *Gateway) acquire(ctx context.Context, key string) (release func(), err 
 	}
 }
 
-// llmRoutes are the only LLM endpoints proxied: generation (metered from its response), token counting and model
-// lists. Everything else (batches, files, assistants, fine-tuning, …) would spend the key without a usage figure in
-// the response, or outlive the run.
+// llmRoutes are the only LLM endpoints proxied, by protocol: generation (metered from its response), token counting
+// and model lists. Everything else (batches, files, assistants, fine-tuning, caches, …) would spend the key without a
+// usage figure in the response, or outlive the run.
 var llmRoutes = map[string][]string{
 	"anthropic": {"POST /v1/messages", "POST /v1/messages/count_tokens", "GET /v1/models", "GET /v1/models/*"},
 	"openai":    {"POST /v1/chat/completions", "POST /v1/responses", "GET /v1/models", "GET /v1/models/*"},
+	"gemini":    {"POST /v1beta/models/{model}:generateContent|streamGenerateContent|countTokens", "GET /v1beta/models"},
+	// Codex on a ChatGPT subscription: the Responses API under chatgpt.com/backend-api/codex.
+	"chatgpt": {"POST /responses", "GET /models"},
 }
 
-func allowedRoute(provider, method, path string) bool {
-	for _, r := range llmRoutes[provider] {
+// geminiPath is a Gemini model call; the model may carry a vendor prefix (OrcaRouter's google/gemini-…).
+var geminiPath = regexp.MustCompile(`^/v1(?:beta)?/models/((?:[A-Za-z0-9._-]+/)?[A-Za-z0-9._-]+):(generateContent|streamGenerateContent|countTokens)$`)
+var geminiModels = regexp.MustCompile(`^/v1(?:beta)?/models(?:/(?:[A-Za-z0-9._-]+/)?[A-Za-z0-9._-]+)?$`)
+
+func allowedRoute(protocol, method, path string) bool {
+	if protocol == "gemini" {
+		return (method == http.MethodPost && geminiPath.MatchString(path)) || (method == http.MethodGet && geminiModels.MatchString(path))
+	}
+	for _, r := range llmRoutes[protocol] {
 		m, p, _ := strings.Cut(r, " ")
 		if m != method {
 			continue
@@ -128,12 +145,82 @@ func refusedBody(provider, path string, body []byte) string {
 
 const maxLLMBody = 32 << 20
 
+const orcaRouter = "https://api.orcarouter.ai"
+
+// providers maps an agent's provider to where each protocol the sandbox speaks goes. A protocol a provider lacks is
+// refused (an Anthropic key can't be spent through /openai).
+var providers = map[string]map[string]string{
+	"anthropic":  {"anthropic": "https://api.anthropic.com"},
+	"openai":     {"openai": "https://api.openai.com"},
+	"google":     {"gemini": "https://generativelanguage.googleapis.com"},
+	"orcarouter": {"anthropic": orcaRouter, "openai": orcaRouter, "gemini": orcaRouter},
+	// Personal subscriptions (Config.Subscriptions): Claude Code's OAuth token, Codex's ChatGPT sign-in.
+	"claude-sub":  {"anthropic": "https://api.anthropic.com"},
+	"chatgpt-sub": {"chatgpt": "https://chatgpt.com/backend-api/codex"},
+}
+
+func subscription(provider string) bool { return provider == "claude-sub" || provider == "chatgpt-sub" }
+
+// chatgptBody: the ChatGPT backend keeps nothing (store must be false).
+func chatgptBody(protocol string, body []byte) []byte {
+	if protocol != "chatgpt" {
+		return body
+	}
+	var req map[string]json.RawMessage
+	if json.Unmarshal(body, &req) != nil {
+		return body
+	}
+	req["store"] = json.RawMessage("false")
+	out, err := json.Marshal(req)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// upstreamPath is the path sent upstream. OrcaRouter names Gemini models google/gemini-…, while Gemini CLI also
+// calls its helper models by their bare names, so those get the prefix here.
+func upstreamPath(provider, protocol, path string) string {
+	if provider == "orcarouter" && protocol == "gemini" {
+		if m := geminiPath.FindStringSubmatchIndex(path); m != nil && !strings.Contains(path[m[2]:m[3]], "/") {
+			return path[:m[2]] + "google/" + path[m[2]:]
+		}
+	}
+	return path
+}
+
+// withStreamUsage asks for usage in a streamed OpenAI chat completion: without stream_options.include_usage the
+// stream carries no token counts and the run would build unmetered.
+func withStreamUsage(protocol, path string, body []byte) []byte {
+	if protocol != "openai" || path != "/v1/chat/completions" {
+		return body
+	}
+	var req map[string]json.RawMessage
+	if json.Unmarshal(body, &req) != nil || string(req["stream"]) != "true" {
+		return body
+	}
+	var opts map[string]any
+	_ = json.Unmarshal(req["stream_options"], &opts)
+	if opts == nil {
+		opts = map[string]any{}
+	}
+	opts["include_usage"] = true
+	raw, err := json.Marshal(opts)
+	if err != nil {
+		return body
+	}
+	req["stream_options"] = raw
+	out, err := json.Marshal(req)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
 var upstreams = map[string]string{
-	"anthropic": "https://api.anthropic.com",
-	"openai":    "https://api.openai.com",
-	"npm":       "https://registry.npmjs.org",
-	"pypi":      "https://pypi.org",
-	"pyfiles":   "https://files.pythonhosted.org",
+	"npm":     "https://registry.npmjs.org",
+	"pypi":    "https://pypi.org",
+	"pyfiles": "https://files.pythonhosted.org",
 }
 
 func (g *Gateway) Handler() http.Handler {
@@ -141,6 +228,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.HandleFunc("/anthropic/", func(w http.ResponseWriter, r *http.Request) { g.llm(w, r, "anthropic") })
 	mux.HandleFunc("/openai/", func(w http.ResponseWriter, r *http.Request) { g.llm(w, r, "openai") })
+	mux.HandleFunc("/gemini/", func(w http.ResponseWriter, r *http.Request) { g.llm(w, r, "gemini") })
+	mux.HandleFunc("/chatgpt/", func(w http.ResponseWriter, r *http.Request) { g.llm(w, r, "chatgpt") })
 	for _, name := range []string{"npm", "pypi", "pyfiles"} {
 		mux.HandleFunc("/"+name+"/", func(w http.ResponseWriter, r *http.Request) { g.registry(w, r, name) })
 	}
@@ -150,7 +239,11 @@ func (g *Gateway) Handler() http.Handler {
 func apiError(w http.ResponseWriter, provider string, status int, kind, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if provider == "openai" {
+	if provider == "gemini" {
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": status, "message": msg, "status": kind}})
+		return
+	}
+	if provider == "openai" || provider == "chatgpt" {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"message": msg, "type": kind, "code": kind}})
 		return
 	}
@@ -166,6 +259,12 @@ type grant struct {
 
 func tokenFrom(r *http.Request) string {
 	if k := r.Header.Get("x-api-key"); k != "" {
+		return k
+	}
+	if k := r.Header.Get("x-goog-api-key"); k != "" {
+		return k
+	}
+	if k := r.URL.Query().Get("key"); k != "" {
 		return k
 	}
 	return strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
@@ -184,6 +283,13 @@ func (g *Gateway) lookup(ctx context.Context, token string) (grant, error) {
 }
 
 func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
+	// A WebSocket (Codex's responses transport) would tunnel straight through the proxy with no usage read out of
+	// it: refuse the upgrade, and the client falls back to HTTP streaming, which is metered.
+	if r.Header.Get("Upgrade") != "" {
+		apiError(w, provider, http.StatusUpgradeRequired, "invalid_request_error",
+			"WebSockets are not available through the arena gateway; use HTTP streaming")
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/"+provider)
 	if !allowedRoute(provider, r.Method, path) {
 		apiError(w, provider, http.StatusForbidden, "permission_error",
@@ -204,6 +310,7 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		apiError(w, provider, http.StatusBadRequest, "invalid_request_error", why)
 		return
 	}
+	body = chatgptBody(provider, withStreamUsage(provider, path, body))
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
 	// Wait for a slot before reading the budget, so each request sees what the ones before it spent.
@@ -222,7 +329,7 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		apiError(w, provider, http.StatusBadGateway, "api_error", "gateway database error")
 		return
 	}
-	var realKey string
+	var realKey, base string
 	switch gr.purpose {
 	case "agent":
 		if gr.status != "agent" {
@@ -233,8 +340,12 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 			apiError(w, provider, http.StatusTooManyRequests, "rate_limit_error", "token budget exhausted for this run")
 			return
 		}
-		if gr.provider != provider {
-			apiError(w, provider, http.StatusForbidden, "permission_error", "this agent's key is for "+gr.provider+", not "+provider)
+		if subscription(gr.provider) && !g.cfg.Subscriptions {
+			apiError(w, provider, http.StatusForbidden, "permission_error", "subscriptions are off on this gateway")
+			return
+		}
+		if base = providers[gr.provider][provider]; base == "" {
+			apiError(w, provider, http.StatusForbidden, "permission_error", "this agent's key is for "+gr.provider+", which doesn't speak the "+provider+" protocol")
 			return
 		}
 		if realKey, err = g.box.Open(gr.sealed); err != nil {
@@ -251,45 +362,85 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 			apiError(w, provider, http.StatusServiceUnavailable, "judge_not_configured", "judge_not_configured: no ARENA_JUDGE_API_KEY on the gateway")
 			return
 		}
-		realKey = g.cfg.JudgeKey
+		realKey, base = g.cfg.JudgeKey, g.cfg.JudgeURL
+		if base == "" {
+			base = providers["anthropic"]["anthropic"]
+		}
 	}
 	meter := &usage{}
 	defer func() { g.record(gr, meter) }()
 
 	if g.cfg.FakeUpstream {
-		fake(w, body, provider, meter)
+		fake(w, r, body, provider, path, meter)
 		return
 	}
-	target, _ := url.Parse(upstreams[provider])
+	target, _ := url.Parse(base)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
-			pr.Out.URL.Path = strings.TrimPrefix(pr.In.URL.Path, "/"+provider)
+			pr.Out.URL.Path = target.Path + upstreamPath(gr.provider, provider, path)
 			pr.Out.URL.RawPath = ""
+			if q := pr.Out.URL.Query(); q.Has("key") {
+				q.Del("key")
+				pr.Out.URL.RawQuery = q.Encode()
+			}
 			pr.Out.Host = target.Host
 			pr.Out.Header.Del("x-api-key")
+			pr.Out.Header.Del("x-goog-api-key")
 			pr.Out.Header.Del("Authorization")
 			pr.Out.Header.Del("X-Forwarded-For")
-			if provider == "anthropic" {
+			plainResponses(pr.Out.Header)
+			switch {
+			case gr.purpose == "agent" && gr.provider == "claude-sub":
+				// Claude Code's OAuth token from `claude setup-token`.
+				pr.Out.Header.Set("Authorization", "Bearer "+realKey)
+				pr.Out.Header.Set("anthropic-beta", strings.Trim(pr.In.Header.Get("anthropic-beta")+",oauth-2025-04-20", ","))
+			case gr.purpose == "agent" && gr.provider == "chatgpt-sub":
+				var tok struct {
+					AccessToken string `json:"access_token"`
+					AccountID   string `json:"account_id"`
+				}
+				_ = json.Unmarshal([]byte(realKey), &tok)
+				pr.Out.Header.Set("Authorization", "Bearer "+tok.AccessToken)
+				pr.Out.Header.Set("chatgpt-account-id", tok.AccountID)
+				pr.Out.Header.Set("OpenAI-Beta", "responses=experimental")
+				pr.Out.Header.Set("originator", "codex_cli_rs")
+			case provider == "anthropic":
 				pr.Out.Header.Set("x-api-key", realKey)
-			} else {
+			case provider == "gemini":
+				pr.Out.Header.Set("x-goog-api-key", realKey)
+			default:
 				pr.Out.Header.Set("Authorization", "Bearer "+realKey)
 			}
 		},
-		ModifyResponse: func(resp *http.Response) error {
-			if resp.StatusCode < 300 {
-				sse := strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream")
-				resp.Body = &meteredBody{ReadCloser: resp.Body, meter: meter, sse: sse}
-			}
-			return nil
-		},
-		FlushInterval: -1,
+		ModifyResponse: meterResponse(meter),
+		FlushInterval:  -1,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			g.log.Warn("upstream", "provider", provider, "err", err)
 			apiError(w, provider, http.StatusBadGateway, "api_error", "upstream unreachable")
 		},
 	}
 	proxy.ServeHTTP(w, r)
+}
+
+// plainResponses drops the client's Accept-Encoding: a compressed response can't be read for usage, so a client
+// asking for gzip/br/zstd would build unmetered. Go's transport then negotiates gzip itself and hands back plain bytes.
+func plainResponses(h http.Header) { h.Del("Accept-Encoding") }
+
+// meterResponse reads usage out of a successful response as it streams through, and refuses one that still comes
+// back encoded (nothing could be counted from it).
+func meterResponse(meter *usage) func(*http.Response) error {
+	return func(resp *http.Response) error {
+		if resp.StatusCode >= 300 {
+			return nil
+		}
+		if enc := resp.Header.Get("Content-Encoding"); enc != "" && enc != "identity" {
+			return errors.New("upstream sent an encoded response (" + enc + "): usage can't be metered")
+		}
+		sse := strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream")
+		resp.Body = &meteredBody{ReadCloser: resp.Body, meter: meter, sse: sse}
+		return nil
+	}
 }
 
 // usage accumulates the token counts reported in one response. Streamed events repeat or grow the numbers
@@ -310,6 +461,19 @@ func num(m map[string]any, k string) int64 {
 func (u *usage) observe(raw []byte) {
 	var doc map[string]any
 	if json.Unmarshal(raw, &doc) != nil {
+		// A Gemini stream without alt=sse is one JSON array of chunks.
+		var docs []json.RawMessage
+		if json.Unmarshal(raw, &docs) == nil {
+			for _, d := range docs {
+				u.observe(d)
+			}
+		}
+		return
+	}
+	if gm, ok := doc["usageMetadata"].(map[string]any); ok {
+		// Gemini: the prompt count includes the cached part; thinking is billed as output.
+		cr := num(gm, "cachedContentTokenCount")
+		u.add(num(gm, "promptTokenCount")-cr, num(gm, "candidatesTokenCount")+num(gm, "thoughtsTokenCount"), cr, 0)
 		return
 	}
 	var us map[string]any
@@ -334,6 +498,10 @@ func (u *usage) observe(raw []byte) {
 			in -= c
 		}
 	}
+	u.add(in, out, cr, cw)
+}
+
+func (u *usage) add(in, out, cr, cw int64) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	u.seen = true
@@ -463,23 +631,96 @@ func (g *Gateway) registry(w http.ResponseWriter, r *http.Request, name string) 
 	proxy.ServeHTTP(w, r)
 }
 
-// fake answers LLM calls without an upstream (ARENA_GATEWAY_FAKE=true, local runs without keys). For the judge it
-// plays a two-step session (look at the home page, then a verdict) so the whole pipeline can be clicked through.
-func fake(w http.ResponseWriter, body []byte, provider string, meter *usage) {
+// fake answers LLM calls without an upstream (ARENA_GATEWAY_FAKE=true, local runs without keys): one short text
+// answer in each protocol's shape, streamed when the client asked for a stream, so every agent CLI can be run end to
+// end for free. For the judge it plays a two-step session (look at the home page, then a verdict) so the whole
+// pipeline can be clicked through.
+func fake(w http.ResponseWriter, r *http.Request, body []byte, provider, path string, meter *usage) {
 	var req struct {
 		Model    string            `json:"model"`
+		Stream   bool              `json:"stream"`
 		Messages []json.RawMessage `json:"messages"`
 		Tools    []struct {
 			Name string `json:"name"`
 		} `json:"tools"`
 	}
 	_ = json.Unmarshal(body, &req)
-	meter.observe([]byte(`{"usage":{"input_tokens":` + strconv.Itoa(len(body)/4) + `,"output_tokens":40}}`))
-	w.Header().Set("Content-Type", "application/json")
-	if provider == "openai" {
-		_, _ = w.Write([]byte(`{"id":"fake","object":"chat.completion","model":"fake","choices":[{"index":0,"message":{"role":"assistant","content":"fake upstream"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2}}`))
+	in := len(body) / 4
+	meter.observe([]byte(`{"usage":{"input_tokens":` + strconv.Itoa(in) + `,"output_tokens":40}}`))
+	const text = "fake upstream: no real model was called"
+	sse := func(events ...any) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		for _, e := range events {
+			if s, ok := e.(string); ok {
+				_, _ = io.WriteString(w, s)
+				continue
+			}
+			b, _ := json.Marshal(e)
+			_, _ = io.WriteString(w, "data: "+string(b)+"\n\n")
+		}
+	}
+	switch {
+	case provider == "gemini":
+		chunk := map[string]any{
+			"candidates":    []any{map[string]any{"content": map[string]any{"role": "model", "parts": []any{map[string]any{"text": text}}}, "finishReason": "STOP", "index": 0}},
+			"usageMetadata": map[string]any{"promptTokenCount": in, "candidatesTokenCount": 40, "totalTokenCount": in + 40},
+			"modelVersion":  "fake",
+		}
+		switch {
+		case strings.HasSuffix(path, ":countTokens"):
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"totalTokens": in})
+		case strings.HasSuffix(path, ":streamGenerateContent") && r.URL.Query().Get("alt") == "sse":
+			sse(chunk)
+		case strings.HasSuffix(path, ":streamGenerateContent"):
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode([]any{chunk})
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(chunk)
+		}
+		return
+	case (provider == "openai" && path == "/v1/responses") || (provider == "chatgpt" && path == "/responses"):
+		item := map[string]any{"id": "msg_fake", "type": "message", "status": "completed", "role": "assistant",
+			"content": []any{map[string]any{"type": "output_text", "text": text, "annotations": []any{}}}}
+		resp := map[string]any{"id": "resp_fake", "object": "response", "created_at": time.Now().Unix(), "model": req.Model,
+			"status": "completed", "output": []any{item},
+			"usage": map[string]any{"input_tokens": in, "output_tokens": 40, "total_tokens": in + 40}}
+		if !req.Stream {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		started := map[string]any{"id": "resp_fake", "object": "response", "model": req.Model, "status": "in_progress", "output": []any{}}
+		ev := func(typ string, f map[string]any) string {
+			f["type"] = typ
+			b, _ := json.Marshal(f)
+			return "event: " + typ + "\ndata: " + string(b) + "\n\n"
+		}
+		sse(ev("response.created", map[string]any{"response": started}),
+			ev("response.output_item.added", map[string]any{"output_index": 0, "item": map[string]any{"id": "msg_fake", "type": "message", "role": "assistant", "content": []any{}}}),
+			ev("response.output_text.delta", map[string]any{"item_id": "msg_fake", "output_index": 0, "content_index": 0, "delta": text}),
+			ev("response.output_item.done", map[string]any{"output_index": 0, "item": item}),
+			ev("response.completed", map[string]any{"response": resp}))
+		return
+	case provider == "openai":
+		if req.Stream {
+			sse(map[string]any{"id": "fake", "object": "chat.completion.chunk", "model": req.Model,
+				"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"role": "assistant", "content": text}, "finish_reason": nil}}},
+				map[string]any{"id": "fake", "object": "chat.completion.chunk", "model": req.Model,
+					"choices": []any{map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "stop"}}},
+				map[string]any{"id": "fake", "object": "chat.completion.chunk", "model": req.Model, "choices": []any{},
+					"usage": map[string]any{"prompt_tokens": in, "completion_tokens": 40, "total_tokens": in + 40}},
+				"data: [DONE]\n\n")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "fake", "object": "chat.completion", "model": req.Model,
+			"choices": []any{map[string]any{"index": 0, "message": map[string]any{"role": "assistant", "content": text}, "finish_reason": "stop"}},
+			"usage":   map[string]any{"prompt_tokens": in, "completion_tokens": 40}})
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	judge := false
 	for _, t := range req.Tools {
 		if t.Name == "submit_verdict" {

@@ -49,6 +49,8 @@ services:
       ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:-dev-only-secret-key-change-me}
       ARENA_PREVIEW_URL: http://{id}.preview.localhost:${GATEWAY_PORT:-3023}
+      ARENA_AGENTS_NETWORK: ${ARENA_AGENTS_NETWORK:-arena-agents}
+      ARENA_SUBSCRIPTIONS: ${ARENA_SUBSCRIPTIONS:-false}
       ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
       ARENA_DEV_LOGIN: ${ARENA_DEV_LOGIN:-true}
@@ -76,6 +78,9 @@ services:
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:-dev-only-secret-key-change-me}
       ARENA_JUDGE_API_KEY: ${ARENA_JUDGE_API_KEY:-}
+      ARENA_JUDGE_BASE_URL: ${ARENA_JUDGE_BASE_URL:-}
+      ARENA_SUBSCRIPTIONS: ${ARENA_SUBSCRIPTIONS:-false}
+      ARENA_AGENTS_NETWORK: ${ARENA_AGENTS_NETWORK:-arena-agents}
       ARENA_GATEWAY_FAKE: ${ARENA_GATEWAY_FAKE:-false}
       ARENA_PREVIEW_DOMAIN: preview.localhost
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:${WEB_PORT:-3000}}
@@ -116,5 +121,5 @@ volumes:
 networks:
   # Internal (no route out): sandboxes live here with only the gateway. Created by `make net` / the api worker.
   agents:
-    name: arena-agents
+    name: ${ARENA_AGENTS_NETWORK:-arena-agents}
     external: true

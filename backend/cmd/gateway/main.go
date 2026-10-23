@@ -47,9 +47,11 @@ func main() {
 	defer pool.Close()
 
 	cfg := gateway.Config{
-		JudgeKey:     os.Getenv("ARENA_JUDGE_API_KEY"),
-		FakeUpstream: os.Getenv("ARENA_GATEWAY_FAKE") == "true",
-		SelfURL:      env("ARENA_GATEWAY_SELF_URL", "http://gateway:8090"),
+		JudgeKey:      os.Getenv("ARENA_JUDGE_API_KEY"),
+		JudgeURL:      os.Getenv("ARENA_JUDGE_BASE_URL"),
+		Subscriptions: os.Getenv("ARENA_SUBSCRIPTIONS") == "true",
+		FakeUpstream:  os.Getenv("ARENA_GATEWAY_FAKE") == "true",
+		SelfURL:       env("ARENA_GATEWAY_SELF_URL", "http://gateway:8090"),
 	}
 	gw := gateway.New(pool, box, cfg, log)
 	previews := gateway.NewPreviews(pool, env("ARENA_PREVIEW_DOMAIN", "preview.localhost"), os.Getenv("ARENA_PREVIEW_PREFIX"),

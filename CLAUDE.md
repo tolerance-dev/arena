@@ -56,12 +56,24 @@ Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking
    from a page that prints the seed data. A verdict with `manipulation` (the app tried to sway the judge) scores 0.
    Tasks without `judge.md` score the checks alone.
 
-`cmd/gateway` (a container on `default` + `arena-agents`, alias `gateway`): `/anthropic/*`, `/openai/*` swap the
-run token for the real key (agent keys sealed with `ARENA_SECRET_KEY`; the judge key `ARENA_JUDGE_API_KEY` lives on
-the gateway only), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget. Only the generation endpoints in
-`llmRoutes` pass (no batches/files: unmetered), OpenAI `background` responses are refused, and a token has at most
-`maxParallel` (4) requests in flight, so parallel calls can't overrun the budget; `/npm/*`, `/pypi/*`,
-`/pyfiles/*` are read-only registry mirrors. Port 8091 serves live previews:
+`cmd/gateway` (a container on `default` + `arena-agents`, alias `gateway`): `/anthropic/*`, `/openai/*`, `/gemini/*`
+(by protocol) swap the run token for the real key (agent keys sealed with `ARENA_SECRET_KEY`; the judge key
+`ARENA_JUDGE_API_KEY` lives on the gateway only), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget. An
+agent's provider (`anthropic`, `openai`, `google`, `orcarouter`; `gateway.providers`) says where each protocol goes;
+OrcaRouter takes all three with one key (Gemini model names get its `google/` prefix in the gateway). Streamed chat
+completions get `stream_options.include_usage` forced on, or they'd be unmetered. The judge goes to
+`ARENA_JUDGE_BASE_URL` (default api.anthropic.com) with `ARENA_JUDGE_MODEL`; locally it is Qwen 3.8 Max through
+OrcaRouter (it takes the judge's Anthropic params, images and tools; most Qwen models refuse images under ~28 px).
+Metering holes stay closed: the client's `Accept-Encoding` is dropped (a compressed stream can't be read; an
+encoded response is refused) and WebSocket upgrades are refused (Codex's `responses_websocket` would tunnel past the
+meter; it falls back to HTTP). Locally (`ARENA_SUBSCRIPTIONS`, on in the Makefile, refused next to secure cookies)
+admins can key an agent with a personal subscription: `claude-sub` (a `claude setup-token` OAuth token) or
+`chatgpt-sub` (Codex's `~/.codex/auth.json`; the gateway sends `/chatgpt/*` to chatgpt.com/backend-api/codex with
+the access token only and never refreshes it, since refresh tokens rotate and that would log the owner's Codex out).
+Sandbox containers and snapshots carry `arena.stack=<network>`, and cleanup touches only its own stack's.
+Only the generation endpoints in `llmRoutes` pass (no batches/files: unmetered), OpenAI `background` responses are
+refused, and a token has at most `maxParallel` (4) requests in flight, so parallel calls can't overrun the budget;
+`/npm/*`, `/pypi/*`, `/pyfiles/*` are read-only registry mirrors. Port 8091 serves live previews:
 `http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand.
 `ARENA_GATEWAY_FAKE=true` answers LLM calls locally (fake judge included) to click through without keys.
 
@@ -73,8 +85,11 @@ Tasks are whole products (`marketplace`, `hotels`, `cinema`) in `backend/interna
 to the brief the agent gets. There are no API checks (`checks: []`): with `"ui": true` verify.py checks the app
 starts, `/` serves HTML and shows `ui_text` (seed data, HTML or SVG text, case-insensitive). The data has no image
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
-verify.py's check names. Example agents: `examples/agents/{claude-code,demo}`; `demo` writes a plain storefront
-that passes every automatic check (the judge should score it low).
+verify.py's check names. Example agents (`examples/agents/README.md`): each vendor's model on its own CLI (Claude Code,
+Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with one OrcaRouter key (`run.sh` picks
+model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check (the judge
+should score it low). The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
+Moonshot's installer, pinned): after changing it, `docker rmi arena-runtime:1 && make images`.
 The task page opens on **Compare** (`components/runs/compare.tsx`): each agent's best finished run side by side
 (`runs.Service.Compare`, unscored runs included), judge checklist items lined up by position, the best cell per row
 highlighted. Keep `judge.md` items in a fixed order so the rows line up.
@@ -112,7 +127,8 @@ backend/migrations           00001 (arena_app role), 00002_schema.sql (the whole
 backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
 backend/internal/runs        runs service/routes, worker, verify.py (checks + judge), LOC stats
 backend/internal/gateway     gateway.go (proxy, metering, budget, fake upstream), preview.go
-backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), network arena-agents
+backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), network arena-agents (locally
+                             arena-agents-<checkout dir>, ARENA_AGENTS_NETWORK: one gateway per network)
 backend/internal/tasks       task catalog (embedded)
 backend/internal/identity    OAuth, sessions, auth middleware
 backend/internal/platform    db, httpx, sanitize, secretbox, ratelimit, idgen, clientip

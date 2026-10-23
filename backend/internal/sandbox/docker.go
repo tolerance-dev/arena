@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -18,7 +19,14 @@ import (
 )
 
 // Network is the internal Docker network sandboxes join: no route out, only the gateway (alias "gateway") on it.
-const Network = "arena-agents"
+// ARENA_AGENTS_NETWORK renames it: local checkouts each get their own (the Makefile), since two gateways on one
+// network would share the alias and answer each other's sandboxes.
+var Network = func() string {
+	if n := os.Getenv("ARENA_AGENTS_NETWORK"); n != "" {
+		return n
+	}
+	return "arena-agents"
+}()
 
 // GatewayURL is how a sandbox reaches the gateway.
 const GatewayURL = "http://gateway:8090"
@@ -65,7 +73,7 @@ func (s Spec) createArgs() []string {
 		"--tmpfs", "/tmp:rw,exec,size=1g",
 		// Caps a single file's size everywhere (storage-opt size= works on few storage drivers).
 		"--ulimit", "fsize=524288000",
-		"--label", "arena.sandbox=1")
+		"--label", "arena.sandbox=1", "--label", "arena.stack="+Network)
 	for _, c := range s.CapAdd {
 		args = append(args, "--cap-add", c)
 	}
@@ -269,7 +277,7 @@ func exitResult(err error) Result {
 
 // Commit snapshots a stopped container into an image. changes are Dockerfile instructions (ENV, CMD).
 func Commit(ctx context.Context, id, image string, changes ...string) error {
-	args := []string{"commit"}
+	args := []string{"commit", "--change", "LABEL arena.stack=" + Network}
 	for _, c := range changes {
 		args = append(args, "--change", c)
 	}
@@ -363,18 +371,19 @@ func AppSpec(name, image string, labels map[string]string) Spec {
 	}
 }
 
-// RemoveByLabel force-removes every container carrying label (k=v), best effort: leftovers of a crashed process.
+// RemoveByLabel force-removes this stack's containers carrying label (k=v), best effort: leftovers of a crashed
+// process. Only this stack's (arena.stack = its network): other checkouts share the Docker host.
 func RemoveByLabel(ctx context.Context, label string) {
-	out, err := docker(ctx, nil, "ps", "-aq", "--filter", "label="+label)
+	out, err := docker(ctx, nil, "ps", "-aq", "--filter", "label="+label, "--filter", "label=arena.stack="+Network)
 	if err != nil || out == "" {
 		return
 	}
 	_, _ = docker(ctx, nil, append([]string{"rm", "-f"}, strings.Fields(out)...)...)
 }
 
-// Images lists local image references (repo:tag) of a repository.
+// Images lists this stack's local image references (repo:tag) of a repository.
 func Images(ctx context.Context, repo string) ([]string, error) {
-	out, err := docker(ctx, nil, "images", "--format", "{{.Repository}}:{{.Tag}}", repo)
+	out, err := docker(ctx, nil, "images", "--filter", "label=arena.stack="+Network, "--format", "{{.Repository}}:{{.Tag}}", repo)
 	if err != nil {
 		return nil, err
 	}
