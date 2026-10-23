@@ -24,7 +24,9 @@ import (
 
 // Previews serves each finished run's app live at http://<prefix><run-hex>.<domain>/ (locally <hex>.preview.localhost,
 // in prod p-<hex>.tolerance.cc). The app is started on demand from
-// the run's snapshot image (on the sandbox network, so only the gateway can reach it) and stopped when idle.
+// the run's snapshot image (on a network of its own with only the gateway, sandbox.CreateNetwork) and stopped when
+// idle. Serve it only on the gateway's public addresses: sandboxes reach the gateway too, and must not see other
+// runs' apps.
 type Previews struct {
 	pool      *db.Pool
 	domain    string // e.g. preview.localhost
@@ -62,17 +64,26 @@ func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, log *slog.Logger
 		running: map[string]*preview{}}
 }
 
+// containerName is the preview's container and its network.
 func containerName(label string) string { return "arena-preview-" + label }
+
+// drop removes a preview's container and network, best effort.
+func drop(label string) {
+	sandbox.Remove(containerName(label))
+	sandbox.RemoveNetwork(containerName(label))
+}
 
 // Run reaps idle previews until ctx ends.
 func (p *Previews) Run(ctx context.Context) {
 	sandbox.RemoveByLabel(ctx, "arena.role=preview")
+	sandbox.RemoveNetworks(ctx, "arena.role=preview")
 	t := time.NewTicker(time.Minute)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			sandbox.RemoveByLabel(context.Background(), "arena.role=preview")
+			sandbox.RemoveNetworks(context.Background(), "arena.role=preview")
 			return
 		case <-t.C:
 		}
@@ -80,7 +91,7 @@ func (p *Previews) Run(ctx context.Context) {
 		for label, pv := range p.running {
 			if !pv.starting && time.Since(pv.lastUsed) > previewIdle {
 				delete(p.running, label)
-				go sandbox.Remove(containerName(label))
+				go drop(label)
 			}
 		}
 		p.mu.Unlock()
@@ -196,7 +207,7 @@ func (p *Previews) evictOldest() {
 	}
 	sort.Slice(ls, func(i, j int) bool { return ls[i].lastUsed.Before(ls[j].lastUsed) })
 	delete(p.running, ls[0].label)
-	go sandbox.Remove(containerName(ls[0].label))
+	go drop(ls[0].label)
 }
 
 func (p *Previews) start(pv *preview, image string) {
@@ -208,13 +219,17 @@ func (p *Previews) start(pv *preview, image string) {
 		p.mu.Unlock()
 	}
 	name := containerName(pv.label)
-	sandbox.Remove(name)
+	drop(pv.label)
 	if !sandbox.ImageExists(ctx, image) {
 		set(false, "the run's snapshot image is gone")
 		return
 	}
+	err := sandbox.CreateNetwork(ctx, name, "preview")
 	// The same container the check ran the app in (sandbox.AppSpec), so what passed the check starts here too.
-	id, err := sandbox.Create(ctx, sandbox.AppSpec(name, image, map[string]string{"arena.role": "preview"}))
+	var id string
+	if err == nil {
+		id, err = sandbox.Create(ctx, sandbox.AppSpec(name, image, name, map[string]string{"arena.role": "preview"}))
+	}
 	if err == nil {
 		err = sandbox.StartDetached(ctx, id)
 	}

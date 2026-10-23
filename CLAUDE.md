@@ -41,7 +41,8 @@ sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and
 and judges the result. Older features were deleted; they are in git history (before "Pivot to agent runs").
 
 Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking → done | infra_error`:
-1. **agent**: container from `arena-runtime:1` on the internal Docker network `arena-agents` (no route out).
+1. **agent**: container from `arena-runtime:1` on the run's own internal Docker network `arena-run-<hex>` (no route
+   out; only the gateway, which the worker attaches as `gateway`; the app and the checker reuse it later).
    `/agent` = the bundle, `/work` = `TASK.md` + `data/`. LLM base URLs point at the gateway, `*_API_KEY` is a
    per-run token (`gateway_tokens`). Killed on time limit, budget or cancel, then `docker commit` →
    `arena-run:<hex>` (the snapshot; previews and checks start from it).
@@ -56,7 +57,7 @@ Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking
    from a page that prints the seed data. A verdict with `manipulation` (the app tried to sway the judge) scores 0.
    Tasks without `judge.md` score the checks alone.
 
-`cmd/gateway` (a container on `default` + `arena-agents`, alias `gateway`): `/anthropic/*`, `/openai/*`, `/gemini/*`
+`cmd/gateway` (a container labelled `arena.gateway=<stack>` on `default`, attached to every run and preview network): `/anthropic/*`, `/openai/*`, `/gemini/*`
 (by protocol) swap the run token for the real key (agent keys sealed with `ARENA_SECRET_KEY`; the judge key
 `ARENA_JUDGE_API_KEY` lives on the gateway only), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget. An
 agent's provider (`anthropic`, `openai`, `google`, `orcarouter`; `gateway.providers`) says where each protocol goes;
@@ -75,7 +76,9 @@ Sandbox containers and snapshots carry `arena.stack=<network>`, and cleanup touc
 Only the generation endpoints in `llmRoutes` pass (no batches/files: unmetered), OpenAI `background` responses are
 refused, and a token has at most `maxParallel` (4) requests in flight, so parallel calls can't overrun the budget;
 `/npm/*`, `/pypi/*`, `/pyfiles/*` are read-only registry mirrors. Port 8091 serves live previews:
-`http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand.
+`http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand, on its
+own network. 8091 listens only on the gateway's non-sandbox addresses (`sandbox.PublicIPs`): sandboxes must not open
+other runs' apps. Rankings (`Leaderboard`, `Compare`) take only runs within the task's time limit and token budget.
 `ARENA_GATEWAY_FAKE=true` answers LLM calls locally (fake judge included) to click through without keys.
 
 Tasks are whole products (`marketplace`, `hotels`, `cinema`) in `backend/internal/tasks/catalog/<slug>/`:
@@ -114,7 +117,7 @@ make test-fast   # gofmt + go vet + go test + pnpm typecheck
 The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
 (the Makefile loads it before `.env`). Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
 Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user
-limits (3 open runs, 30 a day, time limit ≤ the task's; `internal/runs/service.go`) since every run spends the
+limits (3 open runs, 30 a day, time limit and token budget ≤ the task's; `internal/runs/service.go`) since every run spends the
 platform's judge key. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
 change anyone's agents and runs. `ARENA_JUDGE_API_KEY` can live in `~/.config/tolerance/env` (the Makefile exports it).
 
@@ -128,8 +131,8 @@ backend/migrations           00001 (arena_app role), 00002_schema.sql (the whole
 backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
 backend/internal/runs        runs service/routes, worker, verify.py (checks + judge), LOC stats
 backend/internal/gateway     gateway.go (proxy, metering, budget, fake upstream), preview.go
-backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), network arena-agents (locally
-                             arena-agents-<checkout dir>, ARENA_AGENTS_NETWORK: one gateway per network)
+backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), per-run networks; ARENA_STACK (locally
+                             arena-<checkout dir>) scopes labels and cleanup per checkout
 backend/internal/tasks       task catalog (embedded)
 backend/internal/identity    OAuth, sessions, auth middleware
 backend/internal/platform    db, httpx, sanitize, secretbox, ratelimit, idgen, clientip
@@ -144,8 +147,8 @@ session.
 
 ## Rules that stay even in prototype mode
 
-- **Sandbox safety**: agent/app/check/preview containers run with dropped caps on the internal `arena-agents`
-  network; the real LLM keys never enter a sandbox; the checker (verify.py, the judge token) never runs inside the
+- **Sandbox safety**: agent/app/check/preview containers run with dropped caps, each run (and preview) on its own
+  internal network with only the gateway; the real LLM keys never enter a sandbox; the checker (verify.py, the judge token) never runs inside the
   agent's snapshot, only in a clean `arena-runtime:1` next to the app's container.
 - `infra_error` is the platform's fault, never a score.
 - **Database: no data worth keeping yet** (prod included): edit `backend/migrations/00002_schema.sql` in place and

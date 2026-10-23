@@ -1,4 +1,4 @@
-// Package gateway is the only way out of a sandbox. Agents (and the judge) on the internal arena-agents network
+// Package gateway is the only way out of a sandbox. Agents (and the judge) on their run's internal network
 // reach it as http://gateway:8090:
 //
 //   - /anthropic/*, /openai/*, /gemini/*: LLM APIs by protocol, only the generation endpoints (allowedRoute). The

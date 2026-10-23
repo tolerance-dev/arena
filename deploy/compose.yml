@@ -98,10 +98,9 @@ services:
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      default: {}
-      agents:
-        aliases: [gateway]
+    # The worker finds the gateway by this label and attaches it to each run's internal network.
+    labels:
+      arena.gateway: arena
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,9 +138,3 @@ services:
 volumes:
   arena-postgres-data:
   arena-caddy-data:
-
-networks:
-  # Internal (no route out): agent and check containers live here with only the gateway. server.sh creates it.
-  agents:
-    name: arena-agents
-    external: true

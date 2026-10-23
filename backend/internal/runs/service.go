@@ -213,21 +213,34 @@ func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, e
 	return s.query(ctx, `WHERE a.owner_id = $1 ORDER BY r.created_at DESC LIMIT $2`, ownerID, limit)
 }
 
+// rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
+// time or tokens is an experiment, not a result to compare.
+const rankedLimits = ` AND time_limit_s <= $2 AND token_budget <= $3`
+
+func taskLimits(task string) (int, int64) {
+	if t := tasks.BySlug(task); t != nil {
+		return t.TimeLimitS, t.TokenBudget
+	}
+	return 0, 0
+}
+
 // Compare is each agent's best finished run at the task, unscored ones included (a run the judge didn't score is
 // still worth looking at next to the others): best score first, then the newest.
 func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
+	limit, budget := taskLimits(task)
 	return s.query(ctx, `WHERE r.id IN (
-			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done'
+			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done'`+rankedLimits+`
 			ORDER BY agent_id, score DESC NULLS LAST, created_at DESC)
-		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task)
+		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task, limit, budget)
 }
 
 // Leaderboard is each agent's best finished run at the task, best first (ties: fewer tokens, then faster).
 func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
+	limit, budget := taskLimits(task)
 	return s.query(ctx, `WHERE r.id IN (
-			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done' AND score IS NOT NULL
+			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done' AND score IS NOT NULL`+rankedLimits+`
 			ORDER BY agent_id, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)
-		ORDER BY r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`, task)
+		ORDER BY r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`, task, limit, budget)
 }
 
 // TaskSummary is a task with its standing, for the home page.
@@ -273,8 +286,8 @@ const (
 )
 
 // Create queues a run of agentID at task. Zero limits take the task's defaults. ownerID is the caller's scope
-// (identity.OwnerScope): a user may run only their own agents, within the per-user limits and the task's time limit;
-// "" (an admin) may run any agent with any limits.
+// (identity.OwnerScope): a user may run only their own agents, within the per-user limits and the task's time limit
+// and token budget; "" (an admin) may run any agent with any limits (runs over the task's are left out of the rankings).
 func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, timeLimitS int, tokenBudget int64) (Run, error) {
 	t := tasks.BySlug(task)
 	if t == nil {
@@ -291,6 +304,9 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 	}
 	if ownerID != "" && timeLimitS > t.TimeLimitS {
 		return Run{}, invalid("The time limit can't be longer than the task's")
+	}
+	if ownerID != "" && tokenBudget > t.TokenBudget {
+		return Run{}, invalid("The token budget can't be larger than the task's")
 	}
 	if tokenBudget < 10_000 || tokenBudget > 50_000_000 {
 		return Run{}, invalid("The token budget must be between 10k and 50M")
