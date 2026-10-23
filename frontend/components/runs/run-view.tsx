@@ -21,6 +21,7 @@ import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, scoreTone, StatusPill, taskTitle, usePoll, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
+import { agentElapsed, useNow } from './live-runs'
 
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
 // the run's numbers sit in the aside.
@@ -90,10 +91,12 @@ function Header({ run, t }: { run: Run; t: RT }) {
 
 // Where the run is now. Shown only until it finishes; the verdict takes over after that.
 function Timeline({ run, t }: { run: Run; t: RT }) {
+  const now = useNow()
   const order = ['queued', 'agent', 'checking', 'done']
   const at = run.status === 'infra_error' ? -1 : order.indexOf(run.status)
   const labels = [t('step1'), t('step2'), t('step3'), t('step4')]
   return (
+    <div>
     <ol className="grid grid-cols-4 gap-1.5" aria-label={t('timeline')}>
       {labels.map((label, i) => {
         const state = at === -1 ? 'off' : i < at ? 'past' : i === at ? 'now' : 'next'
@@ -105,6 +108,13 @@ function Timeline({ run, t }: { run: Run; t: RT }) {
         )
       })}
     </ol>
+    {isActive(run) && (
+      <p className="mt-3 text-body">
+        <span className="font-semibold">{t(`phase.${run.status}` as 'phase.agent')}</span>
+        {run.status === 'agent' && <span className="text-muted-foreground tnum"> · {t('elapsedOf', { t: duration(agentElapsed(run, now)), limit: duration(run.time_limit_s) })}</span>}
+      </p>
+    )}
+    </div>
   )
 }
 
@@ -187,6 +197,7 @@ function Verdict({ run, t }: { run: Run; t: RT }) {
 
 // The run's numbers as label/value lines, like Product Hunt's "Company info".
 function Numbers({ run, t }: { run: Run; t: RT }) {
+  const now = useNow()
   const used = usedTokens(run.tokens)
   const pct = Math.min(999, Math.round((100 * used) / Math.max(1, run.token_budget)))
   const done = run.status === 'done'
@@ -195,7 +206,7 @@ function Numbers({ run, t }: { run: Run; t: RT }) {
   return (
     <AsideBlock title={t('runInfoTitle')}>
       <dl className="space-y-3">
-        <Line label={t('metricTime')} value={duration(run.agent_seconds)}
+        <Line label={t('metricTime')} value={duration(agentElapsed(run, now))}
           sub={[t('metricOf', { limit: duration(run.time_limit_s) }), run.agent_exit && exitLabel(t, run.agent_exit)].filter(Boolean).join(', ')} />
         <Line label={t('metricTokens')} value={compact(used)}
           sub={<>
