@@ -71,7 +71,7 @@ func (s *Service) roleFor(email string) string {
 
 // Identity is who a sign-in provider says the person is.
 type Identity struct {
-	Provider      string // "github" | "google" | "dev"
+	Provider      string // "github" | "google"
 	Subject       string // the provider's stable account id
 	Email         string
 	EmailVerified bool

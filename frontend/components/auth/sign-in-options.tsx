@@ -2,55 +2,36 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { api, post, type ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 import { useT } from '@/lib/i18n/client'
 import { authMessages } from '@/lib/i18n/messages/auth'
-import { errorText } from '@/lib/i18n/messages/errors'
 import type { AuthProviders } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-// The sign-in choices, shared by the sign-in modal and the /login page: the OAuth providers this server has, and the
-// development sign-in where it is on. `next` is where OAuth returns to; onDevSignedIn runs after a dev sign-in.
-export function SignInOptions({ next, initialError, onDevSignedIn, className }: {
+// The sign-in choices, shared by the sign-in modal and the /login page: the OAuth providers this server has (GitHub,
+// Google). `next` is where OAuth returns to.
+export function SignInOptions({ next, initialError, className }: {
   next: string
   initialError?: string | null
-  onDevSignedIn: () => void
   className?: string
 }) {
   const t = useT(authMessages)
   const [options, setOptions] = useState<AuthProviders | null>(null)
   const [failed, setFailed] = useState(false)
-  const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(initialError ?? null)
-  const [busy, setBusy] = useState(false)
 
   useEffect(() => { setError(initialError ?? null) }, [initialError])
   useEffect(() => {
     api<AuthProviders>('/auth/providers')
       .then(setOptions)
       .catch(() => {
-        setOptions({ providers: [], dev_login: false })
+        setOptions({ providers: [] })
         setFailed(true)
         setError(t('err.unreachable'))
       })
   }, [t])
 
-  async function devSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
-      await post('/auth/dev', { email })
-      onDevSignedIn()
-    } catch (err) {
-      setError(errorText(err as ApiError, t.locale))
-      setBusy(false)
-    }
-  }
-
-  const nothing = options && options.providers.length === 0 && !options.dev_login && !failed
+  const nothing = options && options.providers.length === 0 && !failed
   return (
     <div className={cn('w-full', className)}>
       <div className={cn('flex flex-col gap-2', !options && 'min-h-[104px]')}>
@@ -64,15 +45,6 @@ export function SignInOptions({ next, initialError, onDevSignedIn, className }: 
         {nothing && <p className="text-center text-body text-muted-foreground">{t('notConfigured')}</p>}
       </div>
       {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
-      {options?.dev_login && (
-        <form onSubmit={(e) => void devSignIn(e)} className={cn('flex flex-col gap-2 text-left', options.providers.length ? 'mt-5 border-t border-border pt-5' : 'mt-1')}>
-          <Label htmlFor="dev-email">{t('devTitle')}</Label>
-          <Input id="dev-email" type="email" autoComplete="email" required placeholder="you@example.com" className="h-10"
-            value={email} onChange={(e) => setEmail(e.target.value)} />
-          <p className="text-ui text-faint">{t('devHint')}</p>
-          <Button type="submit" variant="secondary" size="lg" disabled={busy}>{busy ? t('wait') : t('devButton')}</Button>
-        </form>
-      )}
     </div>
   )
 }

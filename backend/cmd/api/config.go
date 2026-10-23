@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +19,6 @@ type config struct {
 	databaseURL      string
 	adminEmails      []string
 	secureCookies    bool
-	devLogin         bool
 	trustProxy       bool // ARENA_TRUST_PROXY: take the client IP from X-Real-IP
 	allowNonLoopback bool
 	secretKey        string // ARENA_SECRET_KEY: seals agents' LLM keys (the gateway opens them)
@@ -41,7 +39,6 @@ func loadConfig() (config, error) {
 		addr:             env("ARENA_ADDR", "127.0.0.1:8080"),
 		databaseURL:      os.Getenv("ARENA_APP_DATABASE_URL"),
 		secureCookies:    os.Getenv("ARENA_SECURE_COOKIES") == "true",
-		devLogin:         os.Getenv("ARENA_DEV_LOGIN") == "true",
 		trustProxy:       os.Getenv("ARENA_TRUST_PROXY") == "true",
 		allowNonLoopback: os.Getenv("ARENA_ALLOW_NON_LOOPBACK") == "true",
 		secretKey:        os.Getenv("ARENA_SECRET_KEY"),
@@ -79,18 +76,9 @@ func loadConfig() (config, error) {
 	if cfg.databaseURL == "" {
 		return config{}, errors.New("ARENA_APP_DATABASE_URL is required")
 	}
-	if cfg.devLogin {
-		// Dev login signs anyone in as any email, the owner included: never next to a public origin.
-		if u, err := url.Parse(cfg.publicURL); cfg.publicURL != "" && (err != nil || !isLocalHost(u.Hostname())) {
-			return config{}, errors.New("ARENA_DEV_LOGIN is for local runs; ARENA_PUBLIC_URL must be localhost, 127.0.0.1 or *.localhost")
-		}
-	}
 	if cfg.subscriptions && cfg.secureCookies {
 		// A personal subscription is for its owner's own use: never behind a public site.
 		return config{}, errors.New("ARENA_SUBSCRIPTIONS is for local runs; it cannot be on with ARENA_SECURE_COOKIES=true")
-	}
-	if cfg.devLogin && cfg.secureCookies {
-		return config{}, errors.New("ARENA_DEV_LOGIN is for local runs and CI; it cannot be on with ARENA_SECURE_COOKIES=true")
 	}
 	for _, p := range [][3]string{{"GITHUB", cfg.githubID, cfg.githubSecret}, {"GOOGLE", cfg.googleID, cfg.googleSecret}} {
 		if (p[1] == "") != (p[2] == "") {
@@ -124,8 +112,4 @@ func env(name, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func isLocalHost(h string) bool {
-	return h == "localhost" || strings.HasSuffix(h, ".localhost") || net.ParseIP(h).IsLoopback()
 }
