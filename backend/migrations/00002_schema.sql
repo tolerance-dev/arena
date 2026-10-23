@@ -14,9 +14,9 @@ CREATE TABLE users (
 );
 CREATE INDEX users_handle_lower_idx ON users (lower(handle));
 
--- One row per external account; 'dev' identities exist only where ARENA_DEV_LOGIN is on.
+-- One row per external account (GitHub or Google).
 CREATE TABLE user_identities (
-    provider      text NOT NULL CHECK (provider IN ('github', 'google', 'dev')),
+    provider      text NOT NULL CHECK (provider IN ('github', 'google')),
     subject       text NOT NULL,
     user_id       text NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     email         text NOT NULL,

@@ -16,7 +16,7 @@ export function useSignIn() {
 }
 
 // Sign-in as a modal over the current page, like Product Hunt's: a dark backdrop, a white round close button in the
-// corner, a 580px panel 64px from the top. OAuth comes back to the same page; dev sign-in reloads it in place.
+// corner, a 580px panel 64px from the top. OAuth comes back to the same page.
 export function SignInProvider({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
@@ -47,7 +47,7 @@ export function SignInProvider({ children }: { children: React.ReactNode }) {
             <BrandMark className="mx-auto size-16" />
             <h2 id="sign-in-title" className="display mt-5 text-page">{t('modalTitle')}</h2>
             <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">{t('modalLead')}</p>
-            <SignInOptions next={pathname} onDevSignedIn={() => window.location.reload()} className="mx-auto mt-6 max-w-[318px]" />
+            <SignInOptions next={pathname} className="mx-auto mt-6 max-w-[318px]" />
             <p className="mt-6 text-meta text-faint">{t('modalNote')}</p>
           </div>
         )}

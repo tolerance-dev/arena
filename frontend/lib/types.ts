@@ -1,6 +1,6 @@
 // The API contract with the Go handlers (internal/agents, internal/runs, internal/identity).
 
-export interface AuthProviders { providers: ('github' | 'google')[]; dev_login: boolean }
+export interface AuthProviders { providers: ('github' | 'google')[] }
 export interface User { id: string; email: string; handle: string; role: 'user' | 'admin'; created_at: string }
 export interface Me { user: User; can_admin?: boolean; subscriptions?: boolean }
 

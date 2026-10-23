@@ -68,7 +68,6 @@ migrate:
 run-api:
 	cd backend && ARENA_ADDR=127.0.0.1:$(API_PORT) \
 		ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
-		ARENA_DEV_LOGIN=$(or $(ARENA_DEV_LOGIN),true) \
 		ARENA_ADMIN_EMAILS="$(ARENA_ADMIN_EMAILS)" ARENA_SECRET_KEY="$(ARENA_SECRET_KEY)" \
 		ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) \
 		ARENA_PREVIEW_URL="http://{id}.preview.localhost:$(GATEWAY_PORT)" ARENA_JUDGE_MODEL="$(ARENA_JUDGE_MODEL)" \
