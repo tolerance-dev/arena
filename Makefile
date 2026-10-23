@@ -1,4 +1,4 @@
-.PHONY: up down logs reset dev db gateway net docker migrate run-api run-web images test test-fast
+.PHONY: up down logs reset dev db gateway docker migrate run-api run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -12,10 +12,10 @@ ARENA_JUDGE_API_KEY := $(or $(ARENA_JUDGE_API_KEY),$(LOCAL_JUDGE_KEY))
 # docker compose (make up / gateway) reads these from the environment.
 export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
 export ARENA_JUDGE_API_KEY ARENA_JUDGE_BASE_URL ARENA_JUDGE_MODEL ARENA_GATEWAY_FAKE
-# Each checkout's sandboxes get their own internal network: two gateways on one network would share the "gateway"
-# alias, and sandboxes would reach the other checkout's gateway (which doesn't know their run tokens).
-ARENA_AGENTS_NETWORK ?= arena-agents-$(notdir $(CURDIR))
-export ARENA_AGENTS_NETWORK
+# Checkouts share the Docker host: each is its own stack, so its worker attaches its own gateway to its runs'
+# networks and cleans up only its own sandboxes and snapshots.
+ARENA_STACK ?= arena-$(notdir $(CURDIR))
+export ARENA_STACK
 # Admins may key agents with their own Claude / ChatGPT subscription: local stacks only (the api refuses it next to
 # secure cookies, and deploy/ never sets it).
 ARENA_SUBSCRIPTIONS ?= true
@@ -27,7 +27,7 @@ GATEWAY_PORT ?= 3023
 ARENA_SECRET_KEY ?= dev-only-secret-key-change-me
 
 # Everything in Docker.
-up: .env docker images net
+up: .env docker images
 	$(COMPOSE) up --build -d
 	@echo
 	@echo "  site:  http://localhost:$(WEB_PORT)"
@@ -46,7 +46,7 @@ logs:
 
 # Fastest loop: postgres in Docker, api and web on the host (web hot-reloads;
 # restart `make dev` after Go changes). Ctrl-C stops both.
-dev: .env docker images net db migrate gateway
+dev: .env docker images db migrate gateway
 	@trap 'kill 0' INT TERM; \
 	$(MAKE) --no-print-directory run-api & \
 	$(MAKE) --no-print-directory run-web & \
@@ -56,14 +56,10 @@ dev: .env docker images net db migrate gateway
 db: .env docker
 	$(COMPOSE) up -d --wait postgres
 
-# The sandboxes' way out (LLM APIs, npm, PyPI) and the live previews; always in Docker, since it has to sit on
-# this checkout's internal sandbox network. Rebuilt from backend/ on every start (cached when nothing changed).
-gateway: .env docker net
+# The sandboxes' way out (LLM APIs, npm, PyPI) and the live previews; always in Docker, since it joins each run's
+# internal network. Rebuilt from backend/ on every start (cached when nothing changed).
+gateway: .env docker
 	$(COMPOSE) up -d --build gateway
-
-# The internal network sandboxes run on: no route out, only the gateway.
-net: docker
-	@docker network inspect $(ARENA_AGENTS_NETWORK) >/dev/null 2>&1 || docker network create --internal $(ARENA_AGENTS_NETWORK) >/dev/null
 
 migrate:
 	cd backend && ARENA_MIGRATE_DATABASE_URL="postgres://arena_migrate:$(POSTGRES_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \

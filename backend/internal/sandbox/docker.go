@@ -18,14 +18,14 @@ import (
 	"time"
 )
 
-// Network is the internal Docker network sandboxes join: no route out, only the gateway (alias "gateway") on it.
-// ARENA_AGENTS_NETWORK renames it: local checkouts each get their own (the Makefile), since two gateways on one
-// network would share the alias and answer each other's sandboxes.
-var Network = func() string {
-	if n := os.Getenv("ARENA_AGENTS_NETWORK"); n != "" {
-		return n
+// Stack names this deployment's sandboxes, networks and snapshots (label arena.stack) and its gateway container
+// (label arena.gateway): local checkouts share the Docker host, so each has its own (ARENA_STACK, set by the
+// Makefile) and touches only its own.
+var Stack = func() string {
+	if s := os.Getenv("ARENA_STACK"); s != "" {
+		return s
 	}
-	return "arena-agents"
+	return "arena"
 }()
 
 // GatewayURL is how a sandbox reaches the gateway.
@@ -73,7 +73,7 @@ func (s Spec) createArgs() []string {
 		"--tmpfs", "/tmp:rw,exec,size=1g",
 		// Caps a single file's size everywhere (storage-opt size= works on few storage drivers).
 		"--ulimit", "fsize=524288000",
-		"--label", "arena.sandbox=1", "--label", "arena.stack="+Network)
+		"--label", "arena.sandbox=1", "--label", "arena.stack="+Stack)
 	for _, c := range s.CapAdd {
 		args = append(args, "--cap-add", c)
 	}
@@ -108,13 +108,105 @@ func docker(ctx context.Context, stdin io.Reader, args ...string) (string, error
 	return s, nil
 }
 
-// EnsureNetwork creates the internal sandbox network when it is missing.
-func EnsureNetwork(ctx context.Context) error {
-	if _, err := docker(ctx, nil, "network", "inspect", Network); err == nil {
+// Every run (and every live preview) gets an internal network of its own: no route out, and nothing on it but its
+// own containers and this stack's gateway, attached as "gateway". So an agent can't reach another run's agent, app
+// or preview, and an app under check can't proxy someone else's preview to the judge.
+
+// CreateNetwork creates an internal network (role: run | preview) and attaches the gateway to it.
+func CreateNetwork(ctx context.Context, name, role string) error {
+	if _, err := docker(ctx, nil, "network", "create", "--internal", "--label", "arena.sandbox=1",
+		"--label", "arena.stack="+Stack, "--label", "arena.role="+role, name); err != nil {
+		return err
+	}
+	if err := connectGateway(ctx, name); err != nil {
+		RemoveNetwork(name)
+		return err
+	}
+	return nil
+}
+
+// connectGateway attaches this stack's running gateway container(s) to network as "gateway".
+func connectGateway(ctx context.Context, network string) error {
+	out, err := docker(ctx, nil, "ps", "-q", "--filter", "label=arena.gateway="+Stack)
+	if err != nil {
+		return err
+	}
+	if out == "" {
+		return fmt.Errorf("no running gateway container labelled arena.gateway=%s", Stack)
+	}
+	for _, id := range strings.Fields(out) {
+		if _, err := docker(ctx, nil, "network", "connect", "--alias", "gateway", network, id); err != nil &&
+			!strings.Contains(err.Error(), "already exists") {
+			return err
+		}
+	}
+	return nil
+}
+
+// AttachGateway attaches a (re)started gateway to the networks of the runs in flight: a new gateway container
+// starts on the default network only.
+func AttachGateway(ctx context.Context) {
+	for _, n := range networks(ctx, "arena.role=run") {
+		_ = connectGateway(ctx, n)
+	}
+}
+
+// RemoveNetwork disconnects whatever is still on a network and removes it, best effort.
+func RemoveNetwork(name string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	out, err := docker(ctx, nil, "network", "inspect", "-f", "{{range $id, $c := .Containers}}{{$id}} {{end}}", name)
+	if err != nil {
+		return
+	}
+	for _, id := range strings.Fields(out) {
+		_, _ = docker(ctx, nil, "network", "disconnect", "-f", name, id)
+	}
+	_, _ = docker(ctx, nil, "network", "rm", name)
+}
+
+// RemoveNetworks removes this stack's sandbox networks carrying label (k=v), best effort: leftovers of a crash.
+func RemoveNetworks(ctx context.Context, label string) {
+	for _, n := range networks(ctx, label) {
+		RemoveNetwork(n)
+	}
+}
+
+func networks(ctx context.Context, label string) []string {
+	out, err := docker(ctx, nil, "network", "ls", "--format", "{{.Name}}", "--filter", "label=arena.sandbox=1",
+		"--filter", "label=arena.stack="+Stack, "--filter", "label="+label)
+	if err != nil {
 		return nil
 	}
-	_, err := docker(ctx, nil, "network", "create", "--internal", Network)
-	return err
+	return strings.Fields(out)
+}
+
+// PublicIPs are container's addresses on the networks that aren't sandbox networks (for the gateway: where the
+// site's proxy reaches it, as opposed to the run networks sandboxes reach it on).
+func PublicIPs(ctx context.Context, container string) ([]string, error) {
+	out, err := docker(ctx, nil, "inspect", "-f", "{{range $n, $e := .NetworkSettings.Networks}}{{$n}}={{$e.IPAddress}} {{end}}", container)
+	if err != nil {
+		return nil, err
+	}
+	sandboxNets := map[string]bool{}
+	all, err := docker(ctx, nil, "network", "ls", "--format", "{{.Name}}", "--filter", "label=arena.sandbox=1")
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range strings.Fields(all) {
+		sandboxNets[n] = true
+	}
+	var ips []string
+	for _, pair := range strings.Fields(out) {
+		name, ip, _ := strings.Cut(pair, "=")
+		if ip != "" && !sandboxNets[name] {
+			ips = append(ips, ip)
+		}
+	}
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("container %s has no address outside the sandbox networks", container)
+	}
+	return ips, nil
 }
 
 // Create creates (but does not start) a container and returns its id.
@@ -277,7 +369,7 @@ func exitResult(err error) Result {
 
 // Commit snapshots a stopped container into an image. changes are Dockerfile instructions (ENV, CMD).
 func Commit(ctx context.Context, id, image string, changes ...string) error {
-	args := []string{"commit", "--change", "LABEL arena.stack=" + Network}
+	args := []string{"commit", "--change", "LABEL arena.stack=" + Stack}
 	for _, c := range changes {
 		args = append(args, "--change", c)
 	}
@@ -361,9 +453,9 @@ const AppPort = "3000"
 // AppSpec is the container that runs an agent's app from its snapshot: the same for the check and the live preview,
 // so an app that passed the check also starts as a preview. It holds no secrets, so the app runs as the agent built
 // it (root inside, no capabilities).
-func AppSpec(name, image string, labels map[string]string) Spec {
+func AppSpec(name, image, network string, labels map[string]string) Spec {
 	return Spec{
-		Name: name, Image: image, Network: Network, Memory: "512m", CPUs: "1", Pids: 1024, Workdir: "/work", Labels: labels,
+		Name: name, Image: image, Network: network, Memory: "512m", CPUs: "1", Pids: 1024, Workdir: "/work", Labels: labels,
 		Env: []string{"PORT=" + AppPort, "HOST=0.0.0.0", "NODE_ENV=production", "HOME=/tmp", "LANG=C.UTF-8",
 			// The runtime image sets a 3 GB heap for the agent; in 512 MB node must collect sooner.
 			"NODE_OPTIONS=--max-old-space-size=384", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="},
@@ -372,9 +464,9 @@ func AppSpec(name, image string, labels map[string]string) Spec {
 }
 
 // RemoveByLabel force-removes this stack's containers carrying label (k=v), best effort: leftovers of a crashed
-// process. Only this stack's (arena.stack = its network): other checkouts share the Docker host.
+// process. Only this stack's: other checkouts share the Docker host.
 func RemoveByLabel(ctx context.Context, label string) {
-	out, err := docker(ctx, nil, "ps", "-aq", "--filter", "label="+label, "--filter", "label=arena.stack="+Network)
+	out, err := docker(ctx, nil, "ps", "-aq", "--filter", "label="+label, "--filter", "label=arena.stack="+Stack)
 	if err != nil || out == "" {
 		return
 	}
@@ -383,7 +475,7 @@ func RemoveByLabel(ctx context.Context, label string) {
 
 // Images lists this stack's local image references (repo:tag) of a repository.
 func Images(ctx context.Context, repo string) ([]string, error) {
-	out, err := docker(ctx, nil, "images", "--filter", "label=arena.stack="+Network, "--format", "{{.Repository}}:{{.Tag}}", repo)
+	out, err := docker(ctx, nil, "images", "--filter", "label=arena.stack="+Stack, "--format", "{{.Repository}}:{{.Tag}}", repo)
 	if err != nil {
 		return nil, err
 	}

@@ -47,7 +47,6 @@ cmd_deploy() {
     docker pull -q "$REGISTRY/tolerance-$img:$tag"
   done
   runtime_image "$tag"
-  docker network inspect arena-agents >/dev/null 2>&1 || docker network create --internal arena-agents >/dev/null
 
   # compose.yml needs TAG set for any command, postgres-only ones included.
   setenv TAG "$tag"

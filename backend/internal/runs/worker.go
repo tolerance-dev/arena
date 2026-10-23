@@ -70,11 +70,9 @@ func (w *Worker) exec(ctx context.Context, q string, args ...any) error {
 // Run claims queued runs until ctx ends. One api process runs this loop, so whatever is mid-flight at start was
 // cut off by a restart: it becomes infra_error (its container is gone with the old process's docker calls).
 func (w *Worker) Run(ctx context.Context) {
-	if err := sandbox.EnsureNetwork(ctx); err != nil {
-		w.log.Error("sandbox network", "err", err)
-	}
 	sandbox.RemoveByLabel(ctx, "arena.role=agent")
 	sandbox.RemoveByLabel(ctx, "arena.role=check") // the check, the app under check and the source reader
+	sandbox.RemoveNetworks(ctx, "arena.role=run")
 	_ = w.exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
 		WHERE status IN ('agent', 'checking')`)
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
@@ -111,7 +109,8 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 // collectImages removes run snapshots nobody needs any more, hourly: everything finished more than a day ago
-// except each agent's best run per task (still on the leaderboard, so its live preview keeps working).
+// except each agent's best run per task and limits (the leaderboard's run among them, so its live preview keeps
+// working; the leaderboard leaves out runs over the task's limits).
 func (w *Worker) collectImages(ctx context.Context) {
 	for {
 		keep := map[string]bool{}
@@ -119,8 +118,8 @@ func (w *Worker) collectImages(ctx context.Context) {
 			// By id, not the image column: a snapshot exists a moment before the column is set.
 			rows, err := tx.Query(ctx, `SELECT id FROM runs WHERE
 					status IN ('queued', 'agent', 'checking') OR finished_at IS NULL OR finished_at > now() - interval '1 day'
-					OR id IN (SELECT DISTINCT ON (agent_id, task) id FROM runs WHERE status = 'done' AND score IS NOT NULL
-						ORDER BY agent_id, task, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
+					OR id IN (SELECT DISTINCT ON (agent_id, task, time_limit_s, token_budget) id FROM runs WHERE status = 'done' AND score IS NOT NULL
+						ORDER BY agent_id, task, time_limit_s, token_budget, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
 			if err != nil {
 				return err
 			}
@@ -169,6 +168,7 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 type claimed struct {
 	id, task, agentID string
 	provider          string // where the agent's key is spent: run.sh picks model names by it (ARENA_PROVIDER)
+	network           string // the run's own internal network (sandbox.CreateNetwork)
 	timeLimit         time.Duration
 	budget            int64
 	bundle            []byte
@@ -184,6 +184,13 @@ func (w *Worker) process(ctx context.Context, id string) {
 			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &limitS, &c.budget, &c.bundle)
 	})
 	c.timeLimit = time.Duration(limitS) * time.Second
+	// The agent, and later the app and the checker, live on the run's own network with only the gateway.
+	c.network = "arena-run-" + PreviewHost(id)
+	if err == nil {
+		if err = sandbox.CreateNetwork(ctx, c.network, "run"); err == nil {
+			defer sandbox.RemoveNetwork(c.network)
+		}
+	}
 	if err == nil {
 		err = w.build(ctx, c, log)
 	}
@@ -251,7 +258,7 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 	deadline := time.Now().Add(c.timeLimit)
 	gw := sandbox.GatewayURL
 	spec := sandbox.Spec{
-		Name: "arena-agent-" + PreviewHost(c.id), Image: sandbox.Image, Network: sandbox.Network,
+		Name: "arena-agent-" + PreviewHost(c.id), Image: sandbox.Image, Network: c.network,
 		Memory: "6g", CPUs: "2", Pids: 4096, Workdir: "/work",
 		Labels: map[string]string{"arena.run": c.id, "arena.role": "agent"},
 		Env: []string{
@@ -421,14 +428,14 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if !ws.topLevel["start.sh"] {
 		startError = "no start.sh in /work"
 	} else {
-		if appID, err = sandbox.Create(ctx, sandbox.AppSpec(appName, image, labels)); err != nil {
+		if appID, err = sandbox.Create(ctx, sandbox.AppSpec(appName, image, c.network, labels)); err != nil {
 			return err
 		}
 		defer sandbox.Remove(appID)
 	}
 
 	id, err := sandbox.Create(ctx, sandbox.Spec{
-		Name: "arena-check-" + hex, Image: sandbox.Image, Network: sandbox.Network,
+		Name: "arena-check-" + hex, Image: sandbox.Image, Network: c.network,
 		Memory: "2g", CPUs: "2", Pids: 4096, Workdir: "/verify", Labels: labels,
 		Env: []string{"HOME=/root", "PYTHONDONTWRITEBYTECODE=1"},
 		Cmd: []string{"python3", "/verify/verify.py"},
