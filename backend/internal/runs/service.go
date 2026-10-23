@@ -264,24 +264,34 @@ type TaskSummary struct {
 	Runs        int        `json:"runs"`
 	Agents      int        `json:"agents"`
 	Best        *Run       `json:"best"`
+	Leaderboard []Run      `json:"leaderboard"`
 }
 
+// Summary is one task with its counts and leaderboard.
+func (s *Service) Summary(ctx context.Context, t *tasks.Task) (TaskSummary, error) {
+	ts := TaskSummary{Slug: t.Slug, Title: t.Title, Tagline: t.Tagline, TimeLimitS: t.TimeLimitS, TokenBudget: t.TokenBudget}
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT count(*), count(DISTINCT agent_id) FROM runs WHERE task = $1`, t.Slug).Scan(&ts.Runs, &ts.Agents)
+	})
+	if err != nil {
+		return ts, err
+	}
+	if ts.Leaderboard, err = s.Leaderboard(ctx, t.Slug); err != nil {
+		return ts, err
+	}
+	if len(ts.Leaderboard) > 0 {
+		ts.Best = &ts.Leaderboard[0]
+	}
+	return ts, nil
+}
+
+// Summaries is every task with its leaderboard: all the home page and the standings need, in one request.
 func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 	out := []TaskSummary{}
 	for _, t := range tasks.All() {
-		ts := TaskSummary{Slug: t.Slug, Title: t.Title, Tagline: t.Tagline, TimeLimitS: t.TimeLimitS, TokenBudget: t.TokenBudget}
-		err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			return tx.QueryRow(ctx, `SELECT count(*), count(DISTINCT agent_id) FROM runs WHERE task = $1`, t.Slug).Scan(&ts.Runs, &ts.Agents)
-		})
+		ts, err := s.Summary(ctx, t)
 		if err != nil {
 			return nil, err
-		}
-		board, err := s.Leaderboard(ctx, t.Slug)
-		if err != nil {
-			return nil, err
-		}
-		if len(board) > 0 {
-			ts.Best = &board[0]
 		}
 		out = append(out, ts)
 	}

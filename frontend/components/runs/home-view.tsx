@@ -14,7 +14,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run, TaskSummary } from '@/lib/types'
 import { AgentAvatar, RunShot, Score, TaskTile, usePoll, type RT } from './bits'
 import { RunRow } from './run-row'
-import { rankAgents, useBoards } from './standings'
+import { rankAgents } from './standings'
 
 type HT = ReturnType<typeof useT<typeof homeMessages.en>>
 
@@ -132,8 +132,7 @@ function Fact({ icon, title, children }: { icon: React.ReactNode; title: string;
 
 // The leaderboard's first three: the average of each agent's best score over all tasks.
 function TopAgents({ tasks, t, rt }: { tasks: TaskSummary[] | undefined; t: HT; rt: RT }) {
-  const boards = useBoards(tasks)
-  const top = tasks && boards ? rankAgents(tasks, boards).slice(0, 3) : null
+  const top = tasks ? rankAgents(tasks).slice(0, 3) : null
   return (
     <AsideBlock title={rt('topAgentsTitle')} action={top?.length ? <Link href="/leaderboard" className="inline-flex items-center gap-0.5 transition-colors hover:text-primary">{t('all')}<ChevronRight className="size-3.5" /></Link> : undefined}>
       {!top ? <Skeleton className="h-36" /> : top.length ? (
