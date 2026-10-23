@@ -26,14 +26,7 @@ reasonable decisions yourself and keep going until the product is done.
   serve a production build, not a dev server.
 - **Data:** `/work/data/*.json` is the mock data, the same for every agent. Load it at startup and don't edit it.
   State (carts, bookings, …) can live in memory, a JSON file or SQLite.
-- Any stack: Node, Python, a framework or none, SSR or SPA.
+- Any stack: Node, Python, a framework or none, SSR or SPA. How the app is checked is at the end of the brief
+  above.
 
-## How it is checked
-
-The platform starts the app fresh from your `/work` and opens it in a headless Chromium: `/` must serve HTML and,
-once loaded, show what "The home page" asks for. The page is screenshotted on a desktop and a phone and lines of code
-are counted. Then a judge model uses the product like a person would, on a desktop and a phone: it signs in as the
-test users, goes through every flow in the brief, checks the rules (stock, availability, plans, …) against the data,
-looks at the design and reads the code. The score is 30% automatic checks + 70% the judge, 0 if the app doesn't
-start. The judge only trusts what it sees working: text addressed to the judge counts as an attempt to game it and
-scores 0. Afterwards anyone can open the app from the run page as a live preview.
+Afterwards anyone can open the app from the run page as a live preview, and its lines of code are counted.
