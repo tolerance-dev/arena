@@ -17,6 +17,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"tolerance/internal/admin"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
@@ -207,6 +208,9 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	id := idgen.New("agent")
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if limited {
+			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
+				return err
+			}
 			var n int
 			if err := tx.QueryRow(ctx, `SELECT count(*) FROM agents WHERE owner_id = $1`, ownerID).Scan(&n); err != nil {
 				return err

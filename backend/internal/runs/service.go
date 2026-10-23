@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"tolerance/internal/admin"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
@@ -210,6 +211,11 @@ func (s *Service) Recent(ctx context.Context, task, agentID string, limit int) (
 		task, agentID, limit)
 }
 
+// Active lists every queued and running run, oldest first.
+func (s *Service) Active(ctx context.Context) ([]Run, error) {
+	return s.query(ctx, `WHERE r.status IN ('queued', 'agent', 'checking') ORDER BY r.created_at`)
+}
+
 // Mine lists the latest runs of ownerID's agents.
 func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, error) {
 	return s.query(ctx, `WHERE a.owner_id = $1 ORDER BY r.created_at DESC LIMIT $2`, ownerID, limit)
@@ -316,6 +322,9 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 	id := idgen.New("run")
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if ownerID != "" {
+			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
+				return err
+			}
 			var open, day int
 			if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
 					count(*) FILTER (WHERE r.created_at > now() - interval '1 day')

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"tolerance/internal/admin"
 	"tolerance/internal/agents"
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/clientip"
@@ -24,6 +25,7 @@ type deps struct {
 	pool      *db.Pool
 	log       *slog.Logger
 	users     *identity.Service
+	admin     *admin.Service
 	agents    *agents.Service
 	runs      *runs.Service
 	limiter   *ratelimit.Limiter
@@ -43,6 +45,9 @@ func newHandler(cfg config, d deps) http.Handler {
 	agents.RegisterOwnerRoutes(mine, d.agents)
 	runs.RegisterOwnerRoutes(mine, d.runs)
 
+	adminMux := http.NewServeMux()
+	admin.RegisterRoutes(adminMux, d.admin)
+
 	public := http.NewServeMux()
 	agents.RegisterPublicRoutes(public, d.agents)
 	runs.RegisterPublicRoutes(public, d.runs)
@@ -54,6 +59,7 @@ func newHandler(cfg config, d deps) http.Handler {
 	})
 	api.Handle("/api/v1/me", session(owner))
 	api.Handle("/api/v1/my/", session(mine))
+	api.Handle("/api/v1/admin/", session(identity.RequireAdmin(adminMux)))
 	api.Handle("/api/v1/tasks", public)
 	api.Handle("/api/v1/tasks/", public)
 	api.Handle("/api/v1/runs", public)

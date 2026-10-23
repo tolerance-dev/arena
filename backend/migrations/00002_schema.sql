@@ -8,6 +8,8 @@ CREATE TABLE users (
     email      text NOT NULL UNIQUE,
     handle     text NOT NULL UNIQUE,
     role       text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    -- blocked: an admin took away uploads and runs (internal/admin).
+    blocked    boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX users_handle_lower_idx ON users (lower(handle));
@@ -98,8 +100,18 @@ CREATE TABLE gateway_tokens (
 );
 CREATE INDEX gateway_tokens_run_idx ON gateway_tokens (run_id);
 
+-- Platform switches the admin page flips (internal/admin): exactly one row.
+CREATE TABLE settings (
+    id          boolean PRIMARY KEY DEFAULT true CHECK (id),
+    runs_paused boolean NOT NULL DEFAULT false, -- the worker takes no queued runs
+    user_runs   boolean NOT NULL DEFAULT true,  -- non-admins may upload agents and start runs
+    judge       boolean NOT NULL DEFAULT true,  -- runs are judged (it spends the platform's judge key)
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO settings DEFAULT VALUES;
+
 GRANT USAGE ON SCHEMA public TO arena_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens TO arena_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, settings TO arena_app;
 
 -- +goose Down
-DROP TABLE gateway_tokens, runs, agents, sessions, user_identities, users;
+DROP TABLE settings, gateway_tokens, runs, agents, sessions, user_identities, users;

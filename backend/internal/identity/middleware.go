@@ -49,3 +49,14 @@ func OptionalUserID(s *Service) func(r *http.Request) string {
 		return u.ID
 	}
 }
+
+// RequireAdmin lets only admins through; it goes after RequireSession.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a, ok := FromContext(r.Context()); !ok || a.Role != "admin" {
+			httpx.WriteError(w, r, httpx.New(http.StatusForbidden, "forbidden", "Admins only"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"tolerance/internal/admin"
 	"tolerance/internal/agents"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/sanitize"
@@ -156,7 +157,8 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 	var id string
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `UPDATE runs SET status = 'agent', started_at = now(), updated_at = now()
-			WHERE id = (SELECT id FROM runs WHERE status = 'queued' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
+			WHERE id = (SELECT id FROM runs WHERE status = 'queued' AND NOT coalesce((SELECT runs_paused FROM settings), false)
+				ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
 			RETURNING id`).Scan(&id)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -414,8 +416,17 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return fmt.Errorf("count sources: %w", err)
 	}
 
-	var judge map[string]any // nil = the task has no judge
-	if task.Judge != "" {
+	// The admin may turn the judge off to stop spending its key: the run then gets no score.
+	judgeOn := true
+	if err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		s, err := admin.Load(ctx, tx)
+		judgeOn = s.Judge
+		return err
+	}); err != nil {
+		return err
+	}
+	var judge map[string]any // nil = the task has no judge (or it is off)
+	if task.Judge != "" && judgeOn {
 		judgeToken, err := w.issueToken(ctx, c.id, "judge", checkTimeout+5*time.Minute)
 		if err != nil {
 			return err
@@ -504,6 +515,9 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	stats.StartSeconds = vr.Start.Seconds
 	stats.ConsoleErrors = vr.ConsoleErrors
 	checks := append([]Check{{Name: tasks.CheckStart, Passed: vr.Start.OK, Detail: vr.Start.Error}}, vr.Checks...)
+	if task.Judge != "" && !judgeOn && vr.Start.OK {
+		vr.Judge = &Judge{Status: "skipped", Error: "the judge is turned off on the platform"}
+	}
 	if vr.Judge == nil {
 		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}
 	}
