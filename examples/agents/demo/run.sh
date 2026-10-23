@@ -2,7 +2,8 @@
 # A pipeline smoke test: makes one LLM call through the gateway (to show up in the token count), then writes a
 # hand-made storefront for whichever task it got: a Python standard-library server that serves the data as JSON and
 # one plain HTML page per task. It passes the automatic checks and gives the preview something to show; it is not a
-# full product (no cart, booking or player). No real agent work.
+# full product (no cart or player). For hotels it implements the API contract and the pages from TASK.md: the
+# reference the hotels checks are tested against. No real agent work.
 set -eu
 cd /work
 curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
@@ -10,8 +11,9 @@ curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KE
   -d '{"model":"claude-haiku-5-5","max_tokens":32,"messages":[{"role":"user","content":"Say hi"}]}' | head -c 400; echo
 
 cat > server.py <<'PY'
-import json, os
+import datetime, json, os, secrets, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TASK = open(os.path.join(HERE, "TASK")).read().strip()
@@ -19,8 +21,131 @@ DATA = {f[:-5]: open(os.path.join(HERE, "data", f), "rb").read() for f in os.lis
 PAGE = open(os.path.join(HERE, "ui", TASK + ".html"), "rb").read()
 
 
+class HotelsAPI:
+    """The hotels API contract from TASK.md, in memory."""
+
+    def __init__(self):
+        self.hotels = {h["id"]: h for h in json.loads(DATA["hotels"])}
+        self.rooms = {r["id"]: r for r in json.loads(DATA["rooms"])}
+        self.users = json.loads(DATA["users"])
+        self.bookings = [b for b in json.loads(DATA["bookings"]) if b.get("status", "confirmed") == "confirmed"]
+        self.tokens, self.lock = {}, threading.Lock()
+
+    @staticmethod
+    def stay(q):
+        try:
+            ci, co = datetime.date.fromisoformat(q["check_in"]), datetime.date.fromisoformat(q["check_out"])
+            guests = int(q.get("guests") or 1)
+        except (KeyError, ValueError):
+            return None
+        if co <= ci or guests < 1:
+            return None
+        return ci, co, guests
+
+    def free(self, room, ci, co):
+        days = [(ci + datetime.timedelta(days=k)).isoformat() for k in range((co - ci).days)]
+        return all(sum(1 for b in self.bookings if b["room_id"] == room["id"] and b["check_in"] <= d < b["check_out"]) < room["inventory"] for d in days)
+
+    def room_view(self, r, ci, co):
+        return {**r, "price_total": r["price_per_night"] * (co - ci).days, "available": self.free(r, ci, co)}
+
+    def handle(self, method, path, q, body, auth):
+        user = self.tokens.get(auth.removeprefix("Bearer ").strip()) if auth else None
+        if method == "GET" and path == "/api/search":
+            s = self.stay(q)
+            if not s:
+                return 400, {"error": "check_in and check_out must be dates, check-out after check-in"}
+            ci, co, guests = s
+            want = [a for a in q.get("amenities", "").split(",") if a]
+            out = []
+            for h in self.hotels.values():
+                if h["city"] != q.get("city") or not set(want) <= set(h["amenities"]):
+                    continue
+                totals = [r["price_per_night"] * (co - ci).days for r in self.rooms.values()
+                          if r["hotel_id"] == h["id"] and r["capacity"] >= guests and self.free(r, ci, co)]
+                if totals:
+                    out.append({**h, "price_total": min(totals)})
+            key = {"price": lambda h: h["price_total"], "rating": lambda h: -h["rating"], "stars": lambda h: -h["stars"],
+                   "distance": lambda h: h["distance_to_center_km"]}.get(q.get("sort"))
+            return 200, {"hotels": sorted(out, key=key) if key else out}
+        if method == "GET" and path.startswith("/api/hotels/"):
+            h = self.hotels.get(path.rsplit("/", 1)[1])
+            if not h:
+                return 404, {"error": "no such hotel"}
+            s = self.stay(q)
+            rooms = [r for r in self.rooms.values() if r["hotel_id"] == h["id"]]
+            return 200, {**h, "rooms": [self.room_view(r, s[0], s[1]) if s else r for r in rooms]}
+        if method == "POST" and path == "/api/login":
+            u = next((u for u in self.users if u["email"] == body.get("email") and u["password"] == body.get("password")), None)
+            if not u:
+                return 401, {"error": "wrong email or password"}
+            token = secrets.token_hex(16)
+            self.tokens[token] = u
+            return 200, {"token": token, "user": {"id": u["id"], "name": u["name"]}}
+        if path.startswith("/api/bookings"):
+            if not user:
+                return 401, {"error": "sign in first"}
+            mine = lambda: [{**b, "total": self.rooms[b["room_id"]]["price_per_night"] * (datetime.date.fromisoformat(b["check_out"]) - datetime.date.fromisoformat(b["check_in"])).days}
+                            for b in self.bookings if b["user_id"] == user["id"]]
+            if method == "GET" and path == "/api/bookings":
+                return 200, {"bookings": mine()}
+            if method == "POST" and path == "/api/bookings":
+                room, s = self.rooms.get(body.get("room_id")), self.stay(body)
+                if not room or not s or s[2] > room["capacity"]:
+                    return 400, {"error": "unknown room, bad dates or too many guests"}
+                with self.lock:
+                    if not self.free(room, s[0], s[1]):
+                        return 409, {"error": "the room is not free for these dates"}
+                    b = {"id": "b-" + secrets.token_hex(4), "room_id": room["id"], "hotel_id": room["hotel_id"], "user_id": user["id"],
+                         "check_in": s[0].isoformat(), "check_out": s[1].isoformat(), "guests": s[2], "status": "confirmed"}
+                    self.bookings.append(b)
+                return 201, next(x for x in mine() if x["id"] == b["id"])
+            if method == "DELETE":
+                bid = path.rsplit("/", 1)[1]
+                with self.lock:
+                    b = next((b for b in self.bookings if b["id"] == bid and b["user_id"] == user["id"]), None)
+                    if not b:
+                        return 404, {"error": "no such booking"}
+                    self.bookings.remove(b)
+                return 200, {"ok": True}
+        return None
+
+
+API = HotelsAPI() if TASK == "hotels" else None
+
+
 class H(BaseHTTPRequestHandler):
+    def api(self, method):
+        u = urlparse(self.path)
+        if not API or not u.path.startswith("/api/"):
+            return False
+        body = {}
+        if method == "POST":
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            except ValueError:
+                body = None
+            if not isinstance(body, dict):
+                self.send(400, "application/json", b'{"error": "send a JSON object"}')
+                return True
+        q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        res = API.handle(method, u.path, q, body, self.headers.get("Authorization", ""))
+        if res is None:
+            return False
+        self.send(res[0], "application/json", json.dumps(res[1]).encode())
+        return True
+
+    def do_POST(self):
+        if not self.api("POST"):
+            self.send(404, "application/json", b'{"error": "not found"}')
+
+    def do_DELETE(self):
+        if not self.api("DELETE"):
+            self.send(404, "application/json", b'{"error": "not found"}')
+
     def do_GET(self):
+        if self.api("GET"):
+            return
         path = self.path.split("?")[0]
         if path.startswith("/api/") and path[5:] in DATA and path[5:] != "users":
             self.send(200, "application/json", DATA[path[5:]])
@@ -102,6 +227,24 @@ cat > ui/hotels.html <<HTML
 <h2 id="heading"></h2><div class="grid" id="hotels"></div>
 </main>
 <script>
+// /search and /hotels/{id} (deep links from TASK.md) render from the API; / shows the destinations.
+const params = new URLSearchParams(location.search)
+const stay = ["check_in", "check_out", "guests"].map((k) => k + "=" + encodeURIComponent(params.get(k) || "")).join("&")
+const card = (h, price) => \`<div class="card">\${art(h.id, "★".repeat(h.stars))}<div class="body"><a href="/hotels/\${h.id}?\${stay}">\${esc(h.name)}</a>
+  <div class="muted">\${h.rating} · \${h.distance_to_center_km} km from the centre</div><div>\${price}</div></div></div>\`
+if (location.pathname === "/search") {
+  fetch("/api/search" + location.search).then((r) => r.json()).then((d) => {
+    \$("#heading").textContent = "Hotels in " + params.get("city")
+    \$("#hotels").innerHTML = (d.hotels || []).map((h) => card(h, \`<span class="price">€\${h.price_total}</span> for the stay\`)).join("")
+  })
+} else if (location.pathname.startsWith("/hotels/")) {
+  fetch("/api" + location.pathname + "?" + stay).then((r) => r.json()).then((h) => {
+    \$("#heading").textContent = h.name
+    \$("#hotels").innerHTML = \`<div class="card" style="grid-column:1/-1"><div class="body">\${esc(h.description)}<div class="muted">\${esc(h.address)} · \${h.amenities.join(", ")}</div></div></div>\`
+      + h.rooms.map((r) => \`<div class="card"><div class="body"><div>\${esc(r.type)} · up to \${r.capacity}</div>
+        <div class="muted">€\${r.price_per_night} / night</div><div><span class="price">€\${r.price_total ?? ""}</span> \${r.available ? "free" : "not available"}</div></div></div>\`).join("")
+  })
+}
 let hotels = [], rooms = []
 function show(city) {
   \$("#city").value = city
@@ -119,7 +262,7 @@ Promise.all([get("hotels"), get("rooms")]).then(([h, r]) => {
   \$("#cities").innerHTML = cities.map((c) => \`<div class="card" data-city="\${esc(c)}" style="cursor:pointer">\${art(c, c)}<div class="body muted">\${h.filter((x) => x.city === c).length} hotels</div></div>\`).join("")
   \$("#cities").onclick = (e) => { const c = e.target.closest("[data-city]"); if (c) show(c.dataset.city) }
   \$("#city").onchange = () => show(\$("#city").value)
-  show(cities[0])
+  if (location.pathname === "/") show(cities[0])
 })
 </script></body></html>
 HTML

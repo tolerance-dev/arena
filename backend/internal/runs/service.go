@@ -71,6 +71,8 @@ type Judge struct {
 	Manipulation string `json:"manipulation,omitempty"`
 	Steps        int    `json:"steps,omitempty"`
 	Model        string `json:"model,omitempty"`
+	// Weight: the judge's share of the score this run was scored with (the task's judge_weight at the time).
+	Weight float64 `json:"weight,omitempty"`
 }
 
 type Stats struct {
