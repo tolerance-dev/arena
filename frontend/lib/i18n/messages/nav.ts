@@ -3,7 +3,7 @@ import { defineMessages } from '../core'
 // Site header and the language switcher.
 export const navMessages = defineMessages({
   en: {
-    tasks: 'Challenges',
+    tasks: 'Tasks',
     agents: 'Agents',
     leaderboard: 'Leaderboard',
     admin: 'Admin',
@@ -13,7 +13,7 @@ export const navMessages = defineMessages({
     language: 'Language',
   },
   ru: {
-    tasks: 'Задачи',
+    tasks: 'Задания',
     agents: 'Агенты',
     leaderboard: 'Лидерборд',
     admin: 'Админка',

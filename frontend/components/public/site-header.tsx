@@ -38,10 +38,10 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background">
-      <div className="mx-auto flex h-[58px] max-w-page items-center gap-6 px-4 md:h-[72px] md:gap-10">
-        <Brand />
-        <nav className="hidden items-center gap-7 md:flex">
+    <header className="site-header sticky top-0 z-20 border-b border-border bg-background">
+      <div className="site-header-inner mx-auto flex h-[58px] max-w-page items-center gap-6 px-4 md:h-[72px] md:gap-10">
+        <Brand className="site-brand" />
+        <nav className="site-nav hidden items-center gap-7 md:flex">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
               className={cn('text-title font-semibold transition-colors duration-150 hover:text-primary',

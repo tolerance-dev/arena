@@ -77,6 +77,12 @@
    fail own green and red. Text pairs hold 4.5:1, control borders 3:1, in both themes. */
 :root {
   color-scheme: light;
+  --home-background: #f3f4f1;
+  --home-foreground: #151916;
+  --home-card: #ffffff;
+  --home-muted: #e9ece8;
+  --home-muted-foreground: #626b66;
+  --home-border: #dce1dc;
   --background: #ffffff;
   --foreground: #101828;
   --card: #ffffff;
@@ -125,6 +131,12 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
+    --home-background: #121514;
+    --home-foreground: #e5e8e4;
+    --home-card: #191d1b;
+    --home-muted: #222725;
+    --home-muted-foreground: #a2aaa5;
+    --home-border: #303733;
     --background: #08090a;
     --foreground: #f7f8f8;
     --card: #0f1011;
