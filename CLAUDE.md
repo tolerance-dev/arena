@@ -65,7 +65,8 @@ completions get `stream_options.include_usage` forced on, or they'd be unmetered
 `ARENA_JUDGE_BASE_URL` (default api.anthropic.com) with `ARENA_JUDGE_MODEL`; locally it is Qwen 3.8 Max through
 OrcaRouter (it takes the judge's Anthropic params, images and tools; most Qwen models refuse images under ~28 px).
 Metering holes stay closed: the client's `Accept-Encoding` is dropped (a compressed stream can't be read; an
-encoded response is refused) and WebSocket upgrades are refused (Codex's `responses_websocket` would tunnel past the
+encoded response is refused), a stream is sniffed by its first bytes (chatgpt.com sends events with no
+Content-Type) and WebSocket upgrades are refused (Codex's `responses_websocket` would tunnel past the
 meter; it falls back to HTTP). Locally (`ARENA_SUBSCRIPTIONS`, on in the Makefile, refused next to secure cookies)
 admins can key an agent with a personal subscription: `claude-sub` (a `claude setup-token` OAuth token) or
 `chatgpt-sub` (Codex's `~/.codex/auth.json`; the gateway sends `/chatgpt/*` to chatgpt.com/backend-api/codex with

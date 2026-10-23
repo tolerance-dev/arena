@@ -523,10 +523,11 @@ func nested(m map[string]any, keys ...string) any {
 // meteredBody passes the response through untouched while reading usage out of it.
 type meteredBody struct {
 	io.ReadCloser
-	meter *usage
-	sse   bool
-	buf   bytes.Buffer
-	line  []byte
+	meter   *usage
+	sse     bool
+	sniffed bool // the first bytes were looked at: an event stream is one even without its Content-Type
+	buf     bytes.Buffer
+	line    []byte
 }
 
 const maxMeteredJSON = 16 << 20
@@ -534,6 +535,14 @@ const maxMeteredJSON = 16 << 20
 func (b *meteredBody) Read(p []byte) (int, error) {
 	n, err := b.ReadCloser.Read(p)
 	chunk := p[:n]
+	if !b.sniffed && n > 0 {
+		// chatgpt.com's Codex backend streams events with no Content-Type: read as JSON, they'd go unmetered.
+		b.sniffed = true
+		head := bytes.TrimLeft(chunk, " \t\r\n")
+		if !b.sse && (bytes.HasPrefix(head, []byte("event:")) || bytes.HasPrefix(head, []byte("data:"))) {
+			b.sse = true
+		}
+	}
 	if b.sse {
 		for len(chunk) > 0 {
 			i := bytes.IndexByte(chunk, '\n')
