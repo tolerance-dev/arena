@@ -154,7 +154,7 @@ func oauthCallback(s *Service, limiter *ratelimit.Limiter, cfg AuthConfig) http.
 	}
 }
 
-// RegisterMeRoute mounts GET /me. extras adds sibling keys to the response (e.g. the daily streak) from
+// RegisterMeRoute mounts GET /me. extras adds sibling keys to the response (e.g. can_admin) from
 // packages identity does not import.
 func RegisterMeRoute(mux *http.ServeMux, s *Service, extras func(ctx context.Context, userID string) (map[string]any, error)) {
 	mux.HandleFunc("GET /api/v1/me", func(w http.ResponseWriter, r *http.Request) {

@@ -119,13 +119,9 @@ export function exitLabel(t: RT, exit: string | null) {
   return t(`exit.${exit}` as 'exit.ok')
 }
 
-export function taskTitle(slug: string, locale: 'en' | 'ru') {
-  const titles: Record<string, [string, string]> = {
-    marketplace: ['Marketplace', 'Маркетплейс'], hotels: ['Hotel booking', 'Бронирование отелей'],
-    cinema: ['Online cinema', 'Онлайн-кинотеатр'],
-  }
-  const p = titles[slug]
-  return p ? p[locale === 'ru' ? 1 : 0] : slug
+// The run's task as the catalog names it; the slug when the task has left the catalog.
+export function taskTitle(run: Pick<Run, 'task' | 'task_title'>, locale: 'en' | 'ru') {
+  return run.task_title?.[locale] || run.task
 }
 
 function passed(r: Run) {
@@ -166,7 +162,7 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
                 <td className={cn(td, !ranked && 'pl-4')}>
                   <Link href={`/r/${r.id}`} className="font-medium whitespace-nowrap after:absolute after:inset-0">{r.agent.name}</Link>
                   <div className="mt-0.5 flex items-center gap-1.5 text-meta whitespace-nowrap text-faint">
-                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r.task, t.locale)}</span><span aria-hidden>·</span></>}
+                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r, t.locale)}</span><span aria-hidden>·</span></>}
                     <span>{r.agent.owner}</span>
                   </div>
                 </td>

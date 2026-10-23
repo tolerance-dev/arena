@@ -309,15 +309,3 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 		return err
 	})
 }
-
-// Bundle returns the stored zip.
-func (s *Service) Bundle(ctx context.Context, id string) ([]byte, error) {
-	var b []byte
-	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT bundle FROM agents WHERE id = $1`, id).Scan(&b)
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, httpx.NotFound()
-	}
-	return b, err
-}

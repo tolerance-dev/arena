@@ -46,7 +46,6 @@ services:
       ARENA_ADDR: 0.0.0.0:8080
       ARENA_ALLOW_NON_LOOPBACK: "true"
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
-      ARENA_APP_ROLE_PASSWORD: ${ARENA_APP_ROLE_PASSWORD}
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:-dev-only-secret-key-change-me}
       ARENA_PREVIEW_URL: http://{id}.preview.localhost:${GATEWAY_PORT:-3023}
       ARENA_STACK: ${ARENA_STACK:-arena}

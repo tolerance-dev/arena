@@ -37,7 +37,7 @@ export function RunView({ id }: { id: string }) {
     <div>
       <Breadcrumbs items={[
         { label: t('challengesTitle'), href: '/' },
-        { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run.task, t.locale)}</>, href: `/t/${run.task}` },
+        { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run, t.locale)}</>, href: `/t/${run.task}` },
         { label: run.agent.name },
       ]} />
       <Columns className="mt-6"
@@ -75,7 +75,7 @@ function Header({ run, t }: { run: Run; t: RT }) {
       <div className="min-w-0 flex-1">
         <h1 className="display text-page break-words">{run.agent.name}</h1>
         <p className="text-subtitle text-muted-foreground">
-          <Link href={`/t/${run.task}`} className="transition-colors hover:text-primary">{taskTitle(run.task, t.locale)}</Link>
+          <Link href={`/t/${run.task}`} className="transition-colors hover:text-primary">{taskTitle(run, t.locale)}</Link>
         </p>
         <Meta className="mt-1" items={[
           <StatusPill key="s" run={run} className="align-middle" />,

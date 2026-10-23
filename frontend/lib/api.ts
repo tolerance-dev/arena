@@ -23,15 +23,6 @@ async function throwProblem(res: Response): Promise<never> {
   throw new ApiError(res.status, body?.code ?? 'error', body?.message ?? res.statusText, retryAfterSeconds(res), body?.fields)
 }
 
-// Like fetch, but same-origin under /api/v1 with the session cookie attached
-// and no JSON parsing. Callers that need the raw Response — a binary or
-// streamed body, like a gzip replay — use this instead of api().
-export async function apiRaw(path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(`${BASE}${path}`, { ...init, credentials: 'include' })
-  if (!res.ok) await throwProblem(res)
-  return res
-}
-
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,

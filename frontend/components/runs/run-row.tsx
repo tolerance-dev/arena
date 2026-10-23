@@ -15,10 +15,10 @@ export function RunRow({ run, t, show = 'agent' }: { run: Run; t: RT; show?: 'ag
   return (
     <FeedRow href={`/r/${run.id}`}
       thumb={show === 'agent' ? <AgentAvatar name={run.agent.name} /> : <TaskTile slug={run.task} />}
-      title={show === 'agent' ? run.agent.name : taskTitle(run.task, t.locale)}
+      title={show === 'agent' ? run.agent.name : taskTitle(run, t.locale)}
       subtitle={built ? <span className="line-clamp-1" title={built}>{built}</span> : undefined}
       meta={[
-        show === 'agent' && taskTitle(run.task, t.locale),
+        show === 'agent' && taskTitle(run, t.locale),
         done ? (show === 'agent' ? t('by', { owner: run.agent.owner }) : null) : <StatusPill key="s" run={run} />,
         stack.length ? <Stack key="st" run={run} pill /> : null,
         <Ago key="a" iso={run.created_at} />,

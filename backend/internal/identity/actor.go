@@ -2,22 +2,11 @@ package identity
 
 import "context"
 
-const (
-	KindUser   = "user"
-	KindSystem = "system"
-)
-
-// Actor is who is making the request. ID is the audit/idempotency actor id
-// (user_…).
+// Actor is the signed-in user making the request.
 type Actor struct {
-	Kind   string
-	ID     string
 	UserID string
 	Role   string // "user" | "admin"
 }
-
-// System is the actor for scheduler and worker writes.
-var System = Actor{Kind: KindSystem, ID: "system"}
 
 type actorKey struct{}
 
@@ -64,8 +53,7 @@ func WithActorLog(ctx context.Context, h *ActorLog) context.Context {
 }
 
 // actorLogFromContext returns the holder placed by WithActorLog, or nil on
-// a route with no request logger wired in front (e.g. a test that calls a
-// handler directly).
+// a route with no request logger wired in front.
 func actorLogFromContext(ctx context.Context) *ActorLog {
 	h, _ := ctx.Value(actorLogKey{}).(*ActorLog)
 	return h
