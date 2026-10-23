@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"tolerance/internal/admin"
 	"tolerance/internal/agents"
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/db"
@@ -58,7 +59,7 @@ func main() {
 	}
 
 	d := deps{
-		pool: pool, log: log, users: identity.NewService(pool, cfg.adminEmails),
+		pool: pool, log: log, users: identity.NewService(pool, cfg.adminEmails), admin: admin.NewService(pool),
 		agents: agentService(pool, box, cfg.subscriptions), runs: runs.NewService(pool, cfg.previewURL),
 		limiter: ratelimit.New(nil), providers: providersFromConfig(cfg),
 	}

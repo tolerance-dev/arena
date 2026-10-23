@@ -169,6 +169,11 @@ function Preview({ run, t }: { run: Run; t: RT }) {
   )
 }
 
+// The split the run was scored with; runs scored before the weight was recorded used 70% judge.
+function formulaVars(weight = 0.7) {
+  return { checks: Math.round(100 * (1 - weight)), judge: Math.round(100 * weight) }
+}
+
 // The result in one place: the score and every check as a cell.
 function Verdict({ run, t }: { run: Run; t: RT }) {
   const done = run.status === 'done'
@@ -182,7 +187,7 @@ function Verdict({ run, t }: { run: Run; t: RT }) {
         {done && run.score != null ? run.score : '—'}
       </div>
       <p className="mt-2 text-ui text-faint">
-        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? (run.judge?.manipulation ? t('scoreManipulation') : t('scoreFormula'))
+        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? (run.judge?.manipulation ? t('scoreManipulation') : t('scoreFormula', formulaVars(run.judge?.weight)))
           : run.score == null ? t('scoreNoVerdict') : t('scoreChecksOnly')}
       </p>
       <div className="mt-5 border-t border-border pt-4">

@@ -1,6 +1,6 @@
 // The API contract with the Go handlers (internal/agents, internal/runs, internal/identity).
 
-export interface AuthProviders { providers: ('github' | 'google')[]; dev_login: boolean }
+export interface AuthProviders { providers: ('github' | 'google')[] }
 export interface User { id: string; email: string; handle: string; role: 'user' | 'admin'; created_at: string }
 export interface Me { user: User; can_admin?: boolean; subscriptions?: boolean }
 
@@ -20,6 +20,7 @@ export interface Criterion { title: string; max: number; points: number; note?: 
 export interface Judge {
   status: 'ok' | 'skipped' | 'error' | 'off'; score: number; summary?: string; criteria?: Criterion[]
   error?: string; steps?: number; model?: string
+  weight?: number // the judge's share of the score (the rest is the automatic checks)
   manipulation?: string // how the submission tried to sway the judge; the run then scores 0
 }
 
@@ -45,4 +46,18 @@ export interface TaskSummary {
 
 export interface TaskView extends TaskSummary {
   brief: string; data_files: string[]; checks: string[]; leaderboard: Run[]; compare: Run[]; recent: Run[]
+}
+
+export interface AdminSettings { runs_paused: boolean; user_runs: boolean; judge: boolean }
+export interface AdminSpend {
+  period: '24h' | '7d' | '30d' | 'all'; runs: number; failed: number
+  in: number; out: number; cache_read: number; cache_write: number; requests: number; judge_in: number; judge_out: number
+}
+export interface AdminUser {
+  id: string; handle: string; email: string; role: 'user' | 'admin'; blocked: boolean; agents: number
+  runs_30d: number; open_runs: number; used_30d: number; judge_30d: number; last_run_at: string | null; created_at: string
+}
+export interface AdminOverview {
+  settings: AdminSettings; spend: AdminSpend[]; providers: { provider: string; runs: number; used: number }[]
+  users: AdminUser[]; queued: number; running: number
 }

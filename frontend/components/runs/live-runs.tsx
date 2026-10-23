@@ -46,7 +46,7 @@ export function outcome(run: Run, t: RT): { text: string; tone: 'good' | 'bad' |
 }
 
 // What is running right now (each run's stage, clock, tokens and last step) and what just finished, with why.
-export function LiveRuns({ runs, t }: { runs: Run[]; t: RT }) {
+export function LiveRuns({ runs, t, empty }: { runs: Run[]; t: RT; empty?: string }) {
   const now = useNow()
   const active = runs.filter(isActive).sort((a, b) => a.created_at.localeCompare(b.created_at))
   const finished = runs.filter((r) => !isActive(r)).slice(0, 8)
@@ -54,7 +54,7 @@ export function LiveRuns({ runs, t }: { runs: Run[]; t: RT }) {
     <div className="space-y-10">
       <section>
         <SectionTitle count={active.length || undefined}>{t('liveTitle')}</SectionTitle>
-        {active.length === 0 ? <EmptyState>{t('liveEmpty')}</EmptyState> : (
+        {active.length === 0 ? <EmptyState>{empty ?? t('liveEmpty')}</EmptyState> : (
           <ul className="grid gap-3 lg:grid-cols-2">
             {active.map((r) => <li key={r.id}><LiveCard run={r} now={now} t={t} /></li>)}
           </ul>

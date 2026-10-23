@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { SignInOptions } from '@/components/auth/sign-in-options'
 import { Brand, BrandMark } from '@/components/brand'
 import { safeReturnPath } from '@/components/public/return-path'
@@ -14,7 +13,6 @@ const ERROR_CODES = ['oauth_denied', 'oauth_state', 'oauth_failed', 'email_unver
 // The /login page: the same choices as the sign-in modal, for direct links and for OAuth errors (?error=).
 export function AuthForm() {
   const t = useT(authMessages)
-  const router = useRouter()
   const [next, setNext] = useState('/')
   const [error, setError] = useState<string | null>(null)
 
@@ -32,7 +30,7 @@ export function AuthForm() {
         <BrandMark className="mx-auto size-16" />
         <h1 className="display mt-5 text-page">{t('modalTitle')}</h1>
         <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">{t('modalLead')}</p>
-        <SignInOptions next={next} initialError={error} onDevSignedIn={() => router.replace(next)} className="mx-auto mt-6 max-w-[318px]" />
+        <SignInOptions next={next} initialError={error} className="mx-auto mt-6 max-w-[318px]" />
         <p className="mt-6 text-meta text-faint">{t('modalNote')}</p>
       </div>
       <p className="text-center text-body text-muted-foreground"><Link className="underline-offset-4 hover:text-foreground hover:underline" href={next}>{t('browse')}</Link></p>

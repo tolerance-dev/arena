@@ -80,7 +80,13 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		if limit <= 0 || limit > 100 {
 			limit = 30
 		}
-		items, err := s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), limit)
+		var items []Run
+		var err error
+		if r.URL.Query().Get("active") == "1" {
+			items, err = s.Active(r.Context())
+		} else {
+			items, err = s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), limit)
+		}
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return

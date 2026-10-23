@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
-	"net/mail"
 	"slices"
 	"strings"
 	"time"
@@ -31,7 +30,6 @@ func clientIP(r *http.Request, trustProxy bool) string {
 type AuthConfig struct {
 	Providers map[string]Provider // "github", "google": only the configured ones
 	PublicURL string              // base of redirect_uri, e.g. https://tolerance.cc
-	DevLogin  bool                // mounts POST /auth/dev; never on in production
 	Secure    bool                // Secure flag on cookies
 	// TrustProxy must only be true when a reverse proxy in front sets
 	// X-Real-IP itself (never trust it otherwise) — see clientip.FromRequest.
@@ -42,19 +40,15 @@ type AuthConfig struct {
 const OAuthCookie = "arena_oauth"
 
 // RegisterAuthRoutes mounts the unauthenticated auth routes: the provider
-// list, logout, OAuth start/callback, and (when enabled) the development
-// sign-in.
+// list, logout and OAuth start/callback.
 func RegisterAuthRoutes(mux *http.ServeMux, s *Service, limiter *ratelimit.Limiter, cfg AuthConfig) {
 	mux.HandleFunc("GET /api/v1/auth/providers", func(w http.ResponseWriter, r *http.Request) {
 		names := slices.Sorted(maps.Keys(cfg.Providers))
 		if names == nil {
 			names = []string{}
 		}
-		httpx.Respond(w, http.StatusOK, map[string]any{"providers": names, "dev_login": cfg.DevLogin})
+		httpx.Respond(w, http.StatusOK, map[string]any{"providers": names})
 	})
-	if cfg.DevLogin {
-		mux.HandleFunc("POST /api/v1/auth/dev", devSignIn(s, limiter, cfg.Secure, cfg.TrustProxy))
-	}
 	mux.HandleFunc("GET /api/v1/auth/{provider}/start", oauthStart(limiter, cfg))
 	mux.HandleFunc("GET /api/v1/auth/{provider}/callback", oauthCallback(s, limiter, cfg))
 	mux.HandleFunc("POST /api/v1/auth/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -157,48 +151,6 @@ func oauthCallback(s *Service, limiter *ratelimit.Limiter, cfg AuthConfig) http.
 		// st.Next was already validated by safeNext when the cookie was set,
 		// but the cookie is not signed, so re-check before trusting it here.
 		http.Redirect(w, r, safeNext(st.Next), http.StatusFound)
-	}
-}
-
-// devSignIn signs in as any email, no password: local runs and CI only.
-func devSignIn(s *Service, limiter *ratelimit.Limiter, secure, trustProxy bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		raw, err := httpx.ReadBody(w, r)
-		if err != nil {
-			httpx.WriteError(w, r, err)
-			return
-		}
-		var in struct {
-			Email string `json:"email"`
-		}
-		if err := httpx.Decode(raw, &in); err != nil {
-			httpx.WriteError(w, r, err)
-			return
-		}
-		email := NormalizeEmail(in.Email)
-		// mail.ParseAddress also accepts "Name <a@b.c>"; require the whole
-		// field to be a bare address, or a display name would sign in as a
-		// mangled email that never matches what the person typed.
-		addr, err := mail.ParseAddress(email)
-		if err != nil || addr.Address != email || len(email) > 254 {
-			httpx.WriteError(w, r, httpx.WithField(http.StatusUnprocessableEntity, "invalid_body", "email must be a valid address", "email", "invalid"))
-			return
-		}
-		if !limiter.Allow("ip:"+clientIP(r, trustProxy), 10, time.Minute) || !limiter.Allow("email:"+email, 10, time.Minute) {
-			httpx.WriteError(w, r, httpx.New(http.StatusTooManyRequests, "rate_limited", "Too many attempts, try again in a minute"))
-			return
-		}
-		u, token, err := s.SignIn(r.Context(), Identity{Provider: "dev", Subject: email, Email: email, EmailVerified: true})
-		if errors.Is(err, ErrEmailUnverified) {
-			httpx.WriteError(w, r, httpx.New(http.StatusForbidden, "email_unverified", "Your account has no verified email address"))
-			return
-		}
-		if err != nil {
-			httpx.WriteError(w, r, err)
-			return
-		}
-		SetSessionCookie(w, token, secure)
-		httpx.Respond(w, http.StatusOK, map[string]any{"user": u})
 	}
 }
 

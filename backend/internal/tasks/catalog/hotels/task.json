@@ -19,5 +19,525 @@
     "Istanbul",
     "Tbilisi"
   ],
-  "checks": []
+  "judge_mode": "screens",
+  "judge_weight": 0.25,
+  "pages": [
+    "/",
+    "/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+    "/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2"
+  ],
+  "checks": [
+    {
+      "name": "search page lists the hotels with the price for the stay",
+      "page": "/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "text": [
+        "Skyline Tower",
+        "531"
+      ]
+    },
+    {
+      "name": "hotel page shows its rooms with the total",
+      "page": "/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "text": [
+        "Skyline Tower",
+        "family",
+        "531"
+      ]
+    },
+    {
+      "name": "search: hotels with a free room for the whole stay",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "expect": [
+        {
+          "path": "hotels",
+          "ids": [
+            "h1",
+            "h2",
+            "h3",
+            "h4"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "search: the price is the cheapest free room for the whole stay",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "expect": [
+        {
+          "path": "hotels[id=h2].price_total",
+          "equals": 531
+        }
+      ]
+    },
+    {
+      "name": "search: rooms must fit the guests",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=4",
+      "expect": [
+        {
+          "path": "hotels",
+          "ids": [
+            "h2",
+            "h3",
+            "h4"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "search: filter by amenities",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&amenities=wifi",
+      "expect": [
+        {
+          "path": "hotels",
+          "ids": [
+            "h1",
+            "h2",
+            "h4"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "search: sort by price",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=price",
+      "expect": [
+        {
+          "path": "hotels",
+          "len": 4
+        },
+        {
+          "path": "hotels",
+          "sorted_by": "price_total"
+        }
+      ]
+    },
+    {
+      "name": "search: sort by rating",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=rating",
+      "expect": [
+        {
+          "path": "hotels",
+          "len": 4
+        },
+        {
+          "path": "hotels",
+          "sorted_by": "-rating"
+        }
+      ]
+    },
+    {
+      "name": "search: sort by stars",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=stars",
+      "expect": [
+        {
+          "path": "hotels",
+          "len": 4
+        },
+        {
+          "path": "hotels",
+          "sorted_by": "-stars"
+        }
+      ]
+    },
+    {
+      "name": "search: sort by distance",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=distance",
+      "expect": [
+        {
+          "path": "hotels",
+          "len": 4
+        },
+        {
+          "path": "hotels",
+          "sorted_by": "distance_to_center_km"
+        }
+      ]
+    },
+    {
+      "name": "search: check-out before check-in is refused",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-05&check_out=2026-12-02&guests=2",
+      "status": 400
+    },
+    {
+      "name": "hotel: a fully booked room is not available",
+      "method": "GET",
+      "path": "/api/hotels/h2?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "expect": [
+        {
+          "path": "rooms[id=r4].available",
+          "equals": false
+        },
+        {
+          "path": "rooms[id=r6].available",
+          "equals": true
+        },
+        {
+          "path": "rooms[id=r6].price_total",
+          "equals": 531
+        }
+      ]
+    },
+    {
+      "name": "hotel: the check-out day is free",
+      "method": "GET",
+      "path": "/api/hotels/h2?city=Lisbon&check_in=2026-12-08&check_out=2026-12-10&guests=2",
+      "expect": [
+        {
+          "path": "rooms[id=r4].available",
+          "equals": true
+        }
+      ]
+    },
+    {
+      "name": "hotel: an unknown hotel is 404",
+      "method": "GET",
+      "path": "/api/hotels/h999",
+      "status": 404
+    },
+    {
+      "name": "sign in: a wrong password is refused",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "wrong"
+      },
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "sign in: Anna",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "pass001"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "anna": "token"
+      }
+    },
+    {
+      "name": "sign in: Boris",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "boris.rossi@example.com",
+        "password": "pass002"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "boris": "token"
+      }
+    },
+    {
+      "name": "booking needs a signed-in user",
+      "method": "POST",
+      "path": "/api/bookings",
+      "body": {
+        "room_id": "r6",
+        "check_in": "2026-12-20",
+        "check_out": "2026-12-22",
+        "guests": 2
+      },
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "availability: the night of the 7th is taken",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "body": {
+        "room_id": "r4",
+        "check_in": "2026-12-07",
+        "check_out": "2026-12-09",
+        "guests": 2
+      },
+      "status": 409
+    },
+    {
+      "name": "availability: booking from the check-out day works",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "body": {
+        "room_id": "r4",
+        "check_in": "2026-12-08",
+        "check_out": "2026-12-10",
+        "guests": 2
+      },
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 236
+        }
+      ],
+      "save": {
+        "twin_booking": "id"
+      }
+    },
+    {
+      "name": "availability: more guests than the room takes are refused",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "body": {
+        "room_id": "r6",
+        "check_in": "2026-12-20",
+        "check_out": "2026-12-22",
+        "guests": 5
+      },
+      "status_in": [
+        400,
+        422
+      ]
+    },
+    {
+      "name": "availability: Anna books the single room",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "body": {
+        "room_id": "r5",
+        "check_in": "2026-12-20",
+        "check_out": "2026-12-22",
+        "guests": 1
+      },
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 168
+        }
+      ],
+      "save": {
+        "single_booking": "id"
+      }
+    },
+    {
+      "name": "availability: Boris can't book the same single room",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "boris",
+      "body": {
+        "room_id": "r5",
+        "check_in": "2026-12-21",
+        "check_out": "2026-12-23",
+        "guests": 1
+      },
+      "status": 409
+    },
+    {
+      "name": "inventory: the first family room",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "boris",
+      "body": {
+        "room_id": "r6",
+        "check_in": "2026-12-20",
+        "check_out": "2026-12-22",
+        "guests": 4
+      },
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 354
+        }
+      ],
+      "save": {
+        "family_1": "id"
+      }
+    },
+    {
+      "name": "inventory: the second family room",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "boris",
+      "body": {
+        "room_id": "r6",
+        "check_in": "2026-12-20",
+        "check_out": "2026-12-22",
+        "guests": 3
+      },
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 354
+        }
+      ],
+      "save": {
+        "family_2": "id"
+      }
+    },
+    {
+      "name": "inventory: no third family room",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "body": {
+        "room_id": "r6",
+        "check_in": "2026-12-21",
+        "check_out": "2026-12-22",
+        "guests": 2
+      },
+      "status": 409
+    },
+    {
+      "name": "search: new bookings take rooms out of the results",
+      "method": "GET",
+      "path": "/api/search?city=Lisbon&check_in=2026-12-20&check_out=2026-12-22&guests=4",
+      "expect": [
+        {
+          "path": "hotels",
+          "ids": [
+            "h3",
+            "h4"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bookings: Anna sees her bookings, old and new",
+      "method": "GET",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "expect": [
+        {
+          "path": "bookings",
+          "len": 10
+        },
+        {
+          "path": "bookings[id=b-full]",
+          "exists": true
+        },
+        {
+          "path": "bookings[id={single_booking}].total",
+          "equals": 168
+        }
+      ]
+    },
+    {
+      "name": "bookings: Boris doesn't see Anna's",
+      "method": "GET",
+      "path": "/api/bookings",
+      "auth": "boris",
+      "expect": [
+        {
+          "path": "bookings[id={single_booking}]",
+          "absent": true
+        },
+        {
+          "path": "bookings[id={family_1}]",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "name": "bookings: a signed-out list is refused",
+      "method": "GET",
+      "path": "/api/bookings",
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "cancel: Boris can't cancel Anna's booking",
+      "method": "DELETE",
+      "path": "/api/bookings/{single_booking}",
+      "auth": "boris",
+      "status_in": [
+        403,
+        404
+      ]
+    },
+    {
+      "name": "cancel: Anna cancels the single room",
+      "method": "DELETE",
+      "path": "/api/bookings/{single_booking}",
+      "auth": "anna",
+      "status_in": [
+        200,
+        204
+      ]
+    },
+    {
+      "name": "cancel: the cancelled dates are free again",
+      "method": "POST",
+      "path": "/api/bookings",
+      "auth": "boris",
+      "body": {
+        "room_id": "r5",
+        "check_in": "2026-12-21",
+        "check_out": "2026-12-23",
+        "guests": 1
+      },
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 168
+        }
+      ]
+    },
+    {
+      "name": "cancel: the booking leaves Anna's list",
+      "method": "GET",
+      "path": "/api/bookings",
+      "auth": "anna",
+      "expect": [
+        {
+          "path": "bookings[id={single_booking}]",
+          "absent": true
+        },
+        {
+          "path": "bookings",
+          "len": 9
+        }
+      ]
+    }
+  ]
 }

@@ -35,6 +35,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
     { label: t('agents'), href: '/agents', active: pathname.startsWith('/agents') },
     { label: t('leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
     { label: t('myAgents'), href: '/my', active: pathname.startsWith('/my'), running },
+    ...(me?.can_admin ? [{ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
   ]
 
   async function signOut() {
