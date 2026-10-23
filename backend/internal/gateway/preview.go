@@ -121,7 +121,7 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusServiceUnavailable, "Starting the app…", "The agent's app is booting from its snapshot. This page refreshes by itself.", true)
 		return
 	}
-	target, _ := url.Parse("http://" + containerName(label) + ":3000")
+	target, _ := url.Parse("http://" + containerName(label) + ":" + sandbox.AppPort)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
@@ -213,12 +213,8 @@ func (p *Previews) start(pv *preview, image string) {
 		set(false, "the run's snapshot image is gone")
 		return
 	}
-	id, err := sandbox.Create(ctx, sandbox.Spec{
-		Name: name, Image: image, Network: sandbox.Network, Memory: "512m", CPUs: "1", Pids: 1024, Workdir: "/work",
-		Labels: map[string]string{"arena.role": "preview"},
-		Env:    []string{"PORT=3000", "HOST=0.0.0.0", "NODE_ENV=production", "HOME=/tmp", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="},
-		Cmd:    []string{"sh", "-c", "cd /work && exec sh start.sh"},
-	})
+	// The same container the check ran the app in (sandbox.AppSpec), so what passed the check starts here too.
+	id, err := sandbox.Create(ctx, sandbox.AppSpec(name, image, map[string]string{"arena.role": "preview"}))
 	if err == nil {
 		err = sandbox.StartDetached(ctx, id)
 	}
@@ -230,7 +226,7 @@ func (p *Previews) start(pv *preview, image string) {
 	client := &http.Client{Timeout: 3 * time.Second}
 	deadline := time.Now().Add(previewStart)
 	for time.Now().Before(deadline) {
-		resp, err := client.Get("http://" + name + ":3000/")
+		resp, err := client.Get("http://" + name + ":" + sandbox.AppPort + "/")
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode < 500 {

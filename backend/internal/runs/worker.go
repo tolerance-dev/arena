@@ -35,7 +35,6 @@ const (
 	checkTimeout  = 25 * time.Minute
 	maxShot       = 3 << 20
 	pollEvery     = 3 * time.Second
-	sourceTarMax  = 200 << 20
 	verifyOutMax  = 20 << 20
 	judgeModelEnv = "claude-opus-5-5"
 )
@@ -75,7 +74,7 @@ func (w *Worker) Run(ctx context.Context) {
 		w.log.Error("sandbox network", "err", err)
 	}
 	sandbox.RemoveByLabel(ctx, "arena.role=agent")
-	sandbox.RemoveByLabel(ctx, "arena.role=check")
+	sandbox.RemoveByLabel(ctx, "arena.role=check") // the check, the app under check and the source reader
 	_ = w.exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
 		WHERE status IN ('agent', 'checking')`)
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
@@ -371,19 +370,37 @@ type verifyResult struct {
 	Judge         *Judge  `json:"judge"`
 }
 
-// check measures the code, then starts the app in a fresh container from the snapshot and runs verify.py there.
+// check measures the code, then runs the app and verify.py side by side: the app in its own container from the
+// snapshot, verify.py (checks, screenshots, judge) in a clean runtime container that reaches the app over the
+// sandbox network. Nothing the agent wrote runs in the checker's container, so it can't touch the checker, its
+// result or the judge's token.
 func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if !w.stillActive(ctx, c.id, "checking") {
 		return nil
 	}
+	stop, endWatch := w.watchStatus(ctx, c.id, "checking")
+	defer endWatch()
 	task := tasks.BySlug(c.task)
 	image := ImageFor(c.id)
+	hex := PreviewHost(c.id)
+	labels := map[string]string{"arena.run": c.id, "arena.role": "check"}
 
-	src, err := sandbox.RunOutput(ctx, image, sourceTarMax, SourceTarCmd()...)
+	// The sources come out with docker cp from a container that never starts.
+	snap, err := sandbox.Create(ctx, sandbox.Spec{Name: "arena-src-" + hex, Image: image, Labels: labels, Cmd: []string{"true"}})
+	if err != nil {
+		return err
+	}
+	var ws workspace
+	err = sandbox.StreamOut(ctx, snap, "/work", func(r io.Reader) error {
+		var err error
+		ws, err = readSources(r)
+		return err
+	})
+	sandbox.Remove(snap)
 	if err != nil {
 		return fmt.Errorf("read sources: %w", err)
 	}
-	stats, sourceZip, err := sourceStats(src)
+	stats, sourceZip, err := sourceStats(ws.files)
 	if err != nil {
 		return fmt.Errorf("count sources: %w", err)
 	}
@@ -396,31 +413,56 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		}
 		judge = map[string]any{"base_url": sandbox.GatewayURL + "/anthropic", "token": judgeToken, "model": w.cfg.JudgeModel}
 	}
-	spec, err := json.Marshal(map[string]any{
-		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "ui_text": task.UIText, "judge": judge,
-	})
-	if err != nil {
-		return err
+
+	appName := "arena-app-" + hex
+	appID, startError := "", ""
+	if !ws.topLevel["start.sh"] {
+		startError = "no start.sh in /work"
+	} else {
+		if appID, err = sandbox.Create(ctx, sandbox.AppSpec(appName, image, labels)); err != nil {
+			return err
+		}
+		defer sandbox.Remove(appID)
 	}
+
 	id, err := sandbox.Create(ctx, sandbox.Spec{
-		Name: "arena-check-" + PreviewHost(c.id), Image: image, Network: sandbox.Network,
-		Memory: "4g", CPUs: "2", Pids: 4096, Workdir: "/work",
-		// verify.py runs as root and drops the app to uid 1001, so the app can't read the judge's checklist or token.
-		CapAdd: []string{"CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER", "KILL"},
-		Labels: map[string]string{"arena.run": c.id, "arena.role": "check"},
-		Env:    []string{"HOME=/root", "PYTHONDONTWRITEBYTECODE=1", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="},
-		Cmd:    []string{"python3", "/verify/verify.py"},
+		Name: "arena-check-" + hex, Image: sandbox.Image, Network: sandbox.Network,
+		Memory: "2g", CPUs: "2", Pids: 4096, Workdir: "/verify", Labels: labels,
+		Env: []string{"HOME=/root", "PYTHONDONTWRITEBYTECODE=1"},
+		Cmd: []string{"python3", "/verify/verify.py"},
 	})
 	if err != nil {
 		return err
 	}
 	defer sandbox.Remove(id)
+	src := make(map[string]sandbox.File, len(ws.files))
+	for n, b := range ws.files {
+		src[n] = sandbox.File{Body: b}
+	}
+	if err := sandbox.CopyIn(ctx, id, "/src", src, 0); err != nil {
+		return err
+	}
+	// The app starts first; verify.py times its start from this moment (the containers share the host's clock).
+	var appStart float64
+	if appID != "" {
+		if err := sandbox.StartDetached(ctx, appID); err != nil {
+			return err
+		}
+		appStart = float64(time.Now().UnixMilli()) / 1000
+	}
+	spec, err := json.Marshal(map[string]any{
+		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "ui_text": task.UIText,
+		"judge": judge, "app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
+	})
+	if err != nil {
+		return err
+	}
 	if err := sandbox.CopyIn(ctx, id, "/verify", map[string]sandbox.File{
 		"verify.py": {Body: verifyPy, Mode: 0o600}, "spec.json": {Body: spec, Mode: 0o600},
 	}, 0o700); err != nil {
 		return err
 	}
-	res, err := sandbox.Start(ctx, id, checkTimeout, make(chan struct{}), &sandbox.Tail{Max: maxLog})
+	res, err := sandbox.Start(ctx, id, checkTimeout, stop, &sandbox.Tail{Max: maxLog})
 	if err != nil {
 		return err
 	}
@@ -436,6 +478,13 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if err := json.Unmarshal(files["result.json"], &vr); err != nil {
 		return fmt.Errorf("check result: %v (exit %d): %s", err, res.ExitCode, tailStr(res.Output, 800))
 	}
+	checkLog := res.Output
+	if appID != "" {
+		if running, code, err := sandbox.State(ctx, appID); err == nil && !running && !vr.Start.OK {
+			vr.Start.Error = fmt.Sprintf("start.sh exited with code %d", code)
+		}
+		checkLog += "\n--- app output ---\n" + sandbox.Logs(ctx, appID, maxLog/2)
+	}
 	shot, shotMobile := files["shot.jpg"], files["shot-mobile.jpg"]
 	if len(shot) > maxShot {
 		shot = nil
@@ -449,7 +498,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if vr.Judge == nil {
 		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}
 	}
-	score := Score(checks, vr.Start.OK, vr.Judge)
+	score := Score(checks, vr.Start.OK, vr.Judge, task.Judge != "")
 	statsJSON, _ := json.Marshal(stats)
 	checksJSON, _ := json.Marshal(checks)
 	judgeJSON, _ := json.Marshal(vr.Judge)
@@ -458,16 +507,40 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', stats = $2, checks = $3, judge = $4, score = $5, app_started = $6,
 			shot = $7, shot_mobile = $8, source_zip = $9, check_log = $10, finished_at = now(), updated_at = now()
 			WHERE id = $1 AND status = 'checking'`,
-			c.id, statsJSON, checksJSON, judgeJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(res.Output, maxLog))
+			c.id, statsJSON, checksJSON, judgeJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog))
 		return err
 	})
 }
 
-// Score is 0 when the app doesn't start; otherwise 30% automatic checks + 70% judge, or the checks alone when the
-// judge didn't run.
-func Score(checks []Check, started bool, j *Judge) int {
+// watchStatus returns a channel that closes once the run leaves status (a cancel), and a func to stop watching.
+func (w *Worker) watchStatus(ctx context.Context, id, status string) (<-chan struct{}, func()) {
+	stop := make(chan struct{})
+	wctx, cancel := context.WithCancel(ctx)
+	go func() {
+		t := time.NewTicker(pollEvery)
+		defer t.Stop()
+		for {
+			select {
+			case <-wctx.Done():
+				return
+			case <-t.C:
+			}
+			if !w.stillActive(wctx, id, status) {
+				close(stop)
+				return
+			}
+		}
+	}()
+	return stop, cancel
+}
+
+// Score is 0 when the app doesn't start. Otherwise a task with a judge scores 30% automatic checks + 70% judge, and
+// no score at all (nil: the run stays off the leaderboard) when the judge gave no verdict, since the checks alone
+// can't tell a working product from a page that shows the seed data. A task without a judge scores the checks.
+func Score(checks []Check, started bool, j *Judge, judged bool) *int {
+	score := func(v float64) *int { n := int(math.Round(v)); return &n }
 	if !started {
-		return 0
+		return score(0)
 	}
 	passed := 0
 	for _, c := range checks {
@@ -476,10 +549,13 @@ func Score(checks []Check, started bool, j *Judge) int {
 		}
 	}
 	auto := 100 * float64(passed) / float64(max(1, len(checks)))
-	if j == nil || j.Status != "ok" {
-		return int(math.Round(auto))
+	if !judged {
+		return score(auto)
 	}
-	return int(math.Round(0.3*auto + 0.7*float64(j.Score)))
+	if j == nil || j.Status != "ok" {
+		return nil
+	}
+	return score(0.3*auto + 0.7*float64(j.Score))
 }
 
 func untar(b []byte) map[string][]byte {

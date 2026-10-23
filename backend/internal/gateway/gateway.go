@@ -1,8 +1,10 @@
 // Package gateway is the only way out of a sandbox. Agents (and the judge) on the internal arena-agents network
 // reach it as http://gateway:8090:
 //
-//   - /anthropic/*, /openai/*: LLM APIs. The run token the sandbox holds is swapped for the agent's real key (or
-//     the platform's judge key), usage is counted into the run, and the run's token budget and deadline are enforced.
+//   - /anthropic/*, /openai/*: LLM APIs, only the generation endpoints (llmRoutes). The run token the sandbox holds
+//     is swapped for the agent's real key (or the platform's judge key), usage is counted into the run, the run's
+//     token budget is enforced, and a run has at most maxParallel requests in flight (more wait their turn), so the
+//     budget can't be overrun by firing many requests at once.
 //   - /npm/*, /pypi/*, /pyfiles/*: read-only package registries, so agents can install dependencies.
 //
 // Nothing else is proxied.
@@ -41,11 +43,90 @@ type Gateway struct {
 	box  *secretbox.Box
 	cfg  Config
 	log  *slog.Logger
+
+	mu    sync.Mutex
+	slots map[string]*slot // by token hash
 }
 
 func New(pool *db.Pool, box *secretbox.Box, cfg Config, log *slog.Logger) *Gateway {
-	return &Gateway{pool: pool, box: box, cfg: cfg, log: log.With("component", "gateway")}
+	return &Gateway{pool: pool, box: box, cfg: cfg, log: log.With("component", "gateway"), slots: map[string]*slot{}}
 }
+
+// maxParallel is how many LLM requests one token (one run's agent, or its judge) has in flight at once.
+const maxParallel = 4
+
+type slot struct {
+	ch    chan struct{}
+	users int
+}
+
+// acquire waits for one of the token's request slots; release frees it.
+func (g *Gateway) acquire(ctx context.Context, key string) (release func(), err error) {
+	g.mu.Lock()
+	s := g.slots[key]
+	if s == nil {
+		s = &slot{ch: make(chan struct{}, maxParallel)}
+		g.slots[key] = s
+	}
+	s.users++
+	g.mu.Unlock()
+	done := func() {
+		g.mu.Lock()
+		if s.users--; s.users == 0 {
+			delete(g.slots, key)
+		}
+		g.mu.Unlock()
+	}
+	select {
+	case s.ch <- struct{}{}:
+		return func() { <-s.ch; done() }, nil
+	case <-ctx.Done():
+		done()
+		return nil, ctx.Err()
+	}
+}
+
+// llmRoutes are the only LLM endpoints proxied: generation (metered from its response), token counting and model
+// lists. Everything else (batches, files, assistants, fine-tuning, …) would spend the key without a usage figure in
+// the response, or outlive the run.
+var llmRoutes = map[string][]string{
+	"anthropic": {"POST /v1/messages", "POST /v1/messages/count_tokens", "GET /v1/models", "GET /v1/models/*"},
+	"openai":    {"POST /v1/chat/completions", "POST /v1/responses", "GET /v1/models", "GET /v1/models/*"},
+}
+
+func allowedRoute(provider, method, path string) bool {
+	for _, r := range llmRoutes[provider] {
+		m, p, _ := strings.Cut(r, " ")
+		if m != method {
+			continue
+		}
+		if prefix, ok := strings.CutSuffix(p, "*"); ok {
+			if rest, ok := strings.CutPrefix(path, prefix); ok && rest != "" && !strings.Contains(rest, "/") {
+				return true
+			}
+		} else if path == p {
+			return true
+		}
+	}
+	return false
+}
+
+// refusedBody says why a request body can't go through, or "": OpenAI background responses come back without usage
+// (it would show up only when polled later), so they'd be unmetered.
+func refusedBody(provider, path string, body []byte) string {
+	if provider != "openai" || path != "/v1/responses" {
+		return ""
+	}
+	var req struct {
+		Background bool `json:"background"`
+	}
+	if json.Unmarshal(body, &req) == nil && req.Background {
+		return "background responses are not supported: their usage can't be metered"
+	}
+	return ""
+}
+
+const maxLLMBody = 32 << 20
 
 var upstreams = map[string]string{
 	"anthropic": "https://api.anthropic.com",
@@ -103,11 +184,34 @@ func (g *Gateway) lookup(ctx context.Context, token string) (grant, error) {
 }
 
 func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
+	path := strings.TrimPrefix(r.URL.Path, "/"+provider)
+	if !allowedRoute(provider, r.Method, path) {
+		apiError(w, provider, http.StatusForbidden, "permission_error",
+			r.Method+" "+path+" is not available through the arena gateway; allowed: "+strings.Join(llmRoutes[provider], ", "))
+		return
+	}
 	token := tokenFrom(r)
 	if token == "" {
 		apiError(w, provider, http.StatusUnauthorized, "authentication_error", "missing run token")
 		return
 	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxLLMBody+1))
+	if err != nil || len(body) > maxLLMBody {
+		apiError(w, provider, http.StatusRequestEntityTooLarge, "request_too_large", "the request body is too large or unreadable")
+		return
+	}
+	if why := refusedBody(provider, path, body); why != "" {
+		apiError(w, provider, http.StatusBadRequest, "invalid_request_error", why)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	r.ContentLength = int64(len(body))
+	// Wait for a slot before reading the budget, so each request sees what the ones before it spent.
+	release, err := g.acquire(r.Context(), runs.TokenHash(token))
+	if err != nil {
+		return // the client went away while waiting
+	}
+	defer release()
 	gr, err := g.lookup(r.Context(), token)
 	if errors.Is(err, pgx.ErrNoRows) {
 		apiError(w, provider, http.StatusUnauthorized, "authentication_error", "unknown or expired run token")
@@ -153,7 +257,7 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 	defer func() { g.record(gr, meter) }()
 
 	if g.cfg.FakeUpstream {
-		fake(w, r, provider, meter)
+		fake(w, body, provider, meter)
 		return
 	}
 	target, _ := url.Parse(upstreams[provider])
@@ -361,8 +465,7 @@ func (g *Gateway) registry(w http.ResponseWriter, r *http.Request, name string) 
 
 // fake answers LLM calls without an upstream (ARENA_GATEWAY_FAKE=true, local runs without keys). For the judge it
 // plays a two-step session (look at the home page, then a verdict) so the whole pipeline can be clicked through.
-func fake(w http.ResponseWriter, r *http.Request, provider string, meter *usage) {
-	body, _ := io.ReadAll(io.LimitReader(r.Body, 32<<20))
+func fake(w http.ResponseWriter, body []byte, provider string, meter *usage) {
 	var req struct {
 		Model    string            `json:"model"`
 		Messages []json.RawMessage `json:"messages"`

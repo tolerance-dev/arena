@@ -20,6 +20,7 @@ export interface Criterion { title: string; max: number; points: number; note?: 
 export interface Judge {
   status: 'ok' | 'skipped' | 'error' | 'off'; score: number; summary?: string; criteria?: Criterion[]
   error?: string; steps?: number; model?: string
+  manipulation?: string // how the submission tried to sway the judge; the run then scores 0
 }
 
 export interface Run {

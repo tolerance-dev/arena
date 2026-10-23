@@ -171,7 +171,8 @@ function Verdict({ run, t }: { run: Run; t: RT }) {
         {done && run.score != null ? run.score : '—'}
       </div>
       <p className="mt-2 text-ui text-faint">
-        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? t('scoreFormula') : t('scoreChecksOnly')}
+        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? (run.judge?.manipulation ? t('scoreManipulation') : t('scoreFormula'))
+          : run.score == null ? t('scoreNoVerdict') : t('scoreChecksOnly')}
       </p>
       <div className="mt-5 border-t border-border pt-4">
         <div className="text-body font-semibold">
@@ -292,6 +293,9 @@ function JudgeCard({ run, t }: { run: Run; t: RT }) {
         </p>
       ) : (
         <div className="rounded-xl border-2 border-border">
+          {j.manipulation && (
+            <p className="border-b border-destructive/30 bg-destructive/8 px-5 py-3 text-body text-destructive">{t('judgeManipulation', { what: j.manipulation })}</p>
+          )}
           <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:gap-6">
             <div className={cn('numeral text-[40px]', scoreTone(j.score))}>{j.score}</div>
             <div className="min-w-0">

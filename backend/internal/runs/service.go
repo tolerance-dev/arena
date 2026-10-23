@@ -67,8 +67,10 @@ type Judge struct {
 	Summary  string      `json:"summary,omitempty"`
 	Criteria []Criterion `json:"criteria,omitempty"`
 	Error    string      `json:"error,omitempty"`
-	Steps    int         `json:"steps,omitempty"`
-	Model    string      `json:"model,omitempty"`
+	// Manipulation: how the submission tried to influence the judge (the run then scores 0); "" = it didn't.
+	Manipulation string `json:"manipulation,omitempty"`
+	Steps        int    `json:"steps,omitempty"`
+	Model        string `json:"model,omitempty"`
 }
 
 type Stats struct {
