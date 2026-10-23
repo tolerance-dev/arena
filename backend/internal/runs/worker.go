@@ -168,6 +168,7 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 
 type claimed struct {
 	id, task, agentID string
+	provider          string // where the agent's key is spent: run.sh picks model names by it (ARENA_PROVIDER)
 	timeLimit         time.Duration
 	budget            int64
 	bundle            []byte
@@ -179,8 +180,8 @@ func (w *Worker) process(ctx context.Context, id string) {
 	c.id = id
 	var limitS int
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, r.time_limit_s, r.token_budget, a.bundle
-			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &limitS, &c.budget, &c.bundle)
+		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, r.time_limit_s, r.token_budget, a.bundle
+			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &limitS, &c.budget, &c.bundle)
 	})
 	c.timeLimit = time.Duration(limitS) * time.Second
 	if err == nil {
@@ -256,8 +257,9 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 		Env: []string{
 			"ANTHROPIC_BASE_URL=" + gw + "/anthropic", "ANTHROPIC_API_KEY=" + token,
 			"OPENAI_BASE_URL=" + gw + "/openai/v1", "OPENAI_API_KEY=" + token,
+			"GOOGLE_GEMINI_BASE_URL=" + gw + "/gemini", "GEMINI_API_KEY=" + token,
 			"npm_config_registry=" + gw + "/npm/", "PIP_INDEX_URL=" + gw + "/pypi/simple/", "PIP_TRUSTED_HOST=gateway",
-			"ARENA_TASK=" + c.task, fmt.Sprintf("ARENA_TIME_LIMIT_S=%d", int(c.timeLimit.Seconds())),
+			"ARENA_TASK=" + c.task, "ARENA_PROVIDER=" + c.provider, fmt.Sprintf("ARENA_TIME_LIMIT_S=%d", int(c.timeLimit.Seconds())),
 			fmt.Sprintf("ARENA_DEADLINE=%d", deadline.Unix()), fmt.Sprintf("ARENA_TOKEN_BUDGET=%d", c.budget),
 			"TASK_FILE=/work/TASK.md", "IS_SANDBOX=1", "DISABLE_AUTOUPDATER=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
 			"DISABLE_TELEMETRY=1", "DO_NOT_TRACK=1", "CI=1", "HOME=/root",
@@ -348,7 +350,7 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 	log.Info("agent finished", "exit", exit, "seconds", secs)
 
 	image := ImageFor(c.id)
-	if err := sandbox.Commit(ctx, id, image, "ENV ANTHROPIC_API_KEY=", "ENV OPENAI_API_KEY=", `CMD ["sh"]`); err != nil {
+	if err := sandbox.Commit(ctx, id, image, "ENV ANTHROPIC_API_KEY=", "ENV OPENAI_API_KEY=", "ENV GEMINI_API_KEY=", `CMD ["sh"]`); err != nil {
 		return fmt.Errorf("snapshot: %w", err)
 	}
 	return w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {

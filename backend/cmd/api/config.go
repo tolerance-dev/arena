@@ -33,6 +33,7 @@ type config struct {
 	googleID         string
 	googleSecret     string
 	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/judge.md overrides (the private arena-tasks repo)
+	subscriptions    bool   // ARENA_SUBSCRIPTIONS: admins may run agents on their own Claude/ChatGPT subscription (local only)
 }
 
 func loadConfig() (config, error) {
@@ -53,6 +54,7 @@ func loadConfig() (config, error) {
 		googleID:         os.Getenv("ARENA_GOOGLE_CLIENT_ID"),
 		googleSecret:     os.Getenv("ARENA_GOOGLE_CLIENT_SECRET"),
 		tasksHiddenDir:   os.Getenv("ARENA_TASKS_HIDDEN_DIR"),
+		subscriptions:    os.Getenv("ARENA_SUBSCRIPTIONS") == "true",
 	}
 	if v := os.Getenv("ARENA_RUN_CONCURRENCY"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -82,6 +84,10 @@ func loadConfig() (config, error) {
 		if u, err := url.Parse(cfg.publicURL); cfg.publicURL != "" && (err != nil || !isLocalHost(u.Hostname())) {
 			return config{}, errors.New("ARENA_DEV_LOGIN is for local runs; ARENA_PUBLIC_URL must be localhost, 127.0.0.1 or *.localhost")
 		}
+	}
+	if cfg.subscriptions && cfg.secureCookies {
+		// A personal subscription is for its owner's own use: never behind a public site.
+		return config{}, errors.New("ARENA_SUBSCRIPTIONS is for local runs; it cannot be on with ARENA_SECURE_COOKIES=true")
 	}
 	if cfg.devLogin && cfg.secureCookies {
 		return config{}, errors.New("ARENA_DEV_LOGIN is for local runs and CI; it cannot be on with ARENA_SECURE_COOKIES=true")

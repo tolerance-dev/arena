@@ -35,7 +35,8 @@ type deps struct {
 func newHandler(cfg config, d deps) http.Handler {
 	owner := http.NewServeMux()
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
-		return map[string]any{"can_admin": identity.MustFromContext(ctx).Role == "admin"}, nil
+		admin := identity.MustFromContext(ctx).Role == "admin"
+		return map[string]any{"can_admin": admin, "subscriptions": admin && cfg.subscriptions}, nil
 	})
 
 	mine := http.NewServeMux()

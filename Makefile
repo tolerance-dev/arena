@@ -11,7 +11,15 @@ LOCAL_JUDGE_KEY := $(ARENA_JUDGE_API_KEY)
 ARENA_JUDGE_API_KEY := $(or $(ARENA_JUDGE_API_KEY),$(LOCAL_JUDGE_KEY))
 # docker compose (make up / gateway) reads these from the environment.
 export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
-export ARENA_JUDGE_API_KEY ARENA_JUDGE_MODEL ARENA_GATEWAY_FAKE
+export ARENA_JUDGE_API_KEY ARENA_JUDGE_BASE_URL ARENA_JUDGE_MODEL ARENA_GATEWAY_FAKE
+# Each checkout's sandboxes get their own internal network: two gateways on one network would share the "gateway"
+# alias, and sandboxes would reach the other checkout's gateway (which doesn't know their run tokens).
+ARENA_AGENTS_NETWORK ?= arena-agents-$(notdir $(CURDIR))
+export ARENA_AGENTS_NETWORK
+# Admins may key agents with their own Claude / ChatGPT subscription: local stacks only (the api refuses it next to
+# secure cookies, and deploy/ never sets it).
+ARENA_SUBSCRIPTIONS ?= true
+export ARENA_SUBSCRIPTIONS
 WEB_PORT ?= 3000
 API_PORT ?= 8080
 PG_PORT ?= 5432
@@ -49,13 +57,13 @@ db: .env docker
 	$(COMPOSE) up -d --wait postgres
 
 # The sandboxes' way out (LLM APIs, npm, PyPI) and the live previews; always in Docker, since it has to sit on
-# the internal arena-agents network. Rebuilt from backend/ on every start (cached when nothing changed).
+# this checkout's internal sandbox network. Rebuilt from backend/ on every start (cached when nothing changed).
 gateway: .env docker net
 	$(COMPOSE) up -d --build gateway
 
 # The internal network sandboxes run on: no route out, only the gateway.
 net: docker
-	@docker network inspect arena-agents >/dev/null 2>&1 || docker network create --internal arena-agents >/dev/null
+	@docker network inspect $(ARENA_AGENTS_NETWORK) >/dev/null 2>&1 || docker network create --internal $(ARENA_AGENTS_NETWORK) >/dev/null
 
 migrate:
 	cd backend && ARENA_MIGRATE_DATABASE_URL="postgres://arena_migrate:$(POSTGRES_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \

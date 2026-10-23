@@ -18,7 +18,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { RunTable, Score, usePoll, type RT } from './bits'
+import { ProviderOptions, providerLabel, RunTable, Score, usePoll, type RT } from './bits'
 
 const field = fieldClass
 
@@ -47,14 +47,14 @@ export function MyAgents() {
   return (
     <div className="space-y-12">
       <PageHeader title={t('myTitle')}>{t('myLead')}</PageHeader>
-      <NewAgent t={t} onDone={refresh} />
+      <NewAgent t={t} onDone={refresh} subscriptions={!!me.subscriptions} />
       <section>
         <SectionTitle>{t('yourAgents')}</SectionTitle>
         {agents.data?.items.length === 0 && (
           <EmptyState>{t('noAgents')}</EmptyState>
         )}
         <div className="space-y-3">
-          {agents.data?.items.map((a) => <AgentCard key={a.id} agent={a} tasks={tasks.data?.items ?? []} t={t} onChange={refresh} />)}
+          {agents.data?.items.map((a) => <AgentCard key={a.id} agent={a} tasks={tasks.data?.items ?? []} t={t} onChange={refresh} subscriptions={!!me.subscriptions} />)}
         </div>
       </section>
       <section>
@@ -65,7 +65,8 @@ export function MyAgents() {
   )
 }
 
-function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
+function NewAgent({ t, onDone, subscriptions }: { t: RT; onDone: () => void; subscriptions: boolean }) {
+  const [provider, setProvider] = useState('anthropic')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -100,15 +101,21 @@ function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="provider">{t('agentProvider')}</Label>
-          <select id="provider" name="provider" className={field} defaultValue="anthropic">
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
+          <select id="provider" name="provider" className={field} value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <ProviderOptions subscriptions={subscriptions} />
           </select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="api_key">{t('agentKey')}</Label>
-          <Input id="api_key" name="api_key" type="password" required autoComplete="off" placeholder="sk-ant-…" />
-          <p className="text-xs text-muted-foreground">{t('agentKeyHint')}</p>
+          {provider === 'chatgpt-sub' ? (
+            <textarea id="api_key" name="api_key" required rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
+              className={cn(field, 'h-auto py-2 font-mono text-xs')} />
+          ) : (
+            <Input id="api_key" name="api_key" type="password" required autoComplete="off" placeholder="sk-…" />
+          )}
+          <p className="text-xs text-muted-foreground">
+            {provider === 'claude-sub' ? t('keyHintClaudeSub') : provider === 'chatgpt-sub' ? t('keyHintChatgptSub') : t('agentKeyHint')}
+          </p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="bundle">{t('agentBundle')}</Label>
@@ -125,7 +132,7 @@ function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
   )
 }
 
-function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSummary[]; t: RT; onChange: () => void }) {
+function AgentCard({ agent, tasks, t, onChange, subscriptions }: { agent: Agent; tasks: TaskSummary[]; t: RT; onChange: () => void; subscriptions: boolean }) {
   const router = useRouter()
   const [task, setTask] = useState('')
   const [minutes, setMinutes] = useState('')
@@ -197,7 +204,7 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
           </div>
           {agent.description && <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>}
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>{agent.provider === 'openai' ? 'OpenAI' : 'Anthropic'}</span>
+            <span>{providerLabel(agent.provider)}</span>
             {agent.key_hint && <span className="font-mono">{t('keyHint', { hint: agent.key_hint })}</span>}
             <span>{t.plural('runs', agent.runs)}</span>
           </div>
@@ -209,9 +216,8 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
       </div>
       {keyOpen && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <select className={cn(field, 'w-36')} value={provider} onChange={(e) => setProvider(e.target.value)}>
-            <option value="anthropic">Anthropic</option>
-            <option value="openai">OpenAI</option>
+          <select className={cn(field, 'w-44')} value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <ProviderOptions subscriptions={subscriptions} />
           </select>
           <Input type="password" className="min-w-0 flex-1" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-…" autoComplete="off" />
           <Button onClick={() => void saveKey()} disabled={key.length < 20}>{t('saveKey')}</Button>

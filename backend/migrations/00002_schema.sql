@@ -44,7 +44,7 @@ CREATE TABLE agents (
     description  text NOT NULL DEFAULT '',
     bundle       bytea NOT NULL,
     bundle_files int NOT NULL DEFAULT 0,
-    provider     text NOT NULL CHECK (provider IN ('anthropic', 'openai')),
+    provider     text NOT NULL CHECK (provider IN ('anthropic', 'openai', 'google', 'orcarouter', 'claude-sub', 'chatgpt-sub')),
     api_key      bytea NOT NULL,
     key_hint     text NOT NULL DEFAULT '',
     created_at   timestamptz NOT NULL DEFAULT now(),

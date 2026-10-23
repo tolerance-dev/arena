@@ -19,7 +19,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, scoreTone, StatusPill, taskTitle, usePoll, type RT } from './bits'
+import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, scoreTone, StatusPill, taskTitle, usePoll, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
 
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
@@ -79,7 +79,7 @@ function Header({ run, t }: { run: Run; t: RT }) {
         <Meta className="mt-1" items={[
           <StatusPill key="s" run={run} className="align-middle" />,
           t('by', { owner: run.agent.owner }),
-          run.agent.provider === 'openai' ? 'OpenAI' : 'Anthropic',
+          providerLabel(run.agent.provider),
           <Ago key="a" iso={run.created_at} />,
         ]} />
         {run.agent.description && <p className="mt-3 max-w-[70ch] text-title text-muted-foreground">{run.agent.description}</p>}
