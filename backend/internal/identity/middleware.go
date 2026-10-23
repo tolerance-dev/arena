@@ -29,24 +29,8 @@ func RequireSession(s *Service) func(http.Handler) http.Handler {
 				h.UserID = u.ID
 			}
 			next.ServeHTTP(w, r.WithContext(WithActor(r.Context(),
-				Actor{Kind: KindUser, ID: u.ID, UserID: u.ID, Role: u.Role})))
+				Actor{UserID: u.ID, Role: u.Role})))
 		})
-	}
-}
-
-// OptionalUserID returns a function that resolves the session cookie of a request on a public route to a
-// user id, or "" when the request is anonymous or its session is gone.
-func OptionalUserID(s *Service) func(r *http.Request) string {
-	return func(r *http.Request) string {
-		c, err := r.Cookie(SessionCookie)
-		if err != nil {
-			return ""
-		}
-		u, err := s.UserBySession(r.Context(), c.Value)
-		if err != nil {
-			return ""
-		}
-		return u.ID
 	}
 }
 

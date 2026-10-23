@@ -77,7 +77,7 @@ function RunTitle({ run, t }: { run: Run; t: RT }) {
     <span className="min-w-0">
       <span className="block truncate font-semibold">{run.agent.name}</span>
       <span className="flex items-center gap-1.5 text-meta text-muted-foreground">
-        <TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run.task, t.locale)}
+        <TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run, t.locale)}
       </span>
     </span>
   )

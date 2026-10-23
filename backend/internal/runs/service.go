@@ -46,9 +46,6 @@ type Tokens struct {
 	Requests   int   `json:"requests"`
 }
 
-// Used is what counts against the budget: fresh input, cache writes and output (cache reads are free here).
-func (t Tokens) Used() int64 { return t.In + t.CacheWrite + t.Out }
-
 type Check struct {
 	Name   string `json:"name"`
 	Passed bool   `json:"passed"`
@@ -86,27 +83,28 @@ type Stats struct {
 
 // Run is the full public view of a run.
 type Run struct {
-	ID            string   `json:"id"`
-	Task          string   `json:"task"`
-	Agent         AgentRef `json:"agent"`
-	Status        string   `json:"status"`
-	FailureReason *string  `json:"failure_reason"`
-	AgentExit     *string  `json:"agent_exit"`
-	TimeLimitS    int      `json:"time_limit_s"`
-	TokenBudget   int64    `json:"token_budget"`
-	Tokens        Tokens   `json:"tokens"`
-	JudgeTokens   Tokens   `json:"judge_tokens"`
-	AgentSeconds  *int     `json:"agent_seconds"`
-	Stats         Stats    `json:"stats"`
-	Checks        []Check  `json:"checks"`
-	Judge         *Judge   `json:"judge"`
-	Score         *int     `json:"score"`
-	AppStarted    bool     `json:"app_started"`
-	HasShot       bool     `json:"has_shot"`
-	HasShotMobile bool     `json:"has_shot_mobile"`
-	HasSource     bool     `json:"has_source"`
-	PreviewURL    string   `json:"preview_url,omitempty"`
-	AgentLog      string   `json:"agent_log,omitempty"`
+	ID            string     `json:"id"`
+	Task          string     `json:"task"`
+	TaskTitle     tasks.Text `json:"task_title"` // from the catalog; empty when the task left it
+	Agent         AgentRef   `json:"agent"`
+	Status        string     `json:"status"`
+	FailureReason *string    `json:"failure_reason"`
+	AgentExit     *string    `json:"agent_exit"`
+	TimeLimitS    int        `json:"time_limit_s"`
+	TokenBudget   int64      `json:"token_budget"`
+	Tokens        Tokens     `json:"tokens"`
+	JudgeTokens   Tokens     `json:"judge_tokens"`
+	AgentSeconds  *int       `json:"agent_seconds"`
+	Stats         Stats      `json:"stats"`
+	Checks        []Check    `json:"checks"`
+	Judge         *Judge     `json:"judge"`
+	Score         *int       `json:"score"`
+	AppStarted    bool       `json:"app_started"`
+	HasShot       bool       `json:"has_shot"`
+	HasShotMobile bool       `json:"has_shot_mobile"`
+	HasSource     bool       `json:"has_source"`
+	PreviewURL    string     `json:"preview_url,omitempty"`
+	AgentLog      string     `json:"agent_log,omitempty"`
 	// LogTail is the end of the agent's log, for lists: what it is doing now, or why it stopped.
 	LogTail    string     `json:"log_tail"`
 	CheckLog   string     `json:"check_log,omitempty"`
@@ -163,8 +161,13 @@ func PreviewHost(runID string) string { return strings.TrimPrefix(runID, "run_")
 // ImageFor is the snapshot image of the run's workspace.
 func ImageFor(runID string) string { return "arena-run:" + PreviewHost(runID) }
 
-func (s *Service) withPreview(r *Run) {
-	if t := tasks.BySlug(r.Task); s.PreviewURL != "" && r.Status == "done" && r.AppStarted && t != nil && t.UI {
+// decorate adds what comes from the catalog and the config, not the database: the task's title and the preview URL.
+func (s *Service) decorate(r *Run) {
+	t := tasks.BySlug(r.Task)
+	if t != nil {
+		r.TaskTitle = t.Title
+	}
+	if s.PreviewURL != "" && r.Status == "done" && r.AppStarted && t != nil && t.UI {
 		r.PreviewURL = strings.ReplaceAll(s.PreviewURL, "{id}", PreviewHost(r.ID))
 	}
 }
@@ -180,7 +183,7 @@ func (s *Service) Get(ctx context.Context, id string) (Run, error) {
 		r.AgentLog, r.CheckLog = agentLog, checkLog
 		return err
 	})
-	s.withPreview(&r)
+	s.decorate(&r)
 	return r, err
 }
 
@@ -197,7 +200,7 @@ func (s *Service) query(ctx context.Context, where string, args ...any) ([]Run, 
 			if err != nil {
 				return err
 			}
-			s.withPreview(&r)
+			s.decorate(&r)
 			out = append(out, r)
 		}
 		return rows.Err()

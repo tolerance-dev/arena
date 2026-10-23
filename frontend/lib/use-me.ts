@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from './api'
 import type { Me } from './types'
 
-export function useMe(pollMs = 0) {
+export function useMe() {
   const [me, setMe] = useState<Me | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<ApiError | null>(null)
@@ -20,9 +20,6 @@ export function useMe(pollMs = 0) {
   }, [])
   useEffect(() => {
     void refresh()
-    if (!pollMs) return
-    const t = setInterval(() => void refresh(), pollMs)
-    return () => clearInterval(t)
-  }, [refresh, pollMs])
+  }, [refresh])
   return { me, loading, error, refresh }
 }

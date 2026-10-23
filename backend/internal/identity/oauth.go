@@ -24,23 +24,13 @@ type Provider interface {
 	Identify(ctx context.Context, code, verifier, redirectURL string) (Identity, error)
 }
 
-// GitHub signs in with a GitHub OAuth App. Empty URLs mean github.com; tests
-// point them at a fake.
+// GitHub signs in with a GitHub OAuth App.
 type GitHub struct {
-	ClientID, ClientSecret    string
-	AuthURL, TokenURL, APIURL string
-	HTTP                      *http.Client
+	ClientID, ClientSecret string
 }
 
 func (g *GitHub) config(redirectURL string) *oauth2.Config {
-	ep := endpoints.GitHub
-	if g.AuthURL != "" {
-		ep.AuthURL = g.AuthURL
-	}
-	if g.TokenURL != "" {
-		ep.TokenURL = g.TokenURL
-	}
-	return &oauth2.Config{ClientID: g.ClientID, ClientSecret: g.ClientSecret, Endpoint: ep,
+	return &oauth2.Config{ClientID: g.ClientID, ClientSecret: g.ClientSecret, Endpoint: endpoints.GitHub,
 		RedirectURL: redirectURL, Scopes: []string{"read:user", "user:email"}}
 }
 
@@ -49,14 +39,11 @@ func (g *GitHub) AuthCodeURL(state, verifier, redirectURL string) string {
 }
 
 func (g *GitHub) Identify(ctx context.Context, code, verifier, redirectURL string) (Identity, error) {
-	client, err := exchange(ctx, g.HTTP, g.config(redirectURL), code, verifier)
+	client, err := exchange(ctx, g.config(redirectURL), code, verifier)
 	if err != nil {
 		return Identity{}, err
 	}
-	api := g.APIURL
-	if api == "" {
-		api = "https://api.github.com"
-	}
+	const api = "https://api.github.com"
 	var user struct {
 		ID    int64  `json:"id"`
 		Login string `json:"login"`
@@ -86,22 +73,13 @@ func (g *GitHub) Identify(ctx context.Context, code, verifier, redirectURL strin
 
 // Google signs in with OpenID Connect, reading the identity from userinfo
 // with the access token (fetched directly from Google over TLS, so the
-// id_token's signature does not need checking). Empty URLs mean Google's.
+// id_token's signature does not need checking).
 type Google struct {
-	ClientID, ClientSecret         string
-	AuthURL, TokenURL, UserInfoURL string
-	HTTP                           *http.Client
+	ClientID, ClientSecret string
 }
 
 func (g *Google) config(redirectURL string) *oauth2.Config {
-	ep := endpoints.Google
-	if g.AuthURL != "" {
-		ep.AuthURL = g.AuthURL
-	}
-	if g.TokenURL != "" {
-		ep.TokenURL = g.TokenURL
-	}
-	return &oauth2.Config{ClientID: g.ClientID, ClientSecret: g.ClientSecret, Endpoint: ep,
+	return &oauth2.Config{ClientID: g.ClientID, ClientSecret: g.ClientSecret, Endpoint: endpoints.Google,
 		RedirectURL: redirectURL, Scopes: []string{"openid", "email", "profile"}}
 }
 
@@ -110,14 +88,11 @@ func (g *Google) AuthCodeURL(state, verifier, redirectURL string) string {
 }
 
 func (g *Google) Identify(ctx context.Context, code, verifier, redirectURL string) (Identity, error) {
-	client, err := exchange(ctx, g.HTTP, g.config(redirectURL), code, verifier)
+	client, err := exchange(ctx, g.config(redirectURL), code, verifier)
 	if err != nil {
 		return Identity{}, err
 	}
-	u := g.UserInfoURL
-	if u == "" {
-		u = "https://openidconnect.googleapis.com/v1/userinfo"
-	}
+	const u = "https://openidconnect.googleapis.com/v1/userinfo"
 	var info struct {
 		Sub           string `json:"sub"`
 		Email         string `json:"email"`
@@ -133,11 +108,8 @@ func (g *Google) Identify(ctx context.Context, code, verifier, redirectURL strin
 }
 
 // exchange trades the code for a token and returns a client that sends it.
-func exchange(ctx context.Context, hc *http.Client, cfg *oauth2.Config, code, verifier string) (*http.Client, error) {
-	if hc == nil {
-		hc = &http.Client{Timeout: 10 * time.Second}
-	}
-	ctx = context.WithValue(ctx, oauth2.HTTPClient, hc)
+func exchange(ctx context.Context, cfg *oauth2.Config, code, verifier string) (*http.Client, error) {
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: 10 * time.Second})
 	tok, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("exchange code: %w", err)
@@ -198,14 +170,14 @@ func decodeState(v string) (oauthState, error) {
 // rather than trying to out-think path.Clean's ".." handling.
 func safeNext(next string) string {
 	if len(next) > 512 {
-		return "/app"
+		return "/"
 	}
 	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") {
-		return "/app"
+		return "/"
 	}
 	for i := 0; i < len(next); i++ {
 		if b := next[i]; b == '\\' || b < 0x20 || b == 0x7f {
-			return "/app"
+			return "/"
 		}
 	}
 	p := next
@@ -213,7 +185,7 @@ func safeNext(next string) string {
 		p = p[:i]
 	}
 	if strings.HasPrefix(path.Clean(p), "//") {
-		return "/app"
+		return "/"
 	}
 	return next
 }

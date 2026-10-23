@@ -67,7 +67,6 @@ jobs:
           push: true
           build-args: |
             API_URL=http://api:8080
-            NEXT_PUBLIC_CONTACT_EMAIL=${{ vars.ARENA_CONTACT_EMAIL }}
           tags: ${{ env.REGISTRY }}/tolerance-web:${{ steps.sha.outputs.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha,scope=web

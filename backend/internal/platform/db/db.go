@@ -30,8 +30,7 @@ func Open(ctx context.Context, dsn string) (*Pool, error) {
 
 func (p *Pool) Close() { p.pool.Close() }
 
-// Raw exposes the underlying pool for the few places that need a dedicated
-// connection (LISTEN in slice 3) or a plain query outside a transaction.
+// Raw exposes the underlying pool for a plain query outside a transaction.
 func (p *Pool) Raw() *pgxpool.Pool { return p.pool }
 
 // Tx runs fn in a transaction, committing if it returns nil and rolling

@@ -132,34 +132,14 @@ slightly tight (−0.01em).
 - Hover: colour/background only, 100–160ms `cubic-bezier(.25,.46,.45,.94)`. Nav link `#8a8f98 → #f7f8f8` plus
   8 % fill; primary CTA `#e5e5e6 → #ffffff`; footer link colour only. No movement, no scale.
 
-## 3. What we take (derived)
+## 3. What we use
 
-| Principle | From | Our rule |
-| --- | --- | --- |
-| Content width | PH | 1152px content column (1200px container, 24px gutters) |
-| Rows, not giant cards | PH | 48px icon tile, title 16 w600, one-liner 14, meta 12 with `·` separators |
-| Breadcrumbs | PH | 13px muted links with chevrons, current page unlinked |
-| Grey scale | PH (light), Linear (dark) | 4 text levels, `#eaecf0` / `#d0d5dd` borders, `#f9fafb` / `#f2f4f7` fills |
-| Font | Linear | Inter (variable, cyrillic) instead of the system stack; JetBrains Mono for numbers/ids |
-| Weights | Linear | 400 / 500 / 600 only |
-| Size scale | both | 12 · 13 · 14 · 15 · 16 · 20 · 28px; h1 never above 28px (24 on phones) |
-| Tracking | Linear | −0.011em UI, −0.02em headings |
-| Borders | Linear | always 1px; depth from fills |
-| Radius | Linear | 4 (chips, code), 6 (controls), 8 (cards, rows), 12 (large frames); pills only for counters |
-| Hover | Linear | fill/colour only, 120ms; no lifts, scale or glows |
-| Header | Linear + PH | 56px, 1px bottom border, 13px nav items with pill hover fill |
-| Accent | own | the existing signal blue `#2753db`, used for primary actions, links, focus and selection only |
+The layout follows section 5 (Product Hunt's home and product page): a 900px main column + 280px aside, feed rows
+with 52px counters, pill tabs, pill buttons. Colours, type scale and radii are our tokens in
+`frontend/app/globals.css` (light grey scale from section 1, dark from section 2, Inter, weights 400/500/600, our
+own blue accent). Not taken: Product Hunt's coral, logos and copy; Linear's marketing hero and gradients.
 
-Explicitly not taken: Product Hunt's coral brand colour, logos and copy; Linear's dark marketing hero, gradients and
-product mock-ups. Also not taken, per CLAUDE.md ("don't overload"): Product Hunt's stat panels, sidebars and filler
-blocks. Pages keep their own composition; the references set the visual language and the list density only.
-
-## 4. Raw data
-
-The scripts and raw JSON dumps lived in the session scratchpad (`research.mjs`, `detail.mjs`, `*.json`); they are
-not committed. Re-run with Playwright to refresh the numbers.
-
-## 5. Product Hunt home and product page (2026-10-20, second pass)
+## 4. Product Hunt home and product page (2026-10-20, second pass)
 
 Measured the same way (headed Chrome, 1440 / 1024 / 390). Pages: https://www.producthunt.com/ and
 https://www.producthunt.com/products/claude-code.
@@ -190,15 +170,3 @@ https://www.producthunt.com/products/claude-code.
   inactive text `#475467`, counts in grey pills (`bg #f9fafb`, 14px w600).
 - Media carousel: 432×220 images, radius 12. Then sections (18/28 w500 headings) with feed rows.
 - Aside 280px: actions as icon + 16px text links, then small info blocks (16px w600 headings) and "Similar products".
-
-### Mapping to Tolerance (proposal, not built)
-
-| Product Hunt | Tolerance |
-| --- | --- |
-| Product (feed row) | Challenge (task): glyph or best screenshot as thumbnail, title, tagline, limits as topics |
-| Upvote counter | Best score; comment counter → number of submissions. Real votes do not exist in the API |
-| Product page | Challenge page: header, pill tabs Submissions / Brief / Results, aside with limits |
-| Launch (row on product page) | Submission (run): screenshot card, agent, score, checks, live preview |
-| Maker profile | Agent page: `/api/v1/agents/{id}` + `/api/v1/runs?agent=` |
-| Leaderboards | Standings (exists on the home page today) |
-| Categories / topics / search | Nothing to back them: 3 tasks, no category field, no search endpoint |

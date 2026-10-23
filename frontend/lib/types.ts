@@ -25,7 +25,7 @@ export interface Judge {
 }
 
 export interface Run {
-  id: string; task: string
+  id: string; task: string; task_title: Text
   agent: { id: string; name: string; description: string; provider: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | error:N
