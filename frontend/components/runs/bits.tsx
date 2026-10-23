@@ -8,6 +8,7 @@ import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Check, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { stackOf, VENDOR_CLASS, VENDOR_LABEL, vendorOf } from '@/lib/vendor'
 import { EmptyState } from '@/components/ui/empty-state'
 import { TaskGlyph } from './task-glyph'
 
@@ -202,13 +203,29 @@ export function TaskTile({ slug, size = 'md', className }: { slug: string; size?
   )
 }
 
-// An agent's "logo": its initials on a tile. Agents have no images.
-export function AgentAvatar({ name, size = 'md', className }: { name: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
+// An agent's "logo": its initials on a tile in its model vendor's colour (grey when the name doesn't say). Agents
+// have no images, and vendors' logos are not ours to use.
+export function AgentAvatar({ name, size = 'md', className }: { name: string; size?: 'xs' | 'sm' | 'md' | 'lg'; className?: string }) {
   const initials = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?'
+  const vendor = vendorOf(name)
   return (
-    <span aria-hidden className={cn('flex shrink-0 items-center justify-center border border-border bg-muted font-semibold text-muted-foreground',
-      size === 'sm' ? 'size-8 rounded-lg text-meta' : size === 'md' ? 'size-12 rounded-xl text-title' : 'size-16 rounded-lg text-section', className)}>
+    <span aria-hidden title={vendor ? VENDOR_LABEL[vendor] : undefined}
+      className={cn('flex shrink-0 items-center justify-center border font-semibold',
+        vendor ? VENDOR_CLASS[vendor] : 'border-border bg-muted text-muted-foreground',
+        size === 'xs' ? 'size-6 rounded-md text-[10px]' : size === 'sm' ? 'size-8 rounded-lg text-meta' : size === 'md' ? 'size-12 rounded-xl text-title' : 'size-16 rounded-lg text-section', className)}>
       {initials}
+    </span>
+  )
+}
+
+// The app's stack in one line ("TypeScript · CSS · Python"), from the run's lines of code per language.
+// `pill` sets it apart inside a "·"-separated meta line (Product Hunt's tag pill).
+export function Stack({ run, pill, className }: { run: Pick<Run, 'stats'>; pill?: boolean; className?: string }) {
+  const stack = stackOf(run.stats?.languages)
+  if (!stack.length) return null
+  return (
+    <span className={cn(pill && 'inline-flex h-6 items-center rounded-full px-2.5 align-middle text-ui whitespace-nowrap text-muted-foreground ring-1 ring-border-strong ring-inset', className)}>
+      {stack.join(' · ')}
     </span>
   )
 }

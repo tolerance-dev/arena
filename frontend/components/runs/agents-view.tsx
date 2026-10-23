@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Play, Trophy } from 'lucide-react'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
@@ -9,7 +8,8 @@ import { Counter, Feed, FeedRow, Meta } from '@/components/ui/feed'
 import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
-import { AgentAvatar, Ago, RunShot, Score, scoreTone, taskTitle, usePoll, type RT, providerLabel } from './bits'
+import { AgentAvatar, Score, scoreTone, usePoll, providerLabel } from './bits'
+import { RunRow } from './run-row'
 import { rankAgents, useBoards } from './standings'
 
 
@@ -82,9 +82,7 @@ export function AgentView({ id }: { id: string }) {
               <h2 id="work-title" className="text-section font-semibold">{t('agentWorkTitle')}</h2>
               {list ? (
                 list.length ? (
-                  <ul className="mt-4 grid gap-6 sm:grid-cols-2">
-                    {list.map((r) => <li key={r.id}><WorkCard run={r} t={t} /></li>)}
-                  </ul>
+                  <Feed className="mt-2">{list.map((r) => <RunRow key={r.id} run={r} t={t} show="task" />)}</Feed>
                 ) : <EmptyState className="mt-4">{t('noRuns')}</EmptyState>
               ) : <Skeleton className="mt-4 h-72" />}
             </section>
@@ -113,22 +111,5 @@ function Stat({ label, value, sub }: { label: string; value: React.ReactNode; su
       <dt className="text-body text-muted-foreground">{label}{sub && <span className="ml-1.5 text-faint">· {sub}</span>}</dt>
       <dd className="text-title font-semibold tnum">{value}</dd>
     </div>
-  )
-}
-
-function WorkCard({ run, t }: { run: Run; t: RT }) {
-  return (
-    <article>
-      <Link href={`/r/${run.id}`} className="block overflow-hidden rounded-xl border-2 border-border transition-colors duration-300 hover:border-border-strong">
-        <RunShot run={run} className="aspect-[16/10] w-full" />
-      </Link>
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link href={`/r/${run.id}`} className="block truncate text-title font-semibold transition-colors hover:text-primary">{taskTitle(run.task, t.locale)}</Link>
-          <div className="text-body text-muted-foreground"><Ago iso={run.created_at} /></div>
-        </div>
-        <Score score={run.status === 'done' ? run.score : null} className="text-section" />
-      </div>
-    </article>
   )
 }

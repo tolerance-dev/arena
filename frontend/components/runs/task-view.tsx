@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Bot, Clock, Coins, Download, ExternalLink, FileJson, Play } from 'lucide-react'
+import { Download, ExternalLink, FileJson, Play } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
@@ -15,7 +15,8 @@ import { compact } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run, TaskView as TV } from '@/lib/types'
-import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, TaskTile, usePoll, type RT } from './bits'
+import { useMe } from '@/lib/use-me'
+import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile, usePoll, type RT } from './bits'
 import { Compare } from './compare'
 
 type Tab = 'compare' | 'submissions' | 'brief' | 'results'
@@ -25,6 +26,7 @@ type Tab = 'compare' | 'submissions' | 'brief' | 'results'
 export function TaskView({ slug }: { slug: string }) {
   const t = useT(runsMessages)
   const [tab, setTab] = useState<Tab>('compare')
+  const { me } = useMe()
   const { data, error } = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
   if (error?.status === 404) return <EmptyState>{t('taskMissing')}</EmptyState>
   if (!data) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
@@ -34,98 +36,89 @@ export function TaskView({ slug }: { slug: string }) {
   return (
     <div>
       <Breadcrumbs items={[{ label: t('challengesTitle'), href: '/' }, { label: title }]} />
-      <Columns className="mt-6"
-        main={
-          <>
-            <header className="flex items-start gap-4">
-              <TaskTile slug={slug} size="lg" />
-              <div className="min-w-0 flex-1">
-                <h1 className="display text-page break-words">{title}</h1>
-                <p className="text-subtitle text-muted-foreground">{t.locale === 'ru' ? data.tagline.ru : data.tagline.en}</p>
-                <Meta className="mt-1" items={[
-                  t('minutes', { n: Math.round(data.time_limit_s / 60) }),
-                  `${compact(data.token_budget)} ${t('metricTokens').toLowerCase()}`,
-                  t.plural('runs', data.runs),
-                  t.plural('agents', data.agents),
-                ]} />
-              </div>
-              <Button variant="outline" size="lg" className="shrink-0 max-md:hidden" render={<a href={bundle} />} nativeButton={false}>
-                <Download /> {t('downloadBrief')}
-              </Button>
-            </header>
-
-            <PillTabs className="mt-6" value={tab} onChange={setTab} options={[
-              { value: 'compare', label: t('tabCompare'), count: data.compare.length },
-              { value: 'submissions', label: t('tabSubmissions'), count: data.compare.length },
-              { value: 'brief', label: t('tabBrief') },
-              { value: 'results', label: t('tabResults'), count: data.recent.length },
-            ]} />
-
-            <div className="mt-6">
-              {tab === 'compare' && <Compare runs={data.compare} t={t} />}
-              {tab === 'submissions' && (
-                data.compare.length === 0 ? <EmptyState>{t('noRuns')}</EmptyState> : (
-                  <ul className="grid gap-6 sm:grid-cols-2">
-                    {data.compare.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} t={t} /></li>)}
-                  </ul>
-                )
-              )}
-              {tab === 'brief' && <div className="max-w-[72ch]"><Markdown>{data.brief}</Markdown></div>}
-              {tab === 'results' && (
-                <div className="space-y-10">
-                  <section>
-                    <SectionTitle>{t('resultsTitle')}</SectionTitle>
-                    <RunTable runs={data.leaderboard} ranked />
-                  </section>
-                  <section>
-                    <SectionTitle>{t('allRuns')}</SectionTitle>
-                    <RunTable runs={data.recent} />
-                  </section>
-                </div>
-              )}
-            </div>
-          </>
-        }
-        aside={
-          <>
-            <Button variant="outline" size="lg" className="w-full md:hidden" render={<a href={bundle} />} nativeButton={false}>
-              <Download /> {t('downloadBrief')}
+      {/* No aside here: the comparison needs the page's whole width. The task's facts sit in the header, its checks
+          and data next to the brief. */}
+      <header className="mt-6 flex flex-wrap items-start gap-x-4 gap-y-4">
+        <TaskTile slug={slug} size="lg" />
+        <div className="min-w-0 flex-1 basis-72">
+          <h1 className="display text-page break-words">{title}</h1>
+          <p className="text-subtitle text-muted-foreground">{t.locale === 'ru' ? data.tagline.ru : data.tagline.en}</p>
+          <Meta className="mt-1" items={[
+            t('minutes', { n: Math.round(data.time_limit_s / 60) }),
+            t('tokensBudget', { n: compact(data.token_budget) }),
+            t('noInternet'),
+            t.plural('runs', data.runs),
+            t.plural('agents', data.agents),
+          ]} />
+        </div>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
+          {me && (
+            <Button size="lg" render={<Link href={`/my?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
+              <Play /> {t('runYourAgent')}
             </Button>
-            <AsideBlock title={t('infoTitle')}>
-              <ul className="space-y-2.5 text-title">
-                <Info icon={<Clock />}>{t('factTime')}: {t('minutes', { n: Math.round(data.time_limit_s / 60) })}</Info>
-                <Info icon={<Coins />}>{t('factBudget')}: {compact(data.token_budget)}</Info>
-                <Info icon={<Play />}>{t.plural('runs', data.runs)}</Info>
-                <Info icon={<Bot />}>{t.plural('agents', data.agents)}</Info>
-              </ul>
-            </AsideBlock>
-            <AsideBlock title={t('checksListTitle')}>
-              {data.checks.length ? (
-                <ol className="space-y-1.5 text-body">
-                  {data.checks.map((c, i) => (
-                    <li key={c} className="flex gap-2.5"><span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span><span>{c}</span></li>
-                  ))}
-                </ol>
-              ) : <p className="text-body text-muted-foreground">{t('noChecksList')}</p>}
-            </AsideBlock>
-            {data.data_files.length > 0 && (
-              <AsideBlock title={t('dataTitle')}>
-                <ul className="space-y-1.5">
-                  {data.data_files.map((f) => (
-                    <li key={f} className="flex min-w-0 items-center gap-2 font-mono text-ui"><FileJson className="size-4 shrink-0 text-faint" /><span className="truncate">{f}</span></li>
-                  ))}
-                </ul>
+          )}
+          <Button variant="outline" size="lg" render={<a href={bundle} />} nativeButton={false}>
+            <Download /> {t('downloadBrief')}
+          </Button>
+        </div>
+      </header>
+
+      <PillTabs className="mt-6" value={tab} onChange={setTab} options={[
+        { value: 'compare', label: t('tabCompare'), count: data.compare.length },
+        { value: 'submissions', label: t('tabSubmissions'), count: data.compare.length },
+        { value: 'brief', label: t('tabBrief') },
+        { value: 'results', label: t('tabResults'), count: data.recent.length },
+      ]} />
+
+      <div className="mt-6">
+        {tab === 'compare' && <Compare runs={data.compare} t={t} />}
+        {tab === 'submissions' && (
+          data.compare.length === 0 ? <EmptyState>{t('noRuns')}</EmptyState> : (
+            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {data.compare.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} t={t} /></li>)}
+            </ul>
+          )
+        )}
+        {tab === 'brief' && (
+          <Columns
+            main={<div className="max-w-[72ch]"><Markdown>{data.brief}</Markdown></div>}
+            aside={<>
+              <AsideBlock title={t('checksListTitle')}>
+                {data.checks.length ? (
+                  <ol className="space-y-1.5 text-body">
+                    {data.checks.map((c, i) => (
+                      <li key={c} className="flex gap-2.5"><span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span><span>{c}</span></li>
+                    ))}
+                  </ol>
+                ) : <p className="text-body text-muted-foreground">{t('noChecksList')}</p>}
+                <p className="mt-3 text-body text-muted-foreground">{t('plusJudge')}</p>
               </AsideBlock>
-            )}
-          </>
-        }
-      />
+              {data.data_files.length > 0 && (
+                <AsideBlock title={t('dataTitle')}>
+                  <ul className="space-y-1.5">
+                    {data.data_files.map((f) => (
+                      <li key={f} className="flex min-w-0 items-center gap-2 font-mono text-ui"><FileJson className="size-4 shrink-0 text-faint" /><span className="truncate">{f}</span></li>
+                    ))}
+                  </ul>
+                </AsideBlock>
+              )}
+            </>} />
+        )}
+        {tab === 'results' && (
+          <div className="space-y-10">
+            <section>
+              <SectionTitle>{t('resultsTitle')}</SectionTitle>
+              <RunTable runs={data.leaderboard} ranked />
+            </section>
+            <section>
+              <SectionTitle>{t('allRuns')}</SectionTitle>
+              <RunTable runs={data.recent} />
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-function Info({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return <li className="flex items-center gap-2.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground">{icon}<span className="min-w-0">{children}</span></li>
 }
 
 // One agent's best run as a showcase card: the screenshot leads, then who built it, the score and the checks.
@@ -142,6 +135,7 @@ function Submission({ run, place, t }: { run: Run; place: number; t: RT }) {
         <div className="min-w-0 flex-1">
           <Link href={`/r/${run.id}`} className="block truncate text-title font-semibold transition-colors hover:text-primary">{run.agent.name}</Link>
           <div className="truncate text-body text-muted-foreground">{run.agent.owner}</div>
+          <Stack run={run} className="block truncate text-ui text-faint" />
         </div>
         <Score score={run.score} className="text-section" />
       </div>

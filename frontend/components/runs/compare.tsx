@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { compact, duration, usedTokens } from '@/lib/format'
 import type { Criterion, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, type RT } from './bits'
+import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack, type RT } from './bits'
 
 type Row = {
   label: string
@@ -92,55 +92,112 @@ export function Compare({ runs, t }: { runs: Run[]; t: RT }) {
   // Agents share the width equally, at least 14rem each; more agents than fit scroll sideways.
   const cols = { gridTemplateColumns: `var(--lbl) repeat(${runs.length}, minmax(14rem, 1fr))`, minWidth: `calc(var(--lbl) + ${runs.length} * 14rem)` }
   return (
-    <div className="overflow-x-auto rounded-xl border-2 border-border">
-      <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>
-        {/* Header: who built it and what it looks like. */}
-        <div className="sticky left-0 z-10 border-b border-border bg-muted" />
+    <ScrollSync cols={cols} runs={runs} t={t}
+      head={<>
+        <div className="sticky left-0 z-10 bg-muted" />
         {runs.map((r) => (
-          <div key={r.id} className="min-w-0 border-b border-l border-border bg-muted p-3">
+          <div key={r.id} className="min-w-0 border-l border-border bg-muted px-3 py-2.5">
             <Link href={`/r/${r.id}`} className="flex items-center gap-2.5 transition-colors hover:text-primary">
               <AgentAvatar name={r.agent.name} size="sm" />
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.agent.name}</span>
-                <span className="block truncate text-meta text-muted-foreground">{r.agent.owner}</span>
+                <Stack run={r} className="block truncate text-meta text-muted-foreground" />
               </span>
+              <Score score={r.score} className="text-section" />
             </Link>
           </div>
         ))}
-        <RowLabel label={t('desktop')} />
-        {runs.map((r) => (
-          <div key={r.id} className="min-w-0 border-b border-l border-border p-3">
-            <Link href={`/r/${r.id}`} className="block overflow-hidden rounded-lg border border-border">
-              <RunShot run={r} className="aspect-[16/10] w-full" />
-            </Link>
-          </div>
-        ))}
-        <RowLabel label={t('mobile')} />
-        {runs.map((r) => (
-          <div key={r.id} className="flex justify-center border-b border-l border-border p-3">
-            {r.has_shot_mobile ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt={t('bestShotAlt', { agent: r.agent.name })} loading="lazy"
-                className="h-56 w-auto rounded-lg border border-border bg-muted object-cover object-top" />
-            ) : <span className="py-8 text-meta text-faint">{t('noShot')}</span>}
-          </div>
-        ))}
+      </>}>
+      <RowLabel label={t('desktop')} />
+      {runs.map((r) => (
+        <div key={r.id} className="min-w-0 border-b border-l border-border p-3">
+          <Link href={`/r/${r.id}`} className="block overflow-hidden rounded-lg border border-border">
+            <RunShot run={r} className="aspect-[16/10] w-full" />
+          </Link>
+        </div>
+      ))}
+      <RowLabel label={t('mobile')} />
+      {runs.map((r) => (
+        <div key={r.id} className="flex justify-center border-b border-l border-border p-3">
+          {r.has_shot_mobile ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt={t('bestShotAlt', { agent: r.agent.name })} loading="lazy"
+              className="h-56 w-auto rounded-lg border border-border bg-muted object-cover object-top" />
+          ) : <span className="py-8 text-meta text-faint">{t('noShot')}</span>}
+        </div>
+      ))}
 
-        {sections.map((s) => (
-          <SectionRows key={s.title} section={s} runs={runs} />
-        ))}
+      {sections.map((s) => (
+        <SectionRows key={s.title} section={s} runs={runs} />
+      ))}
 
-        <div className="sticky left-0 z-10 bg-card" />
-        {runs.map((r) => (
-          <div key={r.id} className="flex flex-wrap gap-2 border-l border-border p-3">
-            {r.preview_url && (
-              <Button variant="outline" size="sm" render={<a href={r.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
-                <ExternalLink /> {t('livePreview')}
-              </Button>
-            )}
-            <Button variant="outline" size="sm" render={<Link href={`/r/${r.id}`} />} nativeButton={false}>{t('details')}</Button>
+      <div className="sticky left-0 z-10 bg-card" />
+      {runs.map((r) => (
+        <div key={r.id} className="flex flex-wrap gap-2 border-l border-border p-3">
+          {r.preview_url && (
+            <Button variant="outline" size="sm" render={<a href={r.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
+              <ExternalLink /> {t('livePreview')}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" render={<Link href={`/r/${r.id}`} />} nativeButton={false}>{t('details')}</Button>
+        </div>
+      ))}
+    </ScrollSync>
+  )
+}
+
+// The table in two grids with the same columns: the agents' row sticks under the site header while the body
+// scrolls sideways under it (one element can't do both: a sideways scroller would trap the sticky row). Once the
+// row is stuck, a strip of small screenshots hangs under it, so you still see whose column you are reading.
+function ScrollSync({ cols, runs, t, head, children }: { cols: CSSProperties; runs: Run[]; t: RT; head: ReactNode; children: ReactNode }) {
+  const sentinel = useRef<HTMLDivElement>(null)
+  const sticky = useRef<HTMLDivElement>(null)
+  const top = useRef<HTMLDivElement>(null)
+  const strip = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  const [stuck, setStuck] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      if (!sentinel.current || !sticky.current) return
+      setStuck(sentinel.current.getBoundingClientRect().top < parseFloat(getComputedStyle(sticky.current).top) - 1)
+    }
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => { window.removeEventListener('scroll', check); window.removeEventListener('resize', check) }
+  }, [])
+  const sync = () => {
+    const x = body.current?.scrollLeft ?? 0
+    if (top.current) top.current.scrollLeft = x
+    if (strip.current) strip.current.scrollLeft = x
+  }
+  useEffect(sync, [stuck])
+  return (
+    <div className="overflow-clip rounded-xl border-2 border-border">
+      <div ref={sentinel} aria-hidden />
+      <div ref={sticky} className="sticky top-[58px] z-20 md:top-[72px]">
+        <div ref={top} className="overflow-hidden border-b border-border bg-muted">
+          <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>{head}</div>
+        </div>
+        {stuck && (
+          <div ref={strip} className="absolute inset-x-0 top-full overflow-hidden border-b border-border bg-card shadow-[0_6px_12px_-8px_rgba(16,24,40,0.25)]">
+            <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>
+              <div className="sticky left-0 z-10 bg-card" />
+              {runs.map((r) => (
+                <Link key={r.id} href={`/r/${r.id}`} className="flex min-w-0 gap-2 border-l border-border px-3 py-2" aria-label={t('bestShotAlt', { agent: r.agent.name })}>
+                  <RunShot run={r} className="aspect-[16/10] h-14 rounded-md border border-border" />
+                  {r.has_shot_mobile && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt="" className="h-14 w-auto rounded-md border border-border bg-muted object-cover object-top" />
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
+      </div>
+      <div ref={body} onScroll={sync} className="overflow-x-auto">
+        <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>{children}</div>
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Menu, X } from 'lucide-react'
+import { LogOut, Menu, Plus, X } from 'lucide-react'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { Brand } from '@/components/brand'
 import { loginHref } from '@/components/public/return-path'
@@ -43,10 +43,10 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   }
 
   return (
-    <header className="site-header sticky top-0 z-20 border-b border-border bg-background">
-      <div className="site-header-inner mx-auto flex h-[58px] max-w-page items-center gap-6 px-4 md:h-[72px] md:gap-10">
-        <Brand className="site-brand" />
-        <nav className="site-nav hidden items-center gap-7 md:flex">
+    <header className="sticky top-0 z-20 border-b border-border bg-background">
+      <div className="mx-auto flex h-[58px] max-w-page items-center gap-6 px-4 md:h-[72px] md:gap-10">
+        <Brand />
+        <nav className="hidden items-center gap-7 md:flex">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}
               className={cn('text-title font-semibold transition-colors duration-150 hover:text-primary',
@@ -57,6 +57,12 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <LocaleSwitch className="max-sm:hidden" />
+          {!pathname.startsWith('/my') && (
+            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label={t('uploadAgent')}
+              render={<Link href="/my" />} nativeButton={false}>
+              <Plus /><span className="max-sm:hidden">{t('uploadAgent')}</span>
+            </Button>
+          )}
           {loading ? <span className="block h-9 w-20" /> : me ? (
             <>
               <span className="hidden max-w-[10rem] truncate text-body font-semibold sm:block">{me.user.handle}</span>

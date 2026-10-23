@@ -3,14 +3,14 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronRight, Download, ExternalLink, Maximize2, X } from 'lucide-react'
+import { Check, ChevronRight, Download, ExternalLink, Maximize2, Monitor, Smartphone, X } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Meta } from '@/components/ui/feed'
-import { PillTabs } from '@/components/ui/pill-tabs'
+import { Segmented } from '@/components/ui/segmented'
 import { del, post } from '@/lib/api'
 import { compact, duration, grouped, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
@@ -19,7 +19,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, scoreTone, StatusPill, taskTitle, usePoll, type RT } from './bits'
+import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, scoreTone, Stack, StatusPill, taskTitle, usePoll, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { agentElapsed, useNow } from './live-runs'
 
@@ -44,13 +44,13 @@ export function RunView({ id }: { id: string }) {
         main={
           <div className="space-y-10">
             <Header run={run} t={t} />
-            {/* Below 1280px the aside drops under the page; the verdict stays up here so it is seen first. */}
+            {/* What the agent built comes first; below 1280px the aside drops under the page, so the verdict follows. */}
+            {done && <Preview run={run} t={t} />}
             <div className="xl:hidden"><Verdict run={run} t={t} /></div>
             {!done && <Timeline run={run} t={t} />}
             {platformFailed && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
             )}
-            {done && <Preview run={run} t={t} />}
             {done && run.judge && run.judge.status !== 'off' && <JudgeCard run={run} t={t} />}
             {run.checks.length > 0 && <Checks run={run} t={t} />}
             <Logs run={run} t={t} />
@@ -81,6 +81,7 @@ function Header({ run, t }: { run: Run; t: RT }) {
           <StatusPill key="s" run={run} className="align-middle" />,
           t('by', { owner: run.agent.owner }),
           providerLabel(run.agent.provider),
+          <Stack key="st" run={run} pill />,
           <Ago key="a" iso={run.created_at} />,
         ]} />
         {run.agent.description && <p className="mt-3 max-w-[70ch] text-title text-muted-foreground">{run.agent.description}</p>}
@@ -118,52 +119,52 @@ function Timeline({ run, t }: { run: Run; t: RT }) {
   )
 }
 
-// The live app (or its screenshots once the snapshot is gone), as large as the column allows.
+// The live app, or its screenshots once the snapshot is gone, as a computer or a 390px phone sees it.
 function Preview({ run, t }: { run: Run; t: RT }) {
-  const [view, setView] = useState<'live' | 'desktop' | 'mobile'>(run.preview_url ? 'live' : 'desktop')
+  const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
   const frame = useRef<HTMLDivElement>(null)
-  const tabs = [
-    { value: 'live' as const, label: t('livePreview'), show: !!run.preview_url },
-    { value: 'desktop' as const, label: t('desktop'), show: run.has_shot },
-    { value: 'mobile' as const, label: t('mobile'), show: run.has_shot_mobile },
-  ].filter((x) => x.show)
-  if (tabs.length === 0) return <EmptyState>{t('noPreview')}</EmptyState>
+  const live = run.preview_url
+  const shot = device === 'desktop' ? run.has_shot : run.has_shot_mobile
+  if (!live && !run.has_shot && !run.has_shot_mobile) return <EmptyState>{t('noPreview')}</EmptyState>
   return (
     <section aria-label={t('whatItBuilt')}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <PillTabs value={view} onChange={setView} options={tabs} />
-        {view === 'live' && run.preview_url && (
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Segmented label={t('device')} value={device} onChange={setDevice} options={[
+            { value: 'desktop', label: <span className="inline-flex items-center gap-1.5"><Monitor className="size-3.5" />{t('deviceDesktop')}</span> },
+            { value: 'mobile', label: <span className="inline-flex items-center gap-1.5"><Smartphone className="size-3.5" />{t('deviceMobile')}</span> },
+          ]} />
+          <span className="text-ui text-faint">{live ? t('livePreview') : t('screenshots')}</span>
+        </div>
+        {live && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void frame.current?.requestFullscreen?.()}>
               <Maximize2 /> {t('fullscreen')}
             </Button>
-            <Button variant="outline" size="sm" render={<a href={run.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
+            <Button variant="outline" size="sm" render={<a href={live} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
               <ExternalLink /> {t('openPreview')}
             </Button>
           </div>
         )}
       </div>
-      {view === 'live' && run.preview_url && (
+      {live ? (
         <>
-          <div ref={frame} className="overflow-hidden rounded-xl border-2 border-border bg-card">
+          <div ref={frame} className={cn('overflow-hidden rounded-xl border-2 border-border bg-card', device === 'mobile' && 'mx-auto w-[394px] max-w-full')}>
             <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
               <span aria-hidden className="flex gap-1.5"><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /></span>
-              <span className="truncate font-mono text-meta text-faint">{run.preview_url}</span>
+              <span className="truncate font-mono text-meta text-faint">{live}</span>
             </div>
-            <iframe src={run.preview_url} title={t('livePreview')} className="block h-[72vh] min-h-[460px] w-full bg-white [:fullscreen_&]:h-[calc(100vh-37px)]"
+            <iframe src={live} title={t('livePreview')}
+              className={cn('block w-full bg-white', device === 'desktop' ? 'h-[72vh] min-h-[460px] [:fullscreen_&]:h-[calc(100vh-37px)]' : 'mx-auto h-[780px] max-h-[80vh] max-w-[390px] [:fullscreen_&]:h-[calc(100vh-37px)] [:fullscreen_&]:max-h-none')}
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups" />
           </div>
           <p className="mt-2 text-ui text-faint">{t('previewHint')}</p>
         </>
-      )}
-      {view === 'desktop' && (
+      ) : shot ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/api/v1/runs/${run.id}/shot.jpg`} alt={t('desktop')} className="w-full rounded-xl border-2 border-border" />
-      )}
-      {view === 'mobile' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/api/v1/runs/${run.id}/shot-mobile.jpg`} alt={t('mobile')} className="mx-auto w-full max-w-[390px] rounded-xl border-2 border-border" />
-      )}
+        <img src={`/api/v1/runs/${run.id}/${device === 'desktop' ? 'shot.jpg' : 'shot-mobile.jpg'}`} alt={device === 'desktop' ? t('desktop') : t('mobile')}
+          className={cn('rounded-xl border-2 border-border', device === 'desktop' ? 'w-full' : 'mx-auto w-full max-w-[390px]')} />
+      ) : <EmptyState>{t('noShot')}</EmptyState>}
     </section>
   )
 }
