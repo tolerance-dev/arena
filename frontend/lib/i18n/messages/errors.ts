@@ -15,6 +15,8 @@ export const errorMessages = defineMessages({
     internal_error: 'Internal error. Please try again.',
     state_conflict: 'That cannot be done in the current state.',
     invalid_body: 'The request is not valid.',
+    runs_closed: 'New agents and runs are paused for now. Try again later.',
+    blocked: 'Your account can’t upload agents or start runs.',
   },
   ru: {
     generic: 'Что-то пошло не так. Попробуйте ещё раз.',
@@ -27,6 +29,8 @@ export const errorMessages = defineMessages({
     internal_error: 'Внутренняя ошибка. Попробуйте ещё раз.',
     state_conflict: 'Сейчас это сделать нельзя.',
     invalid_body: 'Запрос некорректен.',
+    runs_closed: 'Новые агенты и запуски сейчас на паузе. Попробуйте позже.',
+    blocked: 'Вашему аккаунту нельзя загружать агентов и запускать прогоны.',
   },
 })
 
