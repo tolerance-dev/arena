@@ -1,0 +1,222 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { compact, duration, usedTokens } from '@/lib/format'
+import type { Criterion, Run } from '@/lib/types'
+import { cn } from '@/lib/utils'
+import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, type RT } from './bits'
+
+type Row = {
+  label: string
+  hint?: string
+  cell: (r: Run) => ReactNode
+  // The number the row is ranked by; null = nothing to compare. The best cell in a row gets highlighted.
+  value?: (r: Run) => number | null
+  better?: 'high' | 'low'
+}
+type Section = { title: string; rows: Row[] }
+
+const judged = (r: Run) => (r.judge?.status === 'ok' ? r.judge : null)
+
+// The judge's checklist items, lined up by position across runs (every verdict scores the same checklist in the
+// same order); titles come from the longest verdict.
+function checklist(runs: Run[]): Criterion[] {
+  return runs.map((r) => judged(r)?.criteria ?? []).reduce((a, b) => (b.length > a.length ? b : a), [] as Criterion[])
+}
+
+// Each agent's best run at the task side by side: what it looks like, how the judge scored every checklist item,
+// and what it cost to build. The point of the arena is the difference between agents, so this is the task's
+// first tab.
+export function Compare({ runs, t }: { runs: Run[]; t: RT }) {
+  if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
+  const items = checklist(runs)
+  const sections: Section[] = [
+    {
+      title: t('cmpResult'),
+      rows: [
+        { label: t('colScore'), cell: (r) => <Score score={r.score} className="text-section" />, value: (r) => r.score, better: 'high' },
+        {
+          label: t('colJudge'),
+          cell: (r) => {
+            const j = judged(r)
+            if (j) return <span className="font-semibold tnum">{j.score}<span className="text-faint">/100</span></span>
+            return <span className="text-body text-faint">{r.judge?.status === 'error' ? t('cmpJudgeFailed') : t('cmpNoJudge')}</span>
+          },
+          value: (r) => judged(r)?.score ?? null, better: 'high',
+        },
+        {
+          label: t('colChecks'),
+          cell: (r) => r.checks.length ? (
+            <span className="flex items-center gap-2.5"><CheckStrip checks={r.checks} /><span className="text-body text-faint tnum">{r.checks.filter((c) => c.passed).length}/{r.checks.length}</span></span>
+          ) : <span className="text-faint">—</span>,
+          value: (r) => r.checks.length ? r.checks.filter((c) => c.passed).length : null, better: 'high',
+        },
+      ],
+    },
+    ...(items.length ? [{
+      title: t('cmpChecklist'),
+      rows: checklistRows(items, t),
+    }] : []),
+    {
+      title: t('cmpBuild'),
+      rows: [
+        {
+          label: t('metricTime'),
+          cell: (r) => <span><span className="tnum">{duration(r.agent_seconds)}</span>{r.agent_exit && <span className="block text-meta text-faint">{exitLabel(t, r.agent_exit)}</span>}</span>,
+          value: (r) => r.agent_seconds, better: 'low',
+        },
+        { label: t('metricTokens'), cell: (r) => <span className="tnum">{compact(usedTokens(r.tokens))}</span>, value: (r) => usedTokens(r.tokens), better: 'low' },
+        { label: t('cmpRequests'), cell: (r) => <span className="tnum">{r.tokens.requests}</span>, value: (r) => r.tokens.requests, better: 'low' },
+        { label: t('metricLoc'), cell: (r) => <span className="tnum">{compact(r.stats.loc)}<span className="text-faint"> · {t('metricFiles', { n: r.stats.files })}</span></span> },
+        {
+          label: t('languages'),
+          cell: (r) => {
+            const top = Object.entries(r.stats.languages).sort((a, b) => b[1] - a[1]).slice(0, 3)
+            return top.length ? <span className="text-body">{top.map(([l, n]) => `${l} ${compact(n)}`).join(' · ')}</span> : <span className="text-faint">—</span>
+          },
+        },
+        {
+          label: t('metricStart'),
+          cell: (r) => <span className="tnum">{r.stats.start_seconds != null ? `${r.stats.start_seconds.toFixed(1)} s` : '—'}</span>,
+          value: (r) => r.stats.start_seconds ?? null, better: 'low',
+        },
+        { label: t('cmpConsole'), cell: (r) => <span className="tnum">{r.stats.console_errors}</span>, value: (r) => r.stats.console_errors, better: 'low' },
+      ],
+    },
+  ]
+
+  // Agents share the width equally, at least 14rem each; more agents than fit scroll sideways.
+  const cols = { gridTemplateColumns: `var(--lbl) repeat(${runs.length}, minmax(14rem, 1fr))`, minWidth: `calc(var(--lbl) + ${runs.length} * 14rem)` }
+  return (
+    <div className="overflow-x-auto rounded-xl border-2 border-border">
+      <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>
+        {/* Header: who built it and what it looks like. */}
+        <div className="sticky left-0 z-10 border-b border-border bg-muted" />
+        {runs.map((r) => (
+          <div key={r.id} className="min-w-0 border-b border-l border-border bg-muted p-3">
+            <Link href={`/r/${r.id}`} className="flex items-center gap-2.5 transition-colors hover:text-primary">
+              <AgentAvatar name={r.agent.name} size="sm" />
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{r.agent.name}</span>
+                <span className="block truncate text-meta text-muted-foreground">{r.agent.owner}</span>
+              </span>
+            </Link>
+          </div>
+        ))}
+        <RowLabel label={t('desktop')} />
+        {runs.map((r) => (
+          <div key={r.id} className="min-w-0 border-b border-l border-border p-3">
+            <Link href={`/r/${r.id}`} className="block overflow-hidden rounded-lg border border-border">
+              <RunShot run={r} className="aspect-[16/10] w-full" />
+            </Link>
+          </div>
+        ))}
+        <RowLabel label={t('mobile')} />
+        {runs.map((r) => (
+          <div key={r.id} className="flex justify-center border-b border-l border-border p-3">
+            {r.has_shot_mobile ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt={t('bestShotAlt', { agent: r.agent.name })} loading="lazy"
+                className="h-56 w-auto rounded-lg border border-border bg-muted object-cover object-top" />
+            ) : <span className="py-8 text-meta text-faint">{t('noShot')}</span>}
+          </div>
+        ))}
+
+        {sections.map((s) => (
+          <SectionRows key={s.title} section={s} runs={runs} />
+        ))}
+
+        <div className="sticky left-0 z-10 bg-card" />
+        {runs.map((r) => (
+          <div key={r.id} className="flex flex-wrap gap-2 border-l border-border p-3">
+            {r.preview_url && (
+              <Button variant="outline" size="sm" render={<a href={r.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
+                <ExternalLink /> {t('livePreview')}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" render={<Link href={`/r/${r.id}`} />} nativeButton={false}>{t('details')}</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SectionRows({ section, runs }: { section: Section; runs: Run[] }) {
+  return (
+    <>
+      <div className="sticky left-0 z-10 border-b border-border bg-card px-3 pt-5 pb-2 text-meta font-semibold tracking-wide text-faint uppercase">{section.title}</div>
+      <div className="border-b border-border" style={{ gridColumn: `span ${runs.length}` }} />
+      {section.rows.map((row) => {
+        const best = bestValue(runs, row)
+        return (
+          <div key={row.label} className="contents">
+            <RowLabel label={row.label} hint={row.hint} />
+            {runs.map((r) => {
+              const v = row.value?.(r)
+              return (
+                <div key={r.id} className={cn('min-w-0 border-b border-l border-border px-3 py-2.5', best != null && v === best && 'bg-success/10')}>
+                  {row.cell(r)}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+function RowLabel({ label, hint }: { label: string; hint?: string }) {
+  return (
+    <div className="sticky left-0 z-10 border-b border-border bg-card px-3 py-2.5 text-body">
+      <span className="font-medium">{label}</span>
+      {hint && <span className="block text-meta text-faint">{hint}</span>}
+    </div>
+  )
+}
+
+// The best value of a row, or null when there is nothing to tell apart (fewer than two values, or all equal).
+function bestValue(runs: Run[], row: Row): number | null {
+  if (!row.value || !row.better) return null
+  const vs = runs.map((r) => row.value!(r)).filter((v): v is number => v != null)
+  if (vs.length < 2 || vs.every((v) => v === vs[0])) return null
+  return row.better === 'high' ? Math.max(...vs) : Math.min(...vs)
+}
+
+// One row per checklist item (points, a bar and the judge's note), then the judge's summary.
+function checklistRows(items: Criterion[], t: RT): Row[] {
+  return [
+    ...items.map((it, i): Row => ({
+      label: it.title,
+      hint: t('cmpPoints', { n: it.max }),
+      cell: (r) => {
+        const c = judged(r)?.criteria?.[i]
+        if (!c) return <span className="text-faint">—</span>
+        return (
+          <div title={c.note}>
+            <div className="text-body font-semibold tnum">{c.points}<span className="font-normal text-faint">/{c.max}</span></div>
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-pending">
+              <div className={cn('h-full', c.points >= c.max * 0.75 ? 'bg-success' : c.points >= c.max * 0.4 ? 'bg-warning' : 'bg-destructive')}
+                style={{ width: `${(100 * c.points) / Math.max(1, c.max)}%` }} />
+            </div>
+            {c.note && <p className="mt-1.5 line-clamp-3 text-meta leading-snug text-muted-foreground">{c.note}</p>}
+          </div>
+        )
+      },
+      value: (r) => judged(r)?.criteria?.[i]?.points ?? null,
+      better: 'high',
+    })),
+    {
+      label: t('cmpSummary'),
+      cell: (r) => {
+        const j = judged(r)
+        return j?.summary ? <p className="line-clamp-6 text-meta leading-snug text-muted-foreground" title={j.summary}>{j.summary}</p> : <span className="text-faint">—</span>
+      },
+    },
+  ]
+}

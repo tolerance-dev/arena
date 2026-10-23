@@ -5,9 +5,13 @@ COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compos
 # copied into .env. Loaded first, so a value set in .env still wins.
 LOCAL_SECRETS ?= $(HOME)/.config/tolerance/env
 -include $(LOCAL_SECRETS)
+LOCAL_JUDGE_KEY := $(ARENA_JUDGE_API_KEY)
 -include .env
+# .env.example has an empty ARENA_JUDGE_API_KEY=: don't let it wipe the key kept in $(LOCAL_SECRETS).
+ARENA_JUDGE_API_KEY := $(or $(ARENA_JUDGE_API_KEY),$(LOCAL_JUDGE_KEY))
 # docker compose (make up / gateway) reads these from the environment.
 export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
+export ARENA_JUDGE_API_KEY ARENA_JUDGE_MODEL ARENA_GATEWAY_FAKE
 WEB_PORT ?= 3000
 API_PORT ?= 8080
 PG_PORT ?= 5432

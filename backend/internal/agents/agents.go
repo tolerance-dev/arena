@@ -26,6 +26,8 @@ import (
 const (
 	MaxBundleBytes = 20 << 20
 	maxFiles       = 2000
+	// maxAgentsPerUser caps the agents one non-admin user keeps.
+	maxAgentsPerUser = 10
 )
 
 type Service struct {
@@ -117,7 +119,8 @@ type CreateInput struct {
 	Bundle                              []byte
 }
 
-func (s *Service) Create(ctx context.Context, ownerID string, in CreateInput) (Agent, error) {
+// Create stores a new agent of ownerID; limited is false for admins (no cap on the number of agents).
+func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in CreateInput) (Agent, error) {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Description = strings.TrimSpace(in.Description)
 	in.APIKey = strings.TrimSpace(in.APIKey)
@@ -165,6 +168,15 @@ func (s *Service) Create(ctx context.Context, ownerID string, in CreateInput) (A
 	id := idgen.New("agent")
 	hint := "…" + in.APIKey[len(in.APIKey)-4:]
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if limited {
+			var n int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM agents WHERE owner_id = $1`, ownerID).Scan(&n); err != nil {
+				return err
+			}
+			if n >= maxAgentsPerUser {
+				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "You already have 10 agents: delete one first")
+			}
+		}
 		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint)
 		return err
@@ -204,10 +216,11 @@ func (s *Service) Get(ctx context.Context, id string, withKey bool) (Agent, erro
 	return a, err
 }
 
-func (s *Service) List(ctx context.Context, withKey bool) ([]Agent, error) {
+// List returns the agents of ownerID ("" = everyone's), newest first; withKey adds the key hints.
+func (s *Service) List(ctx context.Context, ownerID string, withKey bool) ([]Agent, error) {
 	out := []Agent{}
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, agentSelect+` ORDER BY a.created_at DESC`)
+		rows, err := tx.Query(ctx, agentSelect+` WHERE $1 = '' OR a.owner_id = $1 ORDER BY a.created_at DESC`, ownerID)
 		if err != nil {
 			return err
 		}
@@ -224,8 +237,8 @@ func (s *Service) List(ctx context.Context, withKey bool) ([]Agent, error) {
 	return out, err
 }
 
-// UpdateKey replaces the agent's key (and provider).
-func (s *Service) UpdateKey(ctx context.Context, id, provider, key string) (Agent, error) {
+// UpdateKey replaces the agent's key (and provider). ownerID "" (an admin) may change any agent.
+func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key string) (Agent, error) {
 	key = strings.TrimSpace(key)
 	if provider != "anthropic" && provider != "openai" {
 		return Agent{}, invalid("The provider must be anthropic or openai")
@@ -238,8 +251,8 @@ func (s *Service) UpdateKey(ctx context.Context, id, provider, key string) (Agen
 		return Agent{}, err
 	}
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `UPDATE agents SET provider = $2, api_key = $3, key_hint = $4, updated_at = now() WHERE id = $1`,
-			id, provider, sealed, "…"+key[len(key)-4:])
+		tag, err := tx.Exec(ctx, `UPDATE agents SET provider = $2, api_key = $3, key_hint = $4, updated_at = now()
+			WHERE id = $1 AND ($5 = '' OR owner_id = $5)`, id, provider, sealed, "…"+key[len(key)-4:], ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.NotFound()
 		}
@@ -251,10 +264,10 @@ func (s *Service) UpdateKey(ctx context.Context, id, provider, key string) (Agen
 	return s.Get(ctx, id, true)
 }
 
-// Delete removes the agent with all its runs.
-func (s *Service) Delete(ctx context.Context, id string) error {
+// Delete removes the agent with all its runs. ownerID "" (an admin) may delete any agent.
+func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM agents WHERE id = $1`, id)
+		tag, err := tx.Exec(ctx, `DELETE FROM agents WHERE id = $1 AND ($2 = '' OR owner_id = $2)`, id, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.NotFound()
 		}

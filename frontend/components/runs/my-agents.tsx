@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Play, Upload } from 'lucide-react'
+import { Layers, Play, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { loginHref } from '@/components/public/return-path'
@@ -22,36 +22,35 @@ import { RunTable, Score, usePoll, type RT } from './bits'
 
 const field = fieldClass
 
-export function AgentsAdmin() {
+// Any signed-in user uploads agents here and runs them; each user sees only their own agents and runs.
+export function MyAgents() {
   const t = useT(runsMessages)
   const { me, loading } = useMe()
   const signIn = useSignIn()
-  const agents = usePoll<{ items: Agent[] }>(me?.can_admin ? '/admin/agents' : null, 30_000)
+  const agents = usePoll<{ items: Agent[] }>(me ? '/my/agents' : null, 30_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
-  const runs = usePoll<{ items: Run[] }>(me ? '/runs?limit=20' : null, 4_000)
+  const runs = usePoll<{ items: Run[] }>(me ? '/my/runs' : null, 4_000)
 
   if (loading) return <div className="h-96 animate-pulse rounded-lg bg-muted" />
   if (!me) {
     return (
       <div className="max-w-md space-y-4">
-        <h1 className="display text-page">{t('adminTitle')}</h1>
+        <h1 className="display text-page">{t('myTitle')}</h1>
         <p className="text-muted-foreground">{t('signInLead')}</p>
         {signIn
           ? <Button onClick={signIn}>{t('signInButton')}</Button>
-          : <Button render={<Link href={loginHref('/admin')} />} nativeButton={false}>{t('signInButton')}</Button>}
+          : <Button render={<Link href={loginHref('/my')} />} nativeButton={false}>{t('signInButton')}</Button>}
       </div>
     )
   }
-  // Everyone signed in sees the same page; only admins (for now the owner) can upload and start runs.
-  const canUpload = !!me.can_admin
   const refresh = () => { void agents.reload(); void runs.reload() }
   return (
     <div className="space-y-12">
-      <PageHeader title={t('adminTitle')}>{t('adminLead')}</PageHeader>
-      <NewAgent t={t} onDone={refresh} disabled={!canUpload} />
+      <PageHeader title={t('myTitle')}>{t('myLead')}</PageHeader>
+      <NewAgent t={t} onDone={refresh} />
       <section>
         <SectionTitle>{t('yourAgents')}</SectionTitle>
-        {(!canUpload || agents.data?.items.length === 0) && (
+        {agents.data?.items.length === 0 && (
           <EmptyState>{t('noAgents')}</EmptyState>
         )}
         <div className="space-y-3">
@@ -59,14 +58,14 @@ export function AgentsAdmin() {
         </div>
       </section>
       <section>
-        <SectionTitle>{t('allRuns')}</SectionTitle>
+        <SectionTitle>{t('yourRuns')}</SectionTitle>
         <RunTable runs={runs.data?.items ?? []} showTask />
       </section>
     </div>
   )
 }
 
-function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled: boolean }) {
+function NewAgent({ t, onDone }: { t: RT; onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -75,7 +74,7 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
     setBusy(true)
     setErr('')
     try {
-      await upload<Agent>('/admin/agents', new FormData(form))
+      await upload<Agent>('/my/agents', new FormData(form))
       form.reset()
       onDone()
     } catch (e) {
@@ -91,7 +90,6 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('newAgentHint')}</p>
       </div>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
-        <fieldset disabled={disabled} className="contents">
         <div className="space-y-1.5">
           <Label htmlFor="name">{t('agentName')}</Label>
           <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5" />
@@ -119,11 +117,9 @@ function NewAgent({ t, onDone, disabled }: { t: RT; onDone: () => void; disabled
           <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy || disabled}><Upload /> {busy ? t('uploading') : t('upload')}</Button>
-          {disabled && <span className="text-sm text-muted-foreground">{t('inDevelopment')}</span>}
+          <Button type="submit" disabled={busy}><Upload /> {busy ? t('uploading') : t('upload')}</Button>
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
-        </fieldset>
       </form>
     </section>
   )
@@ -146,7 +142,7 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
     setBusy(true)
     setErr('')
     try {
-      const run = await post<Run>('/admin/runs', {
+      const run = await post<Run>('/my/runs', {
         agent_id: agent.id, task: chosen,
         time_limit_s: minutes ? Math.round(Number(minutes) * 60) : 0,
         token_budget: budgetK ? Math.round(Number(budgetK) * 1000) : 0,
@@ -157,10 +153,24 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
       setBusy(false)
     }
   }
+  // One run per task with the tasks' default limits, so the agent shows up in every task's comparison.
+  async function startAll() {
+    setBusy(true)
+    setErr('')
+    try {
+      for (const x of tasks) await post<Run>('/my/runs', { agent_id: agent.id, task: x.slug, time_limit_s: 0, token_budget: 0 })
+      onChange()
+    } catch (e) {
+      setErr(errorText(e, t.locale))
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
   async function remove() {
     if (!armed) return setArmed(true)
     try {
-      await del(`/admin/agents/${agent.id}`)
+      await del(`/my/agents/${agent.id}`)
       onChange()
     } catch (e) {
       setErr(errorText(e, t.locale))
@@ -168,7 +178,7 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
   }
   async function saveKey() {
     try {
-      await put(`/admin/agents/${agent.id}/key`, { provider, api_key: key })
+      await put(`/my/agents/${agent.id}/key`, { provider, api_key: key })
       setKey('')
       setKeyOpen(false)
       onChange()
@@ -226,7 +236,12 @@ function AgentCard({ agent, tasks, t, onChange }: { agent: Agent; tasks: TaskSum
         </div>
         <Button onClick={() => void start()} disabled={busy || !chosen}><Play /> {busy ? t('starting') : t('start')}</Button>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">{t('defaults')}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">{t('defaults')}</p>
+        <Button variant="outline" size="sm" onClick={() => void startAll()} disabled={busy || tasks.length === 0}>
+          <Layers /> {t.plural('startAll', tasks.length)}
+        </Button>
+      </div>
       {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
     </div>
   )

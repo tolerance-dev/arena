@@ -16,14 +16,15 @@ import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run, TaskView as TV } from '@/lib/types'
 import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, TaskTile, usePoll, type RT } from './bits'
+import { Compare } from './compare'
 
-type Tab = 'submissions' | 'brief' | 'results'
+type Tab = 'compare' | 'submissions' | 'brief' | 'results'
 
 // A challenge, laid out like a Product Hunt product page: header, pill tabs, and the challenge's facts in the aside.
-// The first tab is what the agents built.
+// The first tab compares what the agents built, side by side.
 export function TaskView({ slug }: { slug: string }) {
   const t = useT(runsMessages)
-  const [tab, setTab] = useState<Tab>('submissions')
+  const [tab, setTab] = useState<Tab>('compare')
   const { data, error } = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
   if (error?.status === 404) return <EmptyState>{t('taskMissing')}</EmptyState>
   if (!data) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
@@ -54,16 +55,18 @@ export function TaskView({ slug }: { slug: string }) {
             </header>
 
             <PillTabs className="mt-6" value={tab} onChange={setTab} options={[
-              { value: 'submissions', label: t('tabSubmissions'), count: data.leaderboard.length },
+              { value: 'compare', label: t('tabCompare'), count: data.compare.length },
+              { value: 'submissions', label: t('tabSubmissions'), count: data.compare.length },
               { value: 'brief', label: t('tabBrief') },
               { value: 'results', label: t('tabResults'), count: data.recent.length },
             ]} />
 
             <div className="mt-6">
+              {tab === 'compare' && <Compare runs={data.compare} t={t} />}
               {tab === 'submissions' && (
-                data.leaderboard.length === 0 ? <EmptyState>{t('noRuns')}</EmptyState> : (
+                data.compare.length === 0 ? <EmptyState>{t('noRuns')}</EmptyState> : (
                   <ul className="grid gap-6 sm:grid-cols-2">
-                    {data.leaderboard.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} t={t} /></li>)}
+                    {data.compare.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} t={t} /></li>)}
                   </ul>
                 )
               )}

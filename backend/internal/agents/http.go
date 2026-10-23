@@ -12,7 +12,7 @@ import (
 // RegisterPublicRoutes mounts the public reads (no keys).
 func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/agents", func(w http.ResponseWriter, r *http.Request) {
-		items, err := s.List(r.Context(), false)
+		items, err := s.List(r.Context(), "", false)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
@@ -29,17 +29,18 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	})
 }
 
-// RegisterAdminRoutes mounts uploads and key management (admins only, for now: only the platform owner uploads).
-func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
-	mux.HandleFunc("GET /api/v1/admin/agents", func(w http.ResponseWriter, r *http.Request) {
-		items, err := s.List(r.Context(), true)
+// RegisterOwnerRoutes mounts uploads and key management for any signed-in user. Each user sees and changes only
+// their own agents; an admin manages everyone's.
+func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("GET /api/v1/my/agents", func(w http.ResponseWriter, r *http.Request) {
+		items, err := s.List(r.Context(), identity.MustFromContext(r.Context()).UserID, true)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
 	})
-	mux.HandleFunc("POST /api/v1/admin/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/v1/my/agents", func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, MaxBundleBytes+(256<<10))
 		if err := r.ParseMultipartForm(1 << 20); err != nil {
 			var tooBig *http.MaxBytesError
@@ -62,7 +63,7 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, httpx.New(http.StatusRequestEntityTooLarge, "body_too_large", "The bundle is larger than 20 MB"))
 			return
 		}
-		a, err := s.Create(r.Context(), identity.MustFromContext(r.Context()).UserID, CreateInput{
+		a, err := s.Create(r.Context(), identity.MustFromContext(r.Context()).UserID, identity.OwnerScope(r.Context()) != "", CreateInput{
 			Name: r.FormValue("name"), Description: r.FormValue("description"), Provider: r.FormValue("provider"),
 			APIKey: r.FormValue("api_key"), Bundle: data,
 		})
@@ -72,7 +73,7 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 		}
 		httpx.Respond(w, http.StatusCreated, a)
 	})
-	mux.HandleFunc("PUT /api/v1/admin/agents/{id}/key", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("PUT /api/v1/my/agents/{id}/key", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)
 		if err != nil {
 			httpx.WriteError(w, r, err)
@@ -86,15 +87,15 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		a, err := s.UpdateKey(r.Context(), r.PathValue("id"), in.Provider, in.APIKey)
+		a, err := s.UpdateKey(r.Context(), identity.OwnerScope(r.Context()), r.PathValue("id"), in.Provider, in.APIKey)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		httpx.Respond(w, http.StatusOK, a)
 	})
-	mux.HandleFunc("DELETE /api/v1/admin/agents/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
+	mux.HandleFunc("DELETE /api/v1/my/agents/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Delete(r.Context(), identity.OwnerScope(r.Context()), r.PathValue("id")); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}

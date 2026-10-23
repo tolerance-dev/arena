@@ -205,6 +205,20 @@ func (s *Service) Recent(ctx context.Context, task, agentID string, limit int) (
 		task, agentID, limit)
 }
 
+// Mine lists the latest runs of ownerID's agents.
+func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, error) {
+	return s.query(ctx, `WHERE a.owner_id = $1 ORDER BY r.created_at DESC LIMIT $2`, ownerID, limit)
+}
+
+// Compare is each agent's best finished run at the task, unscored ones included (a run the judge didn't score is
+// still worth looking at next to the others): best score first, then the newest.
+func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
+	return s.query(ctx, `WHERE r.id IN (
+			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done'
+			ORDER BY agent_id, score DESC NULLS LAST, created_at DESC)
+		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task)
+}
+
 // Leaderboard is each agent's best finished run at the task, best first (ties: fewer tokens, then faster).
 func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
 	return s.query(ctx, `WHERE r.id IN (
@@ -249,8 +263,16 @@ func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_run", msg) }
 
-// Create queues a run of agentID at task. Zero limits take the task's defaults.
-func (s *Service) Create(ctx context.Context, agentID, task string, timeLimitS int, tokenBudget int64) (Run, error) {
+// Per-user limits for non-admins: one run server is shared by everyone, and every run spends the platform's judge key.
+const (
+	maxOpenRunsPerUser  = 3
+	maxDailyRunsPerUser = 30
+)
+
+// Create queues a run of agentID at task. Zero limits take the task's defaults. ownerID is the caller's scope
+// (identity.OwnerScope): a user may run only their own agents, within the per-user limits and the task's time limit;
+// "" (an admin) may run any agent with any limits.
+func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, timeLimitS int, tokenBudget int64) (Run, error) {
 	t := tasks.BySlug(task)
 	if t == nil {
 		return Run{}, invalid("Unknown task")
@@ -264,13 +286,31 @@ func (s *Service) Create(ctx context.Context, agentID, task string, timeLimitS i
 	if timeLimitS < 60 || timeLimitS > 4*3600 {
 		return Run{}, invalid("The time limit must be between 1 minute and 4 hours")
 	}
+	if ownerID != "" && timeLimitS > t.TimeLimitS {
+		return Run{}, invalid("The time limit can't be longer than the task's")
+	}
 	if tokenBudget < 10_000 || tokenBudget > 50_000_000 {
 		return Run{}, invalid("The token budget must be between 10k and 50M")
 	}
 	id := idgen.New("run")
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if ownerID != "" {
+			var open, day int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
+					count(*) FILTER (WHERE r.created_at > now() - interval '1 day')
+				FROM runs r JOIN agents a ON a.id = r.agent_id WHERE a.owner_id = $1`, ownerID).Scan(&open, &day); err != nil {
+				return err
+			}
+			if open >= maxOpenRunsPerUser {
+				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You already have 3 runs queued or running: wait for one to finish")
+			}
+			if day >= maxDailyRunsPerUser {
+				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You have started 30 runs in the last 24 hours: try again later")
+			}
+		}
 		tag, err := tx.Exec(ctx, `INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget)
-			SELECT $1, id, $3, $4, $5 FROM agents WHERE id = $2`, id, agentID, task, timeLimitS, tokenBudget)
+			SELECT $1, id, $3, $4, $5 FROM agents WHERE id = $2 AND ($6 = '' OR owner_id = $6)`,
+			id, agentID, task, timeLimitS, tokenBudget, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
 			return invalid("Unknown agent")
 		}
@@ -282,24 +322,27 @@ func (s *Service) Create(ctx context.Context, agentID, task string, timeLimitS i
 	return s.Get(ctx, id)
 }
 
+// ownRun limits a statement on runs r to the runs of ownerID's agents ("" = any run); ownerID is argument $2.
+const ownRun = ` AND ($2 = '' OR agent_id IN (SELECT id FROM agents WHERE owner_id = $2))`
+
 // Cancel stops a run that hasn't finished; the worker notices and kills its container.
-func (s *Service) Cancel(ctx context.Context, id string) error {
+func (s *Service) Cancel(ctx context.Context, ownerID, id string) error {
 	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'cancelled', finished_at = now(), updated_at = now()
-			WHERE id = $1 AND status IN ('queued', 'agent', 'checking')`, id)
+			WHERE id = $1 AND status IN ('queued', 'agent', 'checking')`+ownRun, id, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
-			return httpx.StateConflict("The run has already finished")
+			return httpx.StateConflict("The run has already finished, or it isn't yours")
 		}
 		return err
 	})
 }
 
 // Delete removes a run (and, best effort, its image: the caller does that).
-func (s *Service) Delete(ctx context.Context, id string) error {
+func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `DELETE FROM runs WHERE id = $1 AND status NOT IN ('agent', 'checking')`, id)
+		tag, err := tx.Exec(ctx, `DELETE FROM runs WHERE id = $1 AND status NOT IN ('agent', 'checking')`+ownRun, id, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
-			return httpx.StateConflict("Unknown run, or it is still running (cancel it first)")
+			return httpx.StateConflict("Unknown run, not yours, or still running (cancel it first)")
 		}
 		return err
 	})
