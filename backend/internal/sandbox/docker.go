@@ -277,58 +277,45 @@ func Commit(ctx context.Context, id, image string, changes ...string) error {
 	return err
 }
 
-// CopyOut streams a path out of a container as a tar (docker cp's format: the last path element is the root).
+// CopyOut reads a path out of a container as a tar (docker cp's format: the last path element is the root).
 func CopyOut(ctx context.Context, id, path string, max int64) ([]byte, error) {
+	var data []byte
+	err := StreamOut(ctx, id, path, func(r io.Reader) error {
+		var err error
+		data, err = io.ReadAll(io.LimitReader(r, max+1))
+		if err == nil && int64(len(data)) > max {
+			err = fmt.Errorf("docker cp %s: more than %d bytes", path, max)
+		}
+		return err
+	})
+	return data, err
+}
+
+// StreamOut passes a path of a container to read as a tar stream (docker cp's format). docker cp reads the
+// container's filesystem through the daemon, so nothing from the container's image runs: this is how the platform
+// reads an agent's snapshot. The container doesn't have to be started.
+func StreamOut(ctx context.Context, id, path string, read func(io.Reader) error) error {
 	cmd := exec.CommandContext(ctx, "docker", "cp", id+":"+path, "-")
 	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return err
 	}
-	data, rerr := io.ReadAll(io.LimitReader(stdout, max+1))
-	if int64(len(data)) > max {
+	rerr := read(stdout)
+	if rerr != nil {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return nil, fmt.Errorf("docker cp %s: more than %d bytes", path, max)
+		return rerr
 	}
+	_, _ = io.Copy(io.Discard, stdout)
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("docker cp %s: %w: %s", path, err, tail(errBuf.String(), 500))
+		return fmt.Errorf("docker cp %s: %w: %s", path, err, tail(errBuf.String(), 500))
 	}
-	return data, rerr
-}
-
-// RunOutput runs a one-off command in a fresh, networkless container from image and returns its stdout (capped).
-func RunOutput(ctx context.Context, image string, max int64, cmd ...string) ([]byte, error) {
-	args := []string{"run", "--rm", "--network", "none", "--cap-drop=ALL", "--security-opt=no-new-privileges",
-		"--memory", "1g", "--entrypoint", cmd[0], image}
-	c := exec.CommandContext(ctx, "docker", append(args, cmd[1:]...)...)
-	var errBuf bytes.Buffer
-	c.Stderr = &errBuf
-	stdout, err := c.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	if err := c.Start(); err != nil {
-		return nil, err
-	}
-	data, _ := io.ReadAll(io.LimitReader(stdout, max+1))
-	if int64(len(data)) > max {
-		_ = c.Process.Kill()
-		_ = c.Wait()
-		return nil, fmt.Errorf("output larger than %d bytes", max)
-	}
-	if err := c.Wait(); err != nil {
-		var ee *exec.ExitError
-		// tar exits 1 when files changed while reading; the archive is still complete.
-		if !errors.As(err, &ee) || ee.ExitCode() > 1 {
-			return nil, fmt.Errorf("docker run %s: %w: %s", cmd[0], err, tail(errBuf.String(), 500))
-		}
-	}
-	return data, nil
+	return nil
 }
 
 // StartDetached starts a created container in the background.
@@ -339,8 +326,41 @@ func StartDetached(ctx context.Context, id string) error {
 
 // Running reports whether the named container exists and runs.
 func Running(ctx context.Context, name string) bool {
-	out, err := docker(ctx, nil, "inspect", "-f", "{{.State.Running}}", name)
-	return err == nil && out == "true"
+	running, _, err := State(ctx, name)
+	return err == nil && running
+}
+
+// State reports whether a container runs and, once it has stopped, its exit code.
+func State(ctx context.Context, name string) (running bool, exitCode int, err error) {
+	out, err := docker(ctx, nil, "inspect", "-f", "{{.State.Running}} {{.State.ExitCode}}", name)
+	if err != nil {
+		return false, 0, err
+	}
+	var r string
+	_, err = fmt.Sscan(out, &r, &exitCode)
+	return r == "true", exitCode, err
+}
+
+// Logs returns the tail (at most max bytes) of a container's output, best effort.
+func Logs(ctx context.Context, id string, max int) string {
+	out, _ := docker(ctx, nil, "logs", "--tail", "2000", id)
+	return tail(out, max)
+}
+
+// AppPort is where an agent's app listens (RULES.md: start.sh serves on 0.0.0.0:$PORT).
+const AppPort = "3000"
+
+// AppSpec is the container that runs an agent's app from its snapshot: the same for the check and the live preview,
+// so an app that passed the check also starts as a preview. It holds no secrets, so the app runs as the agent built
+// it (root inside, no capabilities).
+func AppSpec(name, image string, labels map[string]string) Spec {
+	return Spec{
+		Name: name, Image: image, Network: Network, Memory: "512m", CPUs: "1", Pids: 1024, Workdir: "/work", Labels: labels,
+		Env: []string{"PORT=" + AppPort, "HOST=0.0.0.0", "NODE_ENV=production", "HOME=/tmp", "LANG=C.UTF-8",
+			// The runtime image sets a 3 GB heap for the agent; in 512 MB node must collect sooner.
+			"NODE_OPTIONS=--max-old-space-size=384", "ANTHROPIC_API_KEY=", "OPENAI_API_KEY="},
+		Cmd: []string{"sh", "-c", "cd /work && exec sh start.sh"},
+	}
 }
 
 // RemoveByLabel force-removes every container carrying label (k=v), best effort: leftovers of a crashed process.
