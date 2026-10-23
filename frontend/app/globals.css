@@ -32,7 +32,6 @@
   --color-ink: var(--ink);
   --color-ink-foreground: var(--ink-foreground);
   --color-border-strong: var(--border-strong);
-  --color-mark-check: var(--mark-check);
   --color-terminal: var(--terminal);
   --color-terminal-foreground: var(--terminal-foreground);
   --color-terminal-success: var(--terminal-success);
@@ -115,7 +114,10 @@
   --pending: #e4e7ec;
   --ink: #101828;
   --ink-foreground: #ffffff;
-  --mark-check: #8f9dff;
+  /* The logo mark (components/brand.tsx, app/icon.svg) is the same in both themes. */
+  --mark-bg: #101828;
+  --mark-from: #ff8a3d;
+  --mark-to: #e0245e;
   /* Code and log surfaces stay graphite in both themes. */
   --terminal: #16181d;
   --terminal-foreground: #e9ebef;
@@ -169,7 +171,6 @@
     --pending: #26282c;
     --ink: #f7f8f8;
     --ink-foreground: #08090a;
-    --mark-check: #2a3fb8;
     --series-1: #f7f8f8;
     --series-2: #8f9dff;
     --series-3: #7b8089;
