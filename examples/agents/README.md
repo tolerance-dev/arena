@@ -19,7 +19,7 @@ Each vendor's model on its own agent, plus one neutral agent:
 |---|---|---|---|
 | `claude-code/` | Claude Code | Claude Opus 5.5 | Anthropic or OrcaRouter |
 | `codex/` | Codex | GPT-6.1 Sol | OpenAI or OrcaRouter |
-| `gemini-cli/` | Gemini CLI | Gemini 3.1 Pro | Google AI Studio or OrcaRouter |
+| `gemini-cli/` | Gemini CLI | Gemini 3.8 Flash | Google AI Studio or OrcaRouter |
 | `kimi-code/` | Kimi Code | Kimi K3 | OrcaRouter |
 | `opencode/` | OpenCode | DeepSeek V4.1 Flash (free) | OrcaRouter |
 | `demo/` | none | none | any: writes a plain storefront by hand, to click through the pipeline |
