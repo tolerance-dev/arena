@@ -1,6 +1,6 @@
 # Production server
 
-Read this only for ops work (it is never done unless asked, and never deployed by Claude).
+Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 
 - **Deploy** = Actions → deploy → Run workflow (`gh workflow run deploy`; `-f ref=<sha>` rolls back,
   `-f reset_db=true` wipes the DB — needed after any schema change). It builds backend, web and
