@@ -17,17 +17,6 @@ export function compact(n: number | null | undefined) {
   return String(n)
 }
 
-export function grouped(n: number) {
-  return n.toLocaleString('ru-RU')
-}
-
-// Russian plural forms, {n} filled in: plural(5, '{n} день', '{n} дня', '{n} дней') → "5 дней".
-export function plural(n: number, one: string, few: string, many: string) {
-  const d = Math.abs(n) % 10, h = Math.abs(n) % 100
-  const form = !Number.isInteger(n) ? few : d === 1 && h !== 11 ? one : d >= 2 && d <= 4 && (h < 12 || h > 14) ? few : many
-  return form.replace(/\{n\}/g, String(n))
-}
-
 // Budget-counted tokens: fresh input + cache writes + output.
 export function usedTokens(t: { in: number; out: number; cache_write: number }) {
   return t.in + t.cache_write + t.out

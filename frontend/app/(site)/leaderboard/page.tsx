@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
+import { getT } from '@/lib/i18n-server'
 import { LeaderboardView } from '@/components/runs/leaderboard-view'
 import { serverApi } from '@/lib/server-api'
 import type { Agent, TaskSummary } from '@/lib/types'
 
-export const metadata: Metadata = { title: 'Лидерборд' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT()
+  return { title: t('Лидерборд', 'Leaderboard') }
+}
 
 // Rendered per request with the table in the HTML; the browser polls on.
 export const dynamic = 'force-dynamic'

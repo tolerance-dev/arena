@@ -13,25 +13,27 @@ import { LoadError, StaleNote } from '@/components/ui/load-state'
 import { Meta } from '@/components/ui/feed'
 import { Segmented } from '@/components/ui/segmented'
 import { del, post } from '@/lib/api'
-import { compact, duration, grouped, plural, usd, usedTokens } from '@/lib/format'
+import { compact, duration, usd, usedTokens } from '@/lib/format'
+import { useT } from '@/lib/i18n-client'
 import { errorText } from '@/lib/errors'
 import type { Run } from '@/lib/types'
 import { providerLabel } from '@/lib/providers'
 import { useMe } from '@/lib/use-me'
 import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, PHASE, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
+import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, phase, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { agentElapsed, useNow } from './live-runs'
 
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
 // the run's numbers sit in the aside.
 export function RunView({ id }: { id: string }) {
+  const t = useT()
   const poll = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
   const run = poll.data
-  if (poll.error?.status === 404) return <EmptyState>Такого прогона нет. Возможно, его удалили.</EmptyState>
+  if (poll.error?.status === 404) return <EmptyState>{t('Такого прогона нет. Возможно, его удалили.', 'There’s no such run. It may have been deleted.')}</EmptyState>
   if (!run) {
-    if (poll.error) return <LoadError poll={poll} what="прогон" />
+    if (poll.error) return <LoadError poll={poll} what={t('прогон', 'run')} />
     return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-[28rem]" /></div>
   }
   const done = run.status === 'done'
@@ -41,11 +43,11 @@ export function RunView({ id }: { id: string }) {
   return (
     <div>
       <Breadcrumbs items={[
-        { label: 'Задачи', href: '/' },
-        { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run)}</>, href: `/t/${run.task}` },
+        { label: t('Задачи', 'Tasks'), href: '/' },
+        { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run, t)}</>, href: `/t/${run.task}` },
         { label: run.agent.name },
       ]} />
-      <StaleNote poll={poll} what="прогон" className="mt-4" />
+      <StaleNote poll={poll} what={t('прогон', 'run')} className="mt-4" />
       <Columns className="mt-6"
         main={
           <div className="space-y-10">
@@ -54,16 +56,15 @@ export function RunView({ id }: { id: string }) {
             {done && !keyRejected && <Preview run={run} />}
             {keyRejected && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">
-                Провайдер отклонил ключ агента (неверный ключ, у ключа нет доступа к API или кончились деньги на счёте),
-                поэтому агент не получил ни одного ответа модели. Причина есть в логе агента. Прогон не оценивался и не
-                засчитан в лимит. Если агент ваш, замените ключ на странице{' '}
-                <Link href="/my" className="font-semibold underline underline-offset-2">«Мои агенты»</Link> и запустите снова.
+                {t('Провайдер отклонил ключ агента (неверный ключ, у ключа нет доступа к API или кончились деньги на счёте), поэтому агент не получил ни одного ответа модели. Причина есть в логе агента. Прогон не оценивался и не засчитан в лимит. Если агент ваш, замените ключ на странице',
+                  'The provider rejected the agent’s key (a wrong key, a key without API access, or no money left on the account), so the agent got no model responses at all. The reason is in the agent log. The run wasn’t scored and doesn’t count toward the limit. If the agent is yours, replace the key on the')}{' '}
+                <Link href="/my" className="font-semibold underline underline-offset-2">{t('«Мои агенты»', '“My agents” page')}</Link>{t(' и запустите снова.', ' and run it again.')}
               </p>
             )}
             <div className="xl:hidden"><Verdict run={run} /></div>
             {!done && <Timeline run={run} />}
             {platformFailed && (
-              <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">{`Прогон сорвался по вине платформы: ${run.failure_reason ?? '?'}`}</p>
+              <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">{t(`Прогон сорвался по вине платформы: ${run.failure_reason ?? '?'}`, `The run failed through the platform’s fault: ${run.failure_reason ?? '?'}`)}</p>
             )}
             {run.checks.length > 0 && <Checks run={run} />}
             <Logs run={run} />
@@ -83,18 +84,19 @@ export function RunView({ id }: { id: string }) {
 }
 
 function Header({ run }: { run: Run }) {
+  const t = useT()
   return (
     <header className="flex items-start gap-4">
       <AgentAvatar name={run.agent.name} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="display text-page break-words">{run.agent.name}</h1>
         <p className="text-subtitle text-muted-foreground">
-          <Link href={`/t/${run.task}`} className="transition-colors hover:text-primary">{taskTitle(run)}</Link>
+          <Link href={`/t/${run.task}`} className="transition-colors hover:text-primary">{taskTitle(run, t)}</Link>
         </p>
         <Meta className="mt-1" items={[
           <StatusPill key="s" run={run} className="align-middle" />,
-          `от ${run.agent.owner}`,
-          providerLabel(run.agent.provider),
+          t(`от ${run.agent.owner}`, `by ${run.agent.owner}`),
+          providerLabel(run.agent.provider, t),
           <Stack key="st" run={run} pill />,
           <Ago key="a" iso={run.created_at} />,
         ]} />
@@ -106,13 +108,14 @@ function Header({ run }: { run: Run }) {
 
 // Where the run is now. Shown only until it finishes; the verdict takes over after that.
 function Timeline({ run }: { run: Run }) {
+  const t = useT()
   const now = useNow()
   const order = ['queued', 'agent', 'checking', 'done']
   const at = run.status === 'infra_error' ? -1 : order.indexOf(run.status)
-  const labels = ['В очереди', 'Агент строит', 'Проверки', 'Результат']
+  const labels = [t('В очереди', 'Queued'), t('Агент строит', 'Agent builds'), t('Проверки', 'Checks'), t('Результат', 'Result')]
   return (
     <div>
-    <ol className="grid grid-cols-4 gap-1.5" aria-label="Ход прогона">
+    <ol className="grid grid-cols-4 gap-1.5" aria-label={t('Ход прогона', 'Run progress')}>
       {labels.map((label, i) => {
         const state = at === -1 ? 'off' : i < at ? 'past' : i === at ? 'now' : 'next'
         return (
@@ -125,9 +128,9 @@ function Timeline({ run }: { run: Run }) {
     </ol>
     {isActive(run) && (
       <p className="mt-3 text-body">
-        <span className="font-semibold">{PHASE[run.status]}</span>
-        {run.status === 'agent' && <span className="text-muted-foreground tnum"> · {`${duration(agentElapsed(run, now))} из ${duration(run.time_limit_s)}`}</span>}
-        {queueLine(run) && <span className="text-muted-foreground tnum"> · {queueLine(run)}</span>}
+        <span className="font-semibold">{phase(run.status, t)}</span>
+        {run.status === 'agent' && <span className="text-muted-foreground tnum"> · {t(`${duration(agentElapsed(run, now))} из ${duration(run.time_limit_s)}`, `${duration(agentElapsed(run, now))} of ${duration(run.time_limit_s)}`)}</span>}
+        {queueLine(run, t) && <span className="text-muted-foreground tnum"> · {queueLine(run, t)}</span>}
       </p>
     )}
     </div>
@@ -136,28 +139,29 @@ function Timeline({ run }: { run: Run }) {
 
 // The live app, or its screenshots once the snapshot is gone, as a computer or a 390px phone sees it.
 function Preview({ run }: { run: Run }) {
+  const t = useT()
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
   const frame = useRef<HTMLDivElement>(null)
   const live = run.preview_url
   const shot = device === 'desktop' ? run.has_shot : run.has_shot_mobile
-  if (!live && !run.has_shot && !run.has_shot_mobile) return <EmptyState>Превью нет: приложение не запустилось.</EmptyState>
+  if (!live && !run.has_shot && !run.has_shot_mobile) return <EmptyState>{t('Превью нет: приложение не запустилось.', 'No preview: the app didn’t start.')}</EmptyState>
   return (
-    <section aria-label="Что построил агент">
+    <section aria-label={t('Что построил агент', 'What the agent built')}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Segmented label="Устройство" value={device} onChange={setDevice} options={[
-            { value: 'desktop', label: <span className="inline-flex items-center gap-1.5"><Monitor className="size-3.5" />Компьютер</span> },
-            { value: 'mobile', label: <span className="inline-flex items-center gap-1.5"><Smartphone className="size-3.5" />Телефон (390px)</span> },
+          <Segmented label={t('Устройство', 'Device')} value={device} onChange={setDevice} options={[
+            { value: 'desktop', label: <span className="inline-flex items-center gap-1.5"><Monitor className="size-3.5" />{t('Компьютер', 'Desktop')}</span> },
+            { value: 'mobile', label: <span className="inline-flex items-center gap-1.5"><Smartphone className="size-3.5" />{t('Телефон (390px)', 'Phone (390px)')}</span> },
           ]} />
-          <span className="text-ui text-faint">{live ? 'Живое превью' : 'Скриншоты'}</span>
+          <span className="text-ui text-faint">{live ? t('Живое превью', 'Live preview') : t('Скриншоты', 'Screenshots')}</span>
         </div>
         {live && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void frame.current?.requestFullscreen?.()}>
-              <Maximize2 /> На весь экран
+              <Maximize2 /> {t('На весь экран', 'Full screen')}
             </Button>
             <Button variant="outline" size="sm" render={<a href={live} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
-              <ExternalLink /> Открыть в новой вкладке
+              <ExternalLink /> {t('Открыть в новой вкладке', 'Open in a new tab')}
             </Button>
           </div>
         )}
@@ -169,40 +173,41 @@ function Preview({ run }: { run: Run }) {
               <span aria-hidden className="flex gap-1.5"><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /><span className="size-2.5 rounded-full bg-border-strong" /></span>
               <span className="truncate font-mono text-meta text-faint">{live}</span>
             </div>
-            <iframe src={live} title="Живое превью"
+            <iframe src={live} title={t('Живое превью', 'Live preview')}
               className={cn('block w-full bg-white', device === 'desktop' ? 'h-[72vh] min-h-[460px] [:fullscreen_&]:h-[calc(100vh-37px)]' : 'mx-auto h-[780px] max-h-[80vh] max-w-[390px] [:fullscreen_&]:h-[calc(100vh-37px)] [:fullscreen_&]:max-h-none')}
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups" />
           </div>
-          <p className="mt-2 text-ui text-faint">Приложение агента, запущенное из снапшота. Первое открытие поднимает его за несколько секунд.</p>
+          <p className="mt-2 text-ui text-faint">{t('Приложение агента, запущенное из снапшота. Первое открытие поднимает его за несколько секунд.', 'The agent’s app, started from its snapshot. The first visit brings it up in a few seconds.')}</p>
         </>
       ) : shot ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/api/v1/runs/${run.id}/${device === 'desktop' ? 'shot.jpg' : 'shot-mobile.jpg'}`} alt={device === 'desktop' ? 'Десктоп' : 'Телефон'}
+        <img src={`/api/v1/runs/${run.id}/${device === 'desktop' ? 'shot.jpg' : 'shot-mobile.jpg'}`} alt={device === 'desktop' ? t('Десктоп', 'Desktop') : t('Телефон', 'Phone')}
           className={cn('rounded-xl border-2 border-border', device === 'desktop' ? 'w-full' : 'mx-auto w-full max-w-[390px]')} />
-      ) : <EmptyState>Нет скриншота</EmptyState>}
+      ) : <EmptyState>{t('Нет скриншота', 'No screenshot')}</EmptyState>}
     </section>
   )
 }
 
 // The result in one place: the score and every check as a cell.
 function Verdict({ run }: { run: Run }) {
+  const t = useT()
   const done = run.status === 'done'
   const passed = run.checks.filter((c) => c.passed).length
   const failed = run.checks.length - passed
   return (
-    <section aria-label="Оценка" className="rounded-xl border-2 border-border p-5">
-      <div className="text-body text-muted-foreground">Оценка</div>
+    <section aria-label={t('Оценка', 'Score')} className="rounded-xl border-2 border-border p-5">
+      <div className="text-body text-muted-foreground">{t('Оценка', 'Score')}</div>
       <div className={cn('numeral mt-2 text-[56px]', done && run.score != null ? scoreTone(run.score) : 'text-pending')}>
         {done && run.score != null ? run.score : '—'}
       </div>
       <p className="mt-2 text-ui text-faint">
-        {!done ? 'Оценка появится, когда закончатся проверки.' : run.agent_exit === 'key_rejected' ? 'не оценивался: провайдер отклонил ключ' : !run.app_started ? 'приложение не запустилось' : 'доля пройденных автопроверок'}
+        {!done ? t('Оценка появится, когда закончатся проверки.', 'The score appears once the checks finish.') : run.agent_exit === 'key_rejected' ? t('не оценивался: провайдер отклонил ключ', 'not scored: the provider rejected the key') : !run.app_started ? t('приложение не запустилось', 'the app didn’t start') : t('доля пройденных автопроверок', 'share of automatic checks passed')}
       </p>
       <div className="mt-5 border-t border-border pt-4">
         <div className="text-body font-semibold">
-          {run.checks.length ? plural(run.checks.length, `Пройдено ${passed} из {n} проверки`, `Пройдено ${passed} из {n} проверок`, `Пройдено ${passed} из {n} проверок`) : done ? 'Проверки не запускались' : 'Проверки начнутся, когда агент закончит'}
+          {run.checks.length ? t.plural(run.checks.length, [`Пройдено ${passed} из {n} проверки`, `Пройдено ${passed} из {n} проверок`, `Пройдено ${passed} из {n} проверок`], [`${passed} of {n} check passed`, `${passed} of {n} checks passed`]) : done ? t('Проверки не запускались', 'The checks didn’t run') : t('Проверки начнутся, когда агент закончит', 'The checks start when the agent finishes')}
         </div>
-        {failed > 0 && <p className="text-ui text-destructive">{plural(failed, '{n} проверка не прошла', '{n} проверки не прошли', '{n} проверок не прошли')}</p>}
+        {failed > 0 && <p className="text-ui text-destructive">{t.plural(failed, ['{n} проверка не прошла', '{n} проверки не прошли', '{n} проверок не прошли'], ['{n} check failed', '{n} checks failed'])}</p>}
         <CheckStrip checks={run.checks} size="lg" className="mt-3" />
       </div>
     </section>
@@ -211,6 +216,7 @@ function Verdict({ run }: { run: Run }) {
 
 // The run's numbers as label/value lines, like Product Hunt's "Company info".
 function Numbers({ run }: { run: Run }) {
+  const t = useT()
   const now = useNow()
   const used = usedTokens(run.tokens)
   const pct = Math.min(999, Math.round((100 * used) / Math.max(1, run.token_budget)))
@@ -218,27 +224,27 @@ function Numbers({ run }: { run: Run }) {
   const langs = Object.entries(run.stats.languages ?? {}).sort((a, b) => b[1] - a[1])
   const total = langs.reduce((s, [, n]) => s + n, 0)
   return (
-    <AsideBlock title="Прогон">
+    <AsideBlock title={t('Прогон', 'Run')}>
       <dl className="space-y-3">
-        <Line label="Время агента" value={duration(agentElapsed(run, now))}
-          sub={[`из ${duration(run.time_limit_s)}`, run.agent_exit && exitLabel(run.agent_exit)].filter(Boolean).join(', ')} />
-        <Line label="Токены" value={compact(used)}
+        <Line label={t('Время агента', 'Agent time')} value={duration(agentElapsed(run, now))}
+          sub={[t(`из ${duration(run.time_limit_s)}`, `of ${duration(run.time_limit_s)}`), run.agent_exit && exitLabel(run.agent_exit, t)].filter(Boolean).join(', ')} />
+        <Line label={t('Токены', 'Tokens')} value={compact(used)}
           sub={<>
             <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-pending">
               <span className={cn('block h-full', pct >= 100 ? 'bg-destructive' : 'bg-primary')} style={{ width: `${Math.min(100, pct)}%` }} />
             </span>
-            <span className="mt-1 block">{`${pct}% бюджета`}, {`запросов к LLM: ${run.tokens.requests}`}</span>
-            {used > run.token_budget && <span className="block text-destructive">Больше бюджета: прогон не идёт в рейтинг</span>}
-            {used > 0 && <span className="block">{`${compact(run.tokens.in + run.tokens.cache_write)} вход · ${compact(run.tokens.out)} выход · ${compact(run.tokens.cache_read)} из кэша`}</span>}
+            <span className="mt-1 block">{t(`${pct}% бюджета, запросов к LLM: ${run.tokens.requests}`, `${pct}% of the budget, ${run.tokens.requests} LLM requests`)}</span>
+            {used > run.token_budget && <span className="block text-destructive">{t('Больше бюджета: прогон не идёт в рейтинг', 'Over budget: the run isn’t ranked')}</span>}
+            {used > 0 && <span className="block">{t(`${compact(run.tokens.in + run.tokens.cache_write)} вход · ${compact(run.tokens.out)} выход · ${compact(run.tokens.cache_read)} из кэша`, `${compact(run.tokens.in + run.tokens.cache_write)} in · ${compact(run.tokens.out)} out · ${compact(run.tokens.cache_read)} cached`)}</span>}
           </>} />
-        <Line label="Стоимость" value={run.cost_usd == null ? '—' : usd(run.cost_usd)}
-          sub={run.cost_usd == null ? 'модель неизвестна' : run.agent.provider.endsWith('-sub') ? 'подписка, по прайсу' : undefined} />
-        <Line label="Строк кода" value={done ? grouped(run.stats.loc) : '—'} sub={done ? `файлов: ${run.stats.files}` : undefined} />
-        <Line label="Старт за" value={run.stats.start_seconds ? `${run.stats.start_seconds} s` : '—'} />
+        <Line label={t('Стоимость', 'Cost')} value={run.cost_usd == null ? '—' : usd(run.cost_usd)}
+          sub={run.cost_usd == null ? t('модель неизвестна', 'unknown model') : run.agent.provider.endsWith('-sub') ? t('подписка, по прайсу', 'subscription, at list price') : undefined} />
+        <Line label={t('Строк кода', 'Lines of code')} value={done ? t.num(run.stats.loc) : '—'} sub={done ? t(`файлов: ${run.stats.files}`, `${run.stats.files} files`) : undefined} />
+        <Line label={t('Старт за', 'Started in')} value={run.stats.start_seconds ? `${run.stats.start_seconds} s` : '—'} />
       </dl>
       {total > 0 && (
         <div className="mt-4">
-          <div className="text-ui text-faint">Языки</div>
+          <div className="text-ui text-faint">{t('Языки', 'Languages')}</div>
           <div className="mt-2 flex h-1.5 gap-px overflow-hidden rounded-full">
             {langs.map(([l, n], i) => <div key={l} style={{ width: `${(100 * n) / total}%`, background: `var(--series-${(i % 4) + 1})` }} />)}
           </div>
@@ -246,7 +252,7 @@ function Numbers({ run }: { run: Run }) {
             {langs.map(([l, n], i) => (
               <span key={l} className="flex items-center gap-1.5">
                 <span className="size-2 rounded-[2px]" style={{ background: `var(--series-${(i % 4) + 1})` }} />
-                <span className="font-medium">{l}</span><span className="text-faint tnum">{grouped(n)}</span>
+                <span className="font-medium">{l}</span><span className="text-faint tnum">{t.num(n)}</span>
               </span>
             ))}
           </div>
@@ -258,28 +264,29 @@ function Numbers({ run }: { run: Run }) {
 
 // What the run was fixed to at creation (its manifest), so results are compared under the same conditions.
 function Conditions({ run }: { run: Run }) {
+  const t = useT()
   const m = run.manifest
   const short = (h?: string) => (h ?? '').replace(/^sha256:/, '').slice(0, 8)
   const models = Object.entries(run.models ?? {}).sort((a, b) => b[1] - a[1])
   const versions = Object.entries(m.runtime?.versions ?? {})
   const checks = run.checks_version ?? m.checks_version
   return (
-    <AsideBlock title="Условия прогона">
+    <AsideBlock title={t('Условия прогона', 'Run conditions')}>
       <dl className="space-y-2 text-ui">
-        <Fixed label="Агент" value={short(m.bundle_sha256)} />
-        <Fixed label="Ключ" value={providerLabel(m.provider)} mono={false} sub="ключ можно сменить на ключ того же провайдера" />
-        <Fixed label="Модель" value={m.model_id || 'выбирает агент'} mono={!!m.model_id} />
+        <Fixed label={t('Агент', 'Agent')} value={short(m.bundle_sha256)} />
+        <Fixed label={t('Ключ', 'Key')} value={providerLabel(m.provider, t)} mono={false} sub={t('ключ можно сменить на ключ того же провайдера', 'the key can be swapped for another key of the same provider')} />
+        <Fixed label={t('Модель', 'Model')} value={m.model_id || t('выбирает агент', 'the agent picks')} mono={!!m.model_id} />
         {models.length > 0 && (
-          <Fixed label="Вызывал" value={models.length === 1 ? models[0][0] : plural(models.length, '{n} модель', '{n} модели', '{n} моделей')}
-            sub={models.length > 1 ? models.map(([id, n]) => `${id} ×${n}`).join(', ') : `запросов: ${models[0][1]}`} />
+          <Fixed label={t('Вызывал', 'Called')} value={models.length === 1 ? models[0][0] : t.plural(models.length, ['{n} модель', '{n} модели', '{n} моделей'], ['{n} model', '{n} models'])}
+            sub={models.length > 1 ? models.map(([id, n]) => `${id} ×${n}`).join(', ') : t(`запросов: ${models[0][1]}`, `${models[0][1]} requests`)} />
         )}
-        <Fixed label="Задание" value={short(m.task_md_sha256)} sub={`данные ${short(m.data_sha256)}`} />
-        <Fixed label="Проверки" value={checks} sub={[
-          checks !== m.checks_version && `при создании ${m.checks_version}`,
-          run.checks_version && !run.checks_current && 'устарели: прогон не в рейтинге',
-          `оценка v${m.scoring_version}`,
+        <Fixed label={t('Задание', 'Task')} value={short(m.task_md_sha256)} sub={t(`данные ${short(m.data_sha256)}`, `data ${short(m.data_sha256)}`)} />
+        <Fixed label={t('Проверки', 'Checks')} value={checks} sub={[
+          checks !== m.checks_version && t(`при создании ${m.checks_version}`, `at creation ${m.checks_version}`),
+          run.checks_version && !run.checks_current && t('устарели: прогон не в рейтинге', 'outdated: the run isn’t ranked'),
+          t(`оценка v${m.scoring_version}`, `scoring v${m.scoring_version}`),
         ].filter(Boolean).join(', ')} />
-        <Fixed label="Среда" value={m.runtime ? short(m.runtime.image) : '—'} sub={versions.map(([k, v]) => `${k} ${v}`).join(', ') || undefined} />
+        <Fixed label={t('Среда', 'Runtime')} value={m.runtime ? short(m.runtime.image) : '—'} sub={versions.map(([k, v]) => `${k} ${v}`).join(', ') || undefined} />
       </dl>
     </AsideBlock>
   )
@@ -311,6 +318,7 @@ function Line({ label, value, sub }: { label: string; value: React.ReactNode; su
 
 // Source download for everyone; cancel and delete for the agent's owner (and admins).
 function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
+  const t = useT()
   const { me } = useMe()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -323,7 +331,7 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
       await fn()
       after()
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     } finally {
       setBusy(false)
       setArmed(false)
@@ -335,21 +343,21 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
     <div className="space-y-2">
       {run.has_source && (
         <Button variant="outline" className="w-full" render={<a href={`/api/v1/runs/${run.id}/source.zip`} />} nativeButton={false}>
-          <Download /> Скачать исходники (.zip)
+          <Download /> {t('Скачать исходники (.zip)', 'Download sources (.zip)')}
         </Button>
       )}
       {mine && isActive(run) && (
-        <Button variant="destructive" className="w-full" disabled={busy} onClick={() => void act(() => post(`/my/runs/${run.id}/cancel`), onChange)}>Отменить прогон</Button>
+        <Button variant="destructive" className="w-full" disabled={busy} onClick={() => void act(() => post(`/my/runs/${run.id}/cancel`), onChange)}>{t('Отменить прогон', 'Cancel run')}</Button>
       )}
       {me?.can_admin && !isActive(run) && run.has_snapshot && (
         <Button variant="outline" className="w-full" disabled={busy} onClick={() => void act(() => post(`/admin/runs/${run.id}/recheck`), onChange)}>
-          <RotateCw /> Проверить заново
+          <RotateCw /> {t('Проверить заново', 'Check again')}
         </Button>
       )}
       {mine && !isActive(run) && (
         <Button variant="destructive" className="w-full" disabled={busy} onBlur={() => setArmed(false)}
           onClick={() => armed ? void act(() => del(`/my/runs/${run.id}`), () => router.push(`/t/${run.task}`)) : setArmed(true)}>
-          {armed ? 'Нажмите ещё раз для подтверждения' : 'Удалить прогон'}
+          {armed ? t('Нажмите ещё раз для подтверждения', 'Press again to confirm') : t('Удалить прогон', 'Delete run')}
         </Button>
       )}
       {err && <p role="alert" className="text-ui text-destructive">{err}</p>}
@@ -359,16 +367,17 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
 
 // Every check in the order it ran, numbered like the cells of the strip in the aside.
 function Checks({ run }: { run: Run }) {
+  const t = useT()
   return (
     <section>
       <SectionTitle aside={run.rechecks > 0
-        ? plural(run.rechecks, 'Проверено заново {n} раз: тот же код, текущие проверки', 'Проверено заново {n} раза: тот же код, текущие проверки', 'Проверено заново {n} раз: тот же код, текущие проверки')
-        : 'В том порядке, в каком шли на одном свежем сервере'}>Автоматические проверки</SectionTitle>
+        ? t.plural(run.rechecks, ['Проверено заново {n} раз: тот же код, текущие проверки', 'Проверено заново {n} раза: тот же код, текущие проверки', 'Проверено заново {n} раз: тот же код, текущие проверки'], ['Checked again once: the same code, the current checks', 'Checked again {n} times: the same code, the current checks'])
+        : t('В том порядке, в каком шли на одном свежем сервере', 'In the order they ran on one fresh server')}>{t('Автоматические проверки', 'Automatic checks')}</SectionTitle>
       <ol className="overflow-hidden rounded-xl border-2 border-border">
         {run.checks.map((c, i) => (
           <li key={`${i}-${c.name}`} className={cn('flex items-start gap-3 px-4 py-2.5 text-title not-first:border-t not-first:border-border', !c.passed && 'bg-destructive/5')}>
             <span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span>
-            {c.passed ? <Check className="mt-1 size-4 shrink-0 text-success" aria-label="Пройдена" /> : <X className="mt-1 size-4 shrink-0 text-destructive" aria-label="Не пройдена" />}
+            {c.passed ? <Check className="mt-1 size-4 shrink-0 text-success" aria-label={t('Пройдена', 'Passed')} /> : <X className="mt-1 size-4 shrink-0 text-destructive" aria-label={t('Не пройдена', 'Failed')} />}
             <div className="min-w-0">
               <div className={cn(!c.passed && 'font-semibold')}>{c.name}</div>
               {!c.passed && c.detail && <div className="mt-0.5 font-mono text-meta break-words text-muted-foreground">{c.detail}</div>}
@@ -381,16 +390,17 @@ function Checks({ run }: { run: Run }) {
 }
 
 function Logs({ run }: { run: Run }) {
+  const t = useT()
   return (
     <section className="space-y-2">
-      {([['Лог агента', run.agent_log], ['Лог проверки', run.check_log]] as const).map(([k, text]) => (
-        <details key={k} className="group overflow-hidden rounded-xl border-2 border-border" open={k === 'Лог агента' && isActive(run)}>
+      {([['agent', t('Лог агента', 'Agent log'), run.agent_log], ['check', t('Лог проверки', 'Check log'), run.check_log]] as const).map(([k, title, text]) => (
+        <details key={k} className="group overflow-hidden rounded-xl border-2 border-border" open={k === 'agent' && isActive(run)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-title font-semibold transition-colors duration-150 hover:bg-muted [&::-webkit-details-marker]:hidden">
             <ChevronRight aria-hidden className="size-4 text-faint transition-transform group-open:rotate-90" />
-            {k}
+            {title}
           </summary>
           <pre className="max-h-[32rem] overflow-auto bg-terminal p-4 font-mono text-xs leading-5 whitespace-pre-wrap text-terminal-foreground [overflow-wrap:anywhere]">
-            {text || 'Пока пусто.'}
+            {text || t('Пока пусто.', 'Empty so far.')}
           </pre>
         </details>
       ))}

@@ -13,7 +13,8 @@ import { Segmented } from '@/components/ui/segmented'
 import { del, post, put, upload } from '@/lib/api'
 import { errorText } from '@/lib/errors'
 import type { Agent, ExampleAgent, ExampleModel, Run, TaskSummary } from '@/lib/types'
-import { plural, runEstimate, usd } from '@/lib/format'
+import { runEstimate, usd } from '@/lib/format'
+import { useT } from '@/lib/i18n-client'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { providerLabel } from '@/lib/providers'
@@ -30,6 +31,7 @@ const noAutofill = { autoComplete: 'new-password', 'data-1p-ignore': true, 'data
 // Any signed-in user uploads agents here and runs them; each user sees only their own agents and runs. What is
 // running right now comes first, then the agents, each with its launch controls in one row.
 export function MyAgents() {
+  const t = useT()
   const { me, loading } = useMe()
   const agents = usePoll<{ items: Agent[] }>(me ? '/my/agents' : null, 30_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
@@ -46,9 +48,9 @@ export function MyAgents() {
     const task = tasks.data?.items.find((x) => x.slug === preset)
     return (
       <div className="max-w-md space-y-4">
-        <h1 className="display text-page">Мои агенты</h1>
-        <p className="text-muted-foreground">Войдите, чтобы загружать агентов и запускать прогоны. Понадобится API-ключ модели: он тратится только вашим агентом.</p>
-        {task && <p className="text-body">Задание: <span className="font-semibold">{task.title}</span></p>}
+        <h1 className="display text-page">{t('Мои агенты', 'My agents')}</h1>
+        <p className="text-muted-foreground">{t('Войдите, чтобы загружать агентов и запускать прогоны. Понадобится API-ключ модели: он тратится только вашим агентом.', 'Sign in to upload agents and start runs. You’ll need a model API key: only your agent spends it.')}</p>
+        {task && <p className="text-body">{t('Задание: ', 'Task: ')}<span className="font-semibold">{t.text(task.title)}</span></p>}
         <SignInOptions next={preset ? `/my?task=${encodeURIComponent(preset)}` : '/my'} />
       </div>
     )
@@ -59,14 +61,14 @@ export function MyAgents() {
   const showForm = adding ?? none
   return (
     <div className="space-y-12">
-      <PageHeader title="Мои агенты">Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.</PageHeader>
+      <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. What’s running right now is on top.')}</PageHeader>
       {runs.data ? <LiveRuns runs={runs.data.items} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
       <section>
         <SectionTitle aside={!showForm && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> Новый агент</Button>
-        )}>Ваши агенты</SectionTitle>
+          <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> {t('Новый агент', 'New agent')}</Button>
+        )}>{t('Ваши агенты', 'Your agents')}</SectionTitle>
         {showForm && <NewAgent onDone={(a) => { setAdding(false); setFresh(a.id); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
-        {none && !showForm && <EmptyState>Агентов пока нет. Загрузите первого выше.</EmptyState>}
+        {none && !showForm && <EmptyState>{t('Агентов пока нет. Загрузите первого выше.', 'No agents yet. Upload the first one above.')}</EmptyState>}
         {!!agents.data?.items.length && (
           <ul className={cn('divide-y divide-border rounded-xl border-2 border-border', showForm && 'mt-6')}>
             {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} fresh={a.id === fresh} tasks={tasks.data?.items ?? []} preset={preset} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
@@ -80,6 +82,7 @@ export function MyAgents() {
 
 // Deleting the account takes everything with it (agents and their keys, runs, votes); two clicks, like an agent.
 function DeleteAccount() {
+  const t = useT()
   const [armed, setArmed] = useState(false)
   const [err, setErr] = useState('')
   const remove = async () => {
@@ -88,15 +91,15 @@ function DeleteAccount() {
       await del('/me')
       window.location.assign('/')
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     }
   }
   return (
     <section className="max-w-[68ch]">
-      <SectionTitle>Аккаунт</SectionTitle>
-      <p className="text-body text-muted-foreground">Удаление аккаунта удаляет всех ваших агентов вместе с ключами, их прогоны и ваши голоса и выходит из аккаунта. Копии остаются в ежедневных бэкапах базы до 30 дней.</p>
+      <SectionTitle>{t('Аккаунт', 'Account')}</SectionTitle>
+      <p className="text-body text-muted-foreground">{t('Удаление аккаунта удаляет всех ваших агентов вместе с ключами, их прогоны и ваши голоса и выходит из аккаунта. Копии остаются в ежедневных бэкапах базы до 30 дней.', 'Deleting the account deletes all your agents with their keys, their runs and your votes, and signs you out. Copies stay in daily database backups for up to 30 days.')}</p>
       <Button className="mt-3" variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>
-        {armed ? 'Нажмите ещё раз для подтверждения' : 'Удалить аккаунт'}
+        {armed ? t('Нажмите ещё раз для подтверждения', 'Press again to confirm') : t('Удалить аккаунт', 'Delete account')}
       </Button>
       {err && <p className="mt-2 text-body text-destructive">{err}</p>}
     </section>
@@ -106,6 +109,7 @@ function DeleteAccount() {
 const EXAMPLES_URL = 'https://github.com/tolerance-dev/arena/tree/main/backend/internal/agents/examples'
 
 function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean }) {
+  const t = useT()
   const catalog = usePoll<{ items: ExampleAgent[]; models: ExampleModel[] }>('/agents/examples', 3_600_000).data
   const examples = catalog?.items ?? []
   const [source, setSource] = useState<'example' | 'file'>('example')
@@ -138,7 +142,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
       setName(null)
       onDone(agent)
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     } finally {
       setBusy(false)
     }
@@ -146,61 +150,61 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
   return (
     <section className="grid gap-6 rounded-lg border border-border bg-card p-5 sm:p-7 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
       <div>
-        <h2 className="heading text-title">Новый агент</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Ключ хранится зашифрованным и не попадает в песочницу: агент получает токен прогона, который принимает только наш шлюз.</p>
+        <h2 className="heading text-title">{t('Новый агент', 'New agent')}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('Ключ хранится зашифрованным и не попадает в песочницу: агент получает токен прогона, который принимает только наш шлюз.', 'The key is stored encrypted and never enters the sandbox: the agent gets a run token that only our gateway accepts.')}</p>
       </div>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Segmented label="Откуда агент" value={source} onChange={setSource} options={[
-            { value: 'example', label: 'Готовый агент' }, { value: 'file', label: 'Свой файл' },
+          <Segmented label={t('Откуда агент', 'Agent source')} value={source} onChange={setSource} options={[
+            { value: 'example', label: t('Готовый агент', 'Ready agent') }, { value: 'file', label: t('Свой файл', 'Own file') },
           ]} />
           {source === 'example' ? (
             <div className="space-y-1.5">
-              <Label htmlFor="example">Агент</Label>
+              <Label htmlFor="example">{t('Агент', 'Agent')}</Label>
               <select id="example" className={field} value={example?.slug ?? ''} onChange={(e) => { setSlug(e.target.value); setModelSlug('') }}>
                 {examples.map((e) => <option key={e.slug} value={e.slug}>{e.name}</option>)}
               </select>
-              <Label htmlFor="model" className="pt-2">Модель</Label>
+              <Label htmlFor="model" className="pt-2">{t('Модель', 'Model')}</Label>
               <select id="model" className={field} value={model?.slug ?? ''} onChange={(e) => setModelSlug(e.target.value)}>
-                {models.map((m) => <option key={m.slug} value={m.slug}>{m.name}{m.slug === example?.model ? ` · родная` : ''}</option>)}
+                {models.map((m) => <option key={m.slug} value={m.slug}>{m.name}{m.slug === example?.model ? t(' · родная', ' · native') : ''}</option>)}
               </select>
               {example && model && <p className="text-xs text-muted-foreground">
-                Ключи для этой пары: {(offered ?? []).map(providerLabel).join(', ')}.{' '}
-                {model.slug === example.model ? 'Один ключ OrcaRouter запускает любого агента с любой моделью.' : 'Модель не из «родного» CLI ещё не проверена: прогон может упасть сразу.'}{' '}
-                {model.price.in + model.price.out === 0 ? 'Модель бесплатная.' : `Цена: ${usd(model.price.in)} вход, ${usd(model.price.out)} выход за миллион токенов.`}
+                {t('Ключи для этой пары: ', 'Keys for this pair: ')}{(offered ?? []).map((p) => providerLabel(p, t)).join(', ')}.{' '}
+                {model.slug === example.model ? t('Один ключ OrcaRouter запускает любого агента с любой моделью.', 'One OrcaRouter key runs any agent with any model.') : t('Модель не из «родного» CLI ещё не проверена: прогон может упасть сразу.', 'A model from outside the CLI’s own vendor isn’t tested yet: the run may fail right away.')}{' '}
+                {model.price.in + model.price.out === 0 ? t('Модель бесплатная.', 'The model is free.') : t(`Цена: ${usd(model.price.in)} вход, ${usd(model.price.out)} выход за миллион токенов.`, `Price: ${usd(model.price.in)} in, ${usd(model.price.out)} out per million tokens.`)}
               </p>}
             </div>
           ) : (
             <div className="space-y-1.5">
-              <Label htmlFor="bundle">Агент: run.sh или .zip с run.sh в корне</Label>
+              <Label htmlFor="bundle">{t('Агент: run.sh или .zip с run.sh в корне', 'Agent: run.sh or a .zip with run.sh at the root')}</Label>
               <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
                 className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-8 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
               <p className="text-xs text-muted-foreground">
-                Запускается как /agent/run.sh в /work, где лежат TASK.md и data/.{' '}
+                {t('Запускается как /agent/run.sh в /work, где лежат TASK.md и data/.', 'Runs as /agent/run.sh in /work, which holds TASK.md and data/.')}{' '}
                 <a href={EXAMPLES_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2">
-                  Примеры и окружение на GitHub <ExternalLink className="size-3" />
+                  {t('Примеры и окружение на GitHub', 'Examples and the environment on GitHub')} <ExternalLink className="size-3" />
                 </a>
               </p>
             </div>
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="name">Название</Label>
+          <Label htmlFor="name">{t('Название', 'Name')}</Label>
           <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5"
             value={name ?? defaultName} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="description">Описание (необязательно)</Label>
-          <Input id="description" name="description" autoComplete="off" maxLength={500} placeholder="Claude Code + Opus, промпт по умолчанию" />
+          <Label htmlFor="description">{t('Описание (необязательно)', 'Description (optional)')}</Label>
+          <Input id="description" name="description" autoComplete="off" maxLength={500} placeholder={t('Claude Code + Opus, промпт по умолчанию', 'Claude Code + Opus, default prompt')} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="provider">Провайдер LLM</Label>
+          <Label htmlFor="provider">{t('Провайдер LLM', 'LLM provider')}</Label>
           <select id="provider" name="provider" className={field} value={providerValue} onChange={(e) => setProvider(e.target.value)}>
             <ProviderOptions subscriptions={subscriptions} only={offered} />
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="api_key">API-ключ</Label>
+          <Label htmlFor="api_key">{t('API-ключ', 'API key')}</Label>
           {providerValue === 'chatgpt-sub' ? (
             <textarea id="api_key" name="api_key" required rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
               className={cn(field, 'h-auto py-2 font-mono text-xs')} />
@@ -210,8 +214,8 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
           <KeyHint provider={providerValue} />
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy}><Upload /> {busy ? 'Проверяем ключ…' : 'Загрузить агента'}</Button>
-          {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>}
+          <Button type="submit" disabled={busy}><Upload /> {busy ? t('Проверяем ключ…', 'Checking the key…') : t('Загрузить агента', 'Upload agent')}</Button>
+          {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('Отмена', 'Cancel')}</Button>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
       </form>
@@ -228,15 +232,16 @@ const KEY_PAGES: Record<string, [string, string]> = {
 }
 
 function KeyHint({ provider }: { provider: string }) {
+  const t = useT()
   const page = KEY_PAGES[provider]
   return (
     <p className="text-xs text-muted-foreground">
-      {provider === 'claude-sub' ? 'Ваша подписка Claude: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.'
-        : provider === 'chatgpt-sub' ? 'Ваша подписка ChatGPT: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).'
-        : <>{page && <>Ключ берётся на{' '}
+      {provider === 'claude-sub' ? t('Ваша подписка Claude: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.', 'Your Claude subscription: run `claude setup-token` and paste the token. Runs spend the subscription’s limits.')
+        : provider === 'chatgpt-sub' ? t('Ваша подписка ChatGPT: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).', 'Your ChatGPT subscription: paste ~/.codex/auth.json from a Codex signed in with ChatGPT. Only the access token is stored (it lives about a week; when it expires, paste a fresh file).')
+        : <>{page && <>{t('Ключ берётся на', 'Get a key at')}{' '}
             <a href={page[1]} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2">{page[0]} <ExternalLink className="size-3" /></a>.{' '}</>}
-          Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.</>}{' '}
-      <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">Как хранятся ключи</Link>
+          {t('Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.', 'Only this agent spends it, through the gateway. Better a separate key with a spending limit.')}</>}{' '}
+      <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">{t('Как хранятся ключи', 'How keys are stored')}</Link>
     </p>
   )
 }
@@ -245,6 +250,7 @@ function KeyHint({ provider }: { provider: string }) {
 function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscriptions }: {
   agent: Agent; fresh: boolean; tasks: TaskSummary[]; preset: string; onChange: () => void; onStarted: () => void; subscriptions: boolean
 }) {
+  const t = useT()
   const [task, setTask] = useState('')
   const [minutes, setMinutes] = useState('')
   const [budgetK, setBudgetK] = useState('')
@@ -274,7 +280,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
       for (const slug of slugs) await post<Run>('/my/runs', { agent_id: agent.id, task: slug, ...limits })
       onStarted()
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
       onChange()
     } finally {
       setBusy(false)
@@ -286,7 +292,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
       await del(`/my/agents/${agent.id}`)
       onChange()
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     }
   }
   async function saveKey() {
@@ -298,7 +304,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
       setKeyState('saved')
       onChange()
     } catch (e) {
-      setKeyErr(errorText(e))
+      setKeyErr(errorText(e, t))
       setKeyState('edit')
     }
   }
@@ -311,32 +317,32 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
 
   return (
     <div ref={ref} className={cn('px-4 py-3.5', fresh && 'bg-primary/5')}>
-      {fresh && <p role="status" className="mb-3 text-body font-medium">Агент сохранён. Выберите задание и время, проверьте оценку стоимости и запустите.</p>}
+      {fresh && <p role="status" className="mb-3 text-body font-medium">{t('Агент сохранён. Выберите задание и время, проверьте оценку стоимости и запустите.', 'Agent saved. Pick a task and a time, check the cost estimate and start.')}</p>}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-3">
           <AgentAvatar name={agent.name} size="sm" />
           <div className="min-w-0">
             <div className="truncate font-semibold">{agent.name}</div>
             <div className="truncate text-meta text-muted-foreground">
-              {providerLabel(agent.provider)}{agent.key_hint && <> · <span className="font-mono">{agent.key_hint}</span></>} · {plural(agent.runs, '{n} прогон', '{n} прогона', '{n} прогонов')}
-              {agent.spent_usd != null && agent.runs > 0 && <> · {`потрачено ${usd(agent.spent_usd)}`}</>}
+              {providerLabel(agent.provider, t)}{agent.key_hint && <> · <span className="font-mono">{agent.key_hint}</span></>} · {t.plural(agent.runs, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])}
+              {agent.spent_usd != null && agent.runs > 0 && <> · {t(`потрачено ${usd(agent.spent_usd)}`, `${usd(agent.spent_usd)} spent`)}</>}
             </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Задание" className={cn(field, 'h-8 w-48 text-body')} value={chosen} onChange={(e) => setTask(e.target.value)}>
-            {tasks.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
+          <select aria-label={t('Задание', 'Task')} className={cn(field, 'h-8 w-48 text-body')} value={chosen} onChange={(e) => setTask(e.target.value)}>
+            {tasks.map((x) => <option key={x.slug} value={x.slug}>{t.text(x.title)}</option>)}
           </select>
-          <Button size="sm" onClick={() => void launch([chosen])} disabled={busy || !chosen}><Play /> {busy ? 'Запускаем…' : 'Запустить'}</Button>
+          <Button size="sm" onClick={() => void launch([chosen])} disabled={busy || !chosen}><Play /> {busy ? t('Запускаем…', 'Starting…') : t('Запустить', 'Start')}</Button>
           <Button size="sm" variant="outline" onClick={() => void launch(tasks.map((x) => x.slug))} disabled={busy || tasks.length === 0}
-            title={plural(tasks.length, 'Запустить на задаче', 'Запустить на всех {n} задачах', 'Запустить на всех {n} задачах')}><Layers /> Все задачи</Button>
-          <Button size="icon" variant="ghost" aria-label="Лимиты, ключ, удаление" aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreHorizontal /></Button>
+            title={t.plural(tasks.length, ['Запустить на задаче', 'Запустить на всех {n} задачах', 'Запустить на всех {n} задачах'], ['Start on the task', 'Start on all {n} tasks'])}><Layers /> {t('Все задачи', 'All tasks')}</Button>
+          <Button size="icon" variant="ghost" aria-label={t('Лимиты, ключ, удаление', 'Limits, key, delete')} aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreHorizontal /></Button>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         {choices.length > 1 && (
-          <Segmented label="Время прогона" value={String(runMinutes)} onChange={(v) => setMinutes(v)}
-            options={choices.map((m) => ({ value: String(m), label: `${m} мин` }))} />
+          <Segmented label={t('Время прогона', 'Run time')} value={String(runMinutes)} onChange={(v) => setMinutes(v)}
+            options={choices.map((m) => ({ value: String(m), label: t(`${m} мин`, `${m} min`) }))} />
         )}
         <CostEstimate agent={agent} minutes={runMinutes} budget={limits.token_budget || (picked?.token_budget ?? 0)} />
       </div>
@@ -344,25 +350,25 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
       {more && (
         <div className="mt-4 grid gap-4 rounded-lg bg-muted p-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Лимит времени, минут</Label>
+            <Label>{t('Лимит времени, минут', 'Time limit, minutes')}</Label>
             <Input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value.replace(/[^\d.]/g, ''))}
               placeholder={String(Math.round((tasks.find((x) => x.slug === chosen)?.time_limit_s ?? 0) / 60))} />
           </div>
           <div className="space-y-1.5">
-            <Label>Бюджет токенов, тысяч</Label>
+            <Label>{t('Бюджет токенов, тысяч', 'Token budget, thousands')}</Label>
             <Input inputMode="numeric" value={budgetK} onChange={(e) => setBudgetK(e.target.value.replace(/[^\d.]/g, ''))}
               placeholder={String(Math.round((tasks.find((x) => x.slug === chosen)?.token_budget ?? 0) / 1000))} />
           </div>
-          <p className="-mt-2 text-meta text-muted-foreground sm:col-span-2">Пусто = значения задания</p>
+          <p className="-mt-2 text-meta text-muted-foreground sm:col-span-2">{t('Пусто = значения задания', 'Empty = the task’s values')}</p>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Ключ</Label>
+            <Label>{t('Ключ', 'Key')}</Label>
             {keyState === 'view' || keyState === 'saved' ? (
               <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-card pl-3 pr-1">
                 <KeyRound className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-body">{providerLabel(agent.provider)}</span>
+                <span className="text-body">{providerLabel(agent.provider, t)}</span>
                 {agent.key_hint && <code className="truncate font-mono text-body text-muted-foreground">{agent.key_hint}</code>}
-                {keyState === 'saved' && <span role="status" className="inline-flex shrink-0 items-center gap-1 text-meta font-medium text-success"><Check className="size-3.5" /> {agent.provider === 'chatgpt-sub' ? 'Сохранён' : 'Проверен и сохранён'}</span>}
-                <Button size="sm" variant="ghost" className="ml-auto shrink-0" onClick={() => setKeyState('edit')}>Заменить</Button>
+                {keyState === 'saved' && <span role="status" className="inline-flex shrink-0 items-center gap-1 text-meta font-medium text-success"><Check className="size-3.5" /> {agent.provider === 'chatgpt-sub' ? t('Сохранён', 'Saved') : t('Проверен и сохранён', 'Checked and saved')}</span>}
+                <Button size="sm" variant="ghost" className="ml-auto shrink-0" onClick={() => setKeyState('edit')}>{t('Заменить', 'Replace')}</Button>
               </div>
             ) : (
               <>
@@ -371,9 +377,9 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
                     <ProviderOptions subscriptions={subscriptions} />
                   </select>
                   <Input type="password" autoFocus {...noAutofill} className="min-w-0 flex-1 font-mono" value={key} onChange={(e) => { setKey(e.target.value); setKeyErr('') }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && key.length >= 20) void saveKey(); if (e.key === 'Escape') cancelKey() }} placeholder="Новый ключ" />
-                  <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20 || keyState === 'checking'}>{keyState === 'checking' ? 'Проверяем…' : 'Сохранить'}</Button>
-                  <Button variant="ghost" onClick={cancelKey} disabled={keyState === 'checking'}>Отмена</Button>
+                    onKeyDown={(e) => { if (e.key === 'Enter' && key.length >= 20) void saveKey(); if (e.key === 'Escape') cancelKey() }} placeholder={t('Новый ключ', 'New key')} />
+                  <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20 || keyState === 'checking'}>{keyState === 'checking' ? t('Проверяем…', 'Checking…') : t('Сохранить', 'Save')}</Button>
+                  <Button variant="ghost" onClick={cancelKey} disabled={keyState === 'checking'}>{t('Отмена', 'Cancel')}</Button>
                 </div>
                 {keyErr && <p role="alert" className="text-xs text-destructive">{keyErr}</p>}
                 <KeyHint provider={provider} />
@@ -381,7 +387,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
             )}
           </div>
           <div className="sm:col-span-2">
-            <Button variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>{armed ? 'Нажмите ещё раз для подтверждения' : 'Удалить'}</Button>
+            <Button variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>{armed ? t('Нажмите ещё раз для подтверждения', 'Press again to confirm') : t('Удалить', 'Delete')}</Button>
           </div>
         </div>
       )}
@@ -391,18 +397,19 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
 
 // What a run of this agent should cost for the picked time: the model's spending rate × minutes at its price.
 function CostEstimate({ agent, minutes, budget }: { agent: Agent; minutes: number; budget: number }) {
+  const t = useT()
   const note = (text: string) => <span className="text-meta text-muted-foreground">{text}</span>
-  if (agent.provider.endsWith('-sub')) return <span className="cursor-help text-body font-semibold tnum" title="Подписка: прогоны тратят её лимиты, а не деньги">≈ $0</span>
-  if (!agent.price) return agent.model ? null : note('Цена неизвестна (свой агент)')
+  if (agent.provider.endsWith('-sub')) return <span className="cursor-help text-body font-semibold tnum" title={t('Подписка: прогоны тратят её лимиты, а не деньги', 'Subscription: runs spend its limits, not money')}>≈ $0</span>
+  if (!agent.price) return agent.model ? null : note(t('Цена неизвестна (свой агент)', 'Price unknown (own agent)'))
   const p = agent.price
-  if (p.in + p.out + p.cache_read + p.cache_write === 0) return <span className="cursor-help text-body font-semibold tnum" title="Бесплатно">≈ $0</span>
-  if (!agent.rate) return note('Оценки пока нет')
+  if (p.in + p.out + p.cache_read + p.cache_write === 0) return <span className="cursor-help text-body font-semibold tnum" title={t('Бесплатно', 'Free')}>≈ $0</span>
+  if (!agent.rate) return note(t('Оценки пока нет', 'No estimate yet'))
   // One number: the picked time at the model's spending rate (cut where the budget runs out); details in the tooltip.
   const e = runEstimate(p, agent.rate, minutes, budget)
   const detail = [
-    `${usd(e.perMin)} в минуту`,
-    agent.rate.all_models ? `у этой модели прогонов ещё нет: по ${agent.rate.runs} прогонам всех моделей` : `по прогонам этой модели: ${agent.rate.runs}`,
-    e.budgetMin != null && `бюджет токенов кончится на ~${Math.max(1, Math.round(e.budgetMin))} мин`,
+    t(`${usd(e.perMin)} в минуту`, `${usd(e.perMin)} per minute`),
+    agent.rate.all_models ? t(`у этой модели прогонов ещё нет: по ${agent.rate.runs} прогонам всех моделей`, `no runs of this model yet: from ${agent.rate.runs} runs of all models`) : t(`по прогонам этой модели: ${agent.rate.runs}`, `from ${agent.rate.runs} runs of this model`),
+    e.budgetMin != null && t(`бюджет токенов кончится на ~${Math.max(1, Math.round(e.budgetMin))} мин`, `the token budget runs out at ~${Math.max(1, Math.round(e.budgetMin))} min`),
   ].filter(Boolean).join(' · ')
   return <span className="cursor-help text-body font-semibold tnum" title={detail}>≈ {usd(e.total)}</span>
 }

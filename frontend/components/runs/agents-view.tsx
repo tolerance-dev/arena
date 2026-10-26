@@ -1,6 +1,6 @@
 'use client'
 
-import { plural } from '@/lib/format'
+import { useT } from '@/lib/i18n-client'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
@@ -15,10 +15,11 @@ import { rankAgents } from './standings'
 
 // One agent: who it is, what it built (every run as a showcase card) and its standing in the aside.
 export function AgentView({ id }: { id: string }) {
+  const t = useT()
   const agent = usePoll<Agent>(`/agents/${encodeURIComponent(id)}`, 30_000)
   const runs = usePoll<{ items: Run[] }>(`/runs?agent=${encodeURIComponent(id)}&limit=100`, 15_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
-  if (agent.error?.status === 404) return <EmptyState>Такого агента нет.</EmptyState>
+  if (agent.error?.status === 404) return <EmptyState>{t('Такого агента нет.', 'There’s no such agent.')}</EmptyState>
   const a = agent.data
   if (!a) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
 
@@ -31,7 +32,7 @@ export function AgentView({ id }: { id: string }) {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Лидерборд', href: '/leaderboard' }, { label: a.name }]} />
+      <Breadcrumbs items={[{ label: t('Лидерборд', 'Leaderboard'), href: '/leaderboard' }, { label: a.name }]} />
       <Columns className="mt-6"
         main={
           <>
@@ -40,28 +41,28 @@ export function AgentView({ id }: { id: string }) {
               <div className="min-w-0">
                 <h1 className="display text-page break-words">{a.name}</h1>
                 {a.description && <p className="text-subtitle text-muted-foreground">{a.description}</p>}
-                <Meta className="mt-1" items={[providerLabel(a.provider), `от ${a.owner}`, plural(a.runs, '{n} прогон', '{n} прогона', '{n} прогонов')]} />
+                <Meta className="mt-1" items={[providerLabel(a.provider, t), t(`от ${a.owner}`, `by ${a.owner}`), t.plural(a.runs, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])]} />
               </div>
             </header>
             <section className="mt-10" aria-labelledby="work-title">
-              <h2 id="work-title" className="text-section font-semibold">Что построил</h2>
+              <h2 id="work-title" className="text-section font-semibold">{t('Что построил', 'What it built')}</h2>
               {list ? (
                 list.length ? (
                   <Feed className="mt-2">{list.map((r) => <RunRow key={r.id} run={r} show="task" />)}</Feed>
-                ) : <EmptyState className="mt-4">Прогонов пока нет.</EmptyState>
+                ) : <EmptyState className="mt-4">{t('Прогонов пока нет.', 'No runs yet.')}</EmptyState>
               ) : <Skeleton className="mt-4 h-72" />}
             </section>
           </>
         }
         aside={
-          <AsideBlock title="Позиция">
+          <AsideBlock title={t('Позиция', 'Standing')}>
             <dl className="space-y-3">
-              <Stat label="Место" value={mine ? `#${mine.rank}` : '—'} sub={ranked && mine ? `из ${ranked.length}` : undefined} />
-              <Stat label="Средняя оценка" value={mine ? <Score score={mine.average} /> : '—'} />
-              <Stat label="Лучшая оценка" value={<Score score={a.best_score} />} />
-              <Stat label="Задач решено" value={tasks.data ? `${completed}/${tasks.data.items.length}` : '—'} />
-              <Stat label="Приложение запустилось" value={started != null ? `${started}%` : '—'} />
-              <Stat label="Прогонов" value={a.runs} />
+              <Stat label={t('Место', 'Place')} value={mine ? `#${mine.rank}` : '—'} sub={ranked && mine ? t(`из ${ranked.length}`, `of ${ranked.length}`) : undefined} />
+              <Stat label={t('Средняя оценка', 'Average score')} value={mine ? <Score score={mine.average} /> : '—'} />
+              <Stat label={t('Лучшая оценка', 'Best score')} value={<Score score={a.best_score} />} />
+              <Stat label={t('Задач решено', 'Tasks solved')} value={tasks.data ? `${completed}/${tasks.data.items.length}` : '—'} />
+              <Stat label={t('Приложение запустилось', 'App started')} value={started != null ? `${started}%` : '—'} />
+              <Stat label={t('Прогонов', 'Runs')} value={a.runs} />
             </dl>
           </AsideBlock>
         }

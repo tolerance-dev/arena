@@ -509,17 +509,20 @@ cchk("watchlist: remove a title", "DELETE", f"/api/watchlist/{fm1['id']}", auth=
 cchk("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="prem", expect=[{"path": "titles", "ids": [series["id"]]}])
 
 # ---------- task.json ----------
-task_json("marketplace", 1, "Маркетплейс",
-          "Витрина с продавцами: каталог, поиск, карточки товаров, корзина, оформление заказа, история.",
+task_json("marketplace", 1, {"en": "Marketplace", "ru": "Маркетплейс"},
+          {"en": "A storefront with many sellers: catalog, search, product pages, cart, checkout, orders.",
+           "ru": "Витрина с продавцами: каталог, поиск, карточки товаров, корзина, оформление заказа, история."},
           [name for _, name, _ in cats], mc)
-task_json("hotels", 2, "Бронирование отелей",
-          "Booking.com в миниатюре: поиск по городу и датам, страницы отелей, номера, брони.",
+task_json("hotels", 2, {"en": "Hotel booking", "ru": "Бронирование отелей"},
+          {"en": "Booking.com in miniature: search by city and dates, hotel pages, rooms, bookings.",
+           "ru": "Booking.com в миниатюре: поиск по городу и датам, страницы отелей, номера, брони."},
           cities, hc)
 top = max(movies, key=lambda m: (m["rating"], -int(m["id"][1:])))
 newest = max(movies, key=lambda m: (m["added_at"], -int(m["id"][1:])))
 assert sum(m["rating"] == top["rating"] for m in movies) == 1 and sum(m["added_at"] == newest["added_at"] for m in movies) == 1
-task_json("cinema", 3, "Онлайн-кинотеатр",
-          "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум.",
+task_json("cinema", 3, {"en": "Online cinema", "ru": "Онлайн-кинотеатр"},
+          {"en": "Netflix in miniature: rows of titles, title pages, a player, a watchlist, a premium plan.",
+           "ru": "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум."},
           [top["title"], newest["title"]], cc)
 print("ok", len(products), len(hotels), len(rooms), len(movies), "top", top["title"], "newest", newest["title"])
 

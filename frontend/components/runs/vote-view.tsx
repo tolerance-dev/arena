@@ -1,6 +1,5 @@
 'use client'
 
-import { plural } from '@/lib/format'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Equal, ExternalLink, Maximize2 } from 'lucide-react'
@@ -12,6 +11,7 @@ import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { PillTabs } from '@/components/ui/pill-tabs'
 import { api, post } from '@/lib/api'
 import { errorText } from '@/lib/errors'
+import { useT } from '@/lib/i18n-client'
 import type { Contender, Pair, Reveal, TaskSummary, Winner } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
@@ -37,6 +37,7 @@ function readPending(): Pending | null {
 // The blind pairwise vote: two agents' apps at one task, names hidden until the pick is in. /vote?task=<slug>
 // starts on that task. Guests see the pairs too and sign in when they pick.
 export function VoteView() {
+  const t = useT()
   const { me, loading } = useMe()
   const signIn = useSignIn()
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
@@ -57,9 +58,9 @@ export function VoteView() {
       const r = await api<{ pair: Pair | null }>(`${me ? '/my/vote' : '/vote'}${slug ? `?task=${encodeURIComponent(slug)}` : ''}`)
       setPair(r.pair)
     } catch (e) {
-      setPair(null); setErr(errorText(e))
+      setPair(null); setErr(errorText(e, t))
     }
-  }, [me])
+  }, [me, t])
 
   // Back from sign-in with a pick: send it on the same pair; if that fails (expired, own agent), go on to a new one.
   const sendPending = useCallback(async (p: Pending, slug: string) => {
@@ -68,11 +69,11 @@ export function VoteView() {
       setPicked({ winner: p.winner, reveal: await post<Reveal>('/my/votes', { pair: p.pair.id, winner: p.winner }) })
     } catch (e) {
       await load(slug)
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     } finally {
       setBusy(false)
     }
-  }, [load])
+  }, [load, t])
 
   useEffect(() => {
     if (loading || task == null) return
@@ -97,11 +98,11 @@ export function VoteView() {
     try {
       setPicked({ winner, reveal: await post<Reveal>('/my/votes', { pair: pair.id, winner }) })
     } catch (e) {
-      setErr(errorText(e))
+      setErr(errorText(e, t))
     } finally {
       setBusy(false)
     }
-  }, [pair, picked, busy, me, signIn])
+  }, [pair, picked, busy, me, signIn, t])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -130,11 +131,11 @@ export function VoteView() {
 
   return (
     <div>
-      <PageHeader title="Какое приложение лучше?">Два агента сделали одно и то же задание. Их имена скрыты до голоса, а каждый голос двигает Elo агентов в этом задании.</PageHeader>
+      <PageHeader title={t('Какое приложение лучше?', 'Which app is better?')}>{t('Два агента сделали одно и то же задание. Их имена скрыты до голоса, а каждый голос двигает Elo агентов в этом задании.', 'Two agents did the same task. Their names are hidden until you vote, and every vote moves the agents’ Elo in this task.')}</PageHeader>
       {tasks.data && task != null && (
         <PillTabs className="mt-6" value={task} onChange={choose} options={[
-          { value: '', label: 'Любое задание' },
-          ...tasks.data.items.map((x) => ({ value: x.slug, label: x.title })),
+          { value: '', label: t('Любое задание', 'Any task') },
+          ...tasks.data.items.map((x) => ({ value: x.slug, label: t.text(x.title) })),
         ]} />
       )}
 
@@ -142,10 +143,10 @@ export function VoteView() {
         {pair === undefined ? (
           <div className="grid gap-6 sm:grid-cols-2"><Skeleton className="aspect-[16/10]" /><Skeleton className="aspect-[16/10]" /></div>
         ) : pair === null ? (
-          err ? <p className="text-body text-destructive">{err}</p> : <EmptyState>Здесь пока нечего сравнивать. Для пары нужны готовые приложения двух агентов, не ваших, — или вы уже проголосовали за все пары.</EmptyState>
+          err ? <p className="text-body text-destructive">{err}</p> : <EmptyState>{t('Здесь пока нечего сравнивать. Для пары нужны готовые приложения двух агентов, не ваших, — или вы уже проголосовали за все пары.', 'Nothing to compare here yet. A pair needs finished apps from two agents that aren’t yours — or you’ve already voted on every pair.')}</EmptyState>
         ) : (
           <>
-            {!task && <p className="mb-3 text-title font-semibold"><Link href={`/t/${pair.task}`} className="hover:text-primary">{pair.task_title}</Link></p>}
+            {!task && <p className="mb-3 text-title font-semibold"><Link href={`/t/${pair.task}`} className="hover:text-primary">{t.text(pair.task_title)}</Link></p>}
             <div className="grid gap-6 sm:grid-cols-2">
               <Side c={pair.a} side="A" agent={picked?.reveal.a} won={picked ? picked.winner === 'a' : undefined} />
               <Side c={pair.b} side="B" agent={picked?.reveal.b} won={picked ? picked.winner === 'b' : undefined} />
@@ -153,20 +154,20 @@ export function VoteView() {
             {/* The picks stay in reach at the bottom of the screen while the screenshots scroll. */}
             <div className="sticky bottom-4 z-10 mx-auto mt-6 flex w-fit flex-wrap items-center justify-center gap-2 rounded-full bg-background/90 p-1.5 shadow-[0_6px_16px_-6px_rgba(16,24,40,0.3)] backdrop-blur sm:gap-3">
               {picked ? (
-                <Button size="lg" onClick={() => task != null && void load(task)}>Следующая пара <ArrowRight /></Button>
+                <Button size="lg" onClick={() => task != null && void load(task)}>{t('Следующая пара', 'Next pair')} <ArrowRight /></Button>
               ) : (
                 <>
-                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('a')}><ArrowLeft /> A лучше</Button>
-                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('tie')}><Equal /> Ничья</Button>
-                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('b')}>B лучше <ArrowRight /></Button>
+                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('a')}><ArrowLeft /> {t('A лучше', 'A is better')}</Button>
+                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('tie')}><Equal /> {t('Ничья', 'Tie')}</Button>
+                  <Button size="lg" variant="outline" disabled={busy} onClick={() => void vote('b')}>{t('B лучше', 'B is better')} <ArrowRight /></Button>
                 </>
               )}
             </div>
             {err && <p className="mt-3 text-center text-body text-destructive">{err}</p>}
-            {!me && !picked && <p className="mt-3 text-center text-body text-muted-foreground">Голос засчитается после входа: один человек — один голос за пару. Имена агентов откроются сразу.</p>}
+            {!me && !picked && <p className="mt-3 text-center text-body text-muted-foreground">{t('Голос засчитается после входа: один человек — один голос за пару. Имена агентов откроются сразу.', 'Your vote counts after you sign in: one person, one vote per pair. The agents’ names show right away.')}</p>}
             <p className="mt-4 text-center text-body text-muted-foreground">
-              {(picked ? pair.left - 1 : pair.left) > 0 && <>{plural(picked ? pair.left - 1 : pair.left, 'В этом задании осталась {n} пара', 'В этом задании осталось {n} пары', 'В этом задании осталось {n} пар')}<span className="max-sm:hidden"> · </span></>}
-              <span className="max-sm:hidden">Клавиши: ← A, ↓ ничья, → B, Enter — дальше.</span>
+              {(picked ? pair.left - 1 : pair.left) > 0 && <>{t.plural(picked ? pair.left - 1 : pair.left, ['В этом задании осталась {n} пара', 'В этом задании осталось {n} пары', 'В этом задании осталось {n} пар'], ['{n} pair left in this task', '{n} pairs left in this task'])}<span className="max-sm:hidden"> · </span></>}
+              <span className="max-sm:hidden">{t('Клавиши: ← A, ↓ ничья, → B, Enter — дальше.', 'Keys: ← A, ↓ tie, → B, Enter — next.')}</span>
             </p>
           </>
         )}
@@ -177,37 +178,38 @@ export function VoteView() {
 
 // One app of the pair: the desktop screenshot leads, the phone one beside it; after the vote, whose it was.
 function Side({ c, side, agent, won }: { c: Contender; side: 'A' | 'B'; agent?: Reveal['a']; won?: boolean }) {
+  const t = useT()
   const shot = `/api/v1/vote/${c.alias}/shot.jpg`
   const mobile = `/api/v1/vote/${c.alias}/shot-mobile.jpg`
   return (
     <article className={cn('rounded-xl border-2 p-3 transition-colors duration-300', won ? 'border-primary' : 'border-border')}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-title font-semibold">{side === 'A' ? 'Приложение A' : 'Приложение B'}</h2>
-        {won && <span className="rounded-full bg-primary px-2.5 text-meta font-semibold leading-6 text-primary-foreground">Ваш выбор</span>}
+        <h2 className="text-title font-semibold">{t(`Приложение ${side}`, `App ${side}`)}</h2>
+        {won && <span className="rounded-full bg-primary px-2.5 text-meta font-semibold leading-6 text-primary-foreground">{t('Ваш выбор', 'Your pick')}</span>}
       </div>
       <div className="mt-3 flex gap-3">
         {c.has_shot ? (
           <a href={shot} target="_blank" rel="noreferrer" className="block min-w-0 flex-1 overflow-hidden rounded-lg border border-border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={shot} alt={`Скриншот приложения ${side}`} className="aspect-[16/10] w-full bg-muted object-cover object-top" />
+            <img src={shot} alt={t(`Скриншот приложения ${side}`, `Screenshot of app ${side}`)} className="aspect-[16/10] w-full bg-muted object-cover object-top" />
           </a>
-        ) : <div className="flex aspect-[16/10] flex-1 items-center justify-center rounded-lg bg-muted text-ui text-faint">Нет скриншота</div>}
+        ) : <div className="flex aspect-[16/10] flex-1 items-center justify-center rounded-lg bg-muted text-ui text-faint">{t('Нет скриншота', 'No screenshot')}</div>}
         {c.has_shot_mobile && (
           <a href={mobile} target="_blank" rel="noreferrer" className="block shrink-0 overflow-hidden rounded-lg border border-border max-sm:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={mobile} alt={`Скриншот приложения ${side} на телефоне`} className="aspect-[9/19] h-full max-h-56 w-auto bg-muted object-cover object-top" />
+            <img src={mobile} alt={t(`Скриншот приложения ${side} на телефоне`, `Screenshot of app ${side} on a phone`)} className="aspect-[9/19] h-full max-h-56 w-auto bg-muted object-cover object-top" />
           </a>
         )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {c.preview_url && (
           <Button variant="outline" size="sm" render={<a href={c.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
-            <ExternalLink /> Открыть вживую
+            <ExternalLink /> {t('Открыть вживую', 'Open live')}
           </Button>
         )}
         {c.has_shot && (
           <Button variant="ghost" size="sm" render={<a href={shot} target="_blank" rel="noreferrer" />} nativeButton={false}>
-            <Maximize2 /> Скриншот целиком
+            <Maximize2 /> {t('Скриншот целиком', 'Full screenshot')}
           </Button>
         )}
       </div>
@@ -216,7 +218,7 @@ function Side({ c, side, agent, won }: { c: Contender; side: 'A' | 'B'; agent?: 
           <AgentAvatar name={agent.name} size="sm" />
           <span className="min-w-0">
             <span className="block truncate font-semibold">{agent.name}</span>
-            <span className="block truncate text-body text-muted-foreground">{`автор ${agent.owner}`}</span>
+            <span className="block truncate text-body text-muted-foreground">{t(`автор ${agent.owner}`, `by ${agent.owner}`)}</span>
           </span>
         </Link>
       )}
