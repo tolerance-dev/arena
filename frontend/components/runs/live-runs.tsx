@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { compact, duration, usedTokens } from '@/lib/format'
+import { compact, duration, usd, usedTokens } from '@/lib/format'
 import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, Ago, exitLabel, isActive, queueLine, StatusPill, taskTitle, type RT } from './bits'
@@ -102,7 +102,7 @@ function LiveCard({ run, now, t }: { run: Run; now: number; t: RT }) {
       </div>
       <div className="mt-1.5 flex flex-wrap justify-between gap-x-4 text-meta text-muted-foreground tnum">
         <span>{run.status === 'queued' ? (queueLine(run, t) ?? '—') : t('elapsedOf', { t: duration(secs), limit: duration(run.time_limit_s) })}</span>
-        <span>{t('tokensReqs', { tokens: compact(used), n: run.tokens.requests })}</span>
+        <span>{t('tokensReqs', { tokens: compact(used), n: run.tokens.requests })}{run.cost_usd != null && used > 0 && <> · <b className="font-semibold text-foreground">{usd(run.cost_usd)}</b></>}</span>
       </div>
       {step && run.status !== 'queued' && (
         <p className="mt-3 truncate rounded-md bg-terminal px-2.5 py-1.5 font-mono text-meta text-terminal-foreground" title={step}>{step}</p>
@@ -123,7 +123,7 @@ function FinishedRow({ run, t }: { run: Run; t: RT }) {
           {o.text}
         </span>
         <span className="block truncate text-meta text-faint" title={step || undefined}>
-          {step || <>{duration(run.agent_seconds)} · {t('tokensShort', { tokens: compact(usedTokens(run.tokens)) })} · <Ago iso={run.created_at} /></>}
+          {step || <>{duration(run.agent_seconds)} · {t('tokensShort', { tokens: compact(usedTokens(run.tokens)) })}{run.cost_usd != null && <> · {usd(run.cost_usd)}</>} · <Ago iso={run.created_at} /></>}
         </span>
       </span>
       <ChevronRight className="size-4 shrink-0 text-faint" />

@@ -57,7 +57,10 @@ type Agent struct {
 	// Rate is how fast runs on this model spend tokens, per minute of agent work, from finished runs that called it
 	// (every agent's, any task): the site multiplies it by a time limit and the price for an estimate. With no run on
 	// this model yet it is every model's (AllModels). nil when nothing has run.
-	Rate      *Rate     `json:"rate,omitempty"`
+	Rate *Rate `json:"rate,omitempty"`
+	// SpentUSD is this agent's runs so far at list price (nil when the model is unknown; on a subscription it is the
+	// list-price equivalent, not money).
+	SpentUSD  *float64  `json:"spent_usd,omitempty"`
 	KeyHint   string    `json:"key_hint,omitempty"`
 	Files     int       `json:"files"`
 	Owner     string    `json:"owner"`
@@ -254,8 +257,11 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
 	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
-	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw
+	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw, o.tin, o.tout, o.tcr, o.tcw
 	FROM agents a JOIN users u ON u.id = a.owner_id
+	LEFT JOIN LATERAL (SELECT coalesce(sum(r.tokens_in), 0) AS tin, coalesce(sum(r.tokens_out), 0) AS tout,
+			coalesce(sum(r.tokens_cache_read), 0) AS tcr, coalesce(sum(r.tokens_cache_write), 0) AS tcw
+		FROM runs r WHERE r.agent_id = a.id) o ON true
 	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true
 	LEFT JOIN LATERAL (` + rateSums + `) g ON true`
 
@@ -277,8 +283,9 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var a Agent
 	var mn, gn int
 	var ms, mi, mo, mr, mw, gs, gi, gout, gr, gw *float64
+	var oi, oo, ocr, ocw int64
 	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
-		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw)
+		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw, &oi, &oo, &ocr, &ocw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
@@ -287,6 +294,7 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 		a.ModelName = m.Name
 		p := m.Price
 		a.Price = &p
+		a.SpentUSD = pricing.Cost(a.Model, oi, oo, ocr, ocw)
 		if a.Rate = rate(mn, ms, mi, mo, mr, mw); a.Rate == nil {
 			if a.Rate = rate(gn, gs, gi, gout, gr, gw); a.Rate != nil {
 				a.Rate.AllModels = true

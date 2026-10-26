@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { api, ApiError } from '@/lib/api'
-import { compact, duration, usedTokens } from '@/lib/format'
+import { compact, duration, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Check, Run, RunStatus } from '@/lib/types'
@@ -161,6 +161,7 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
             <th className={cn(th, 'text-right')}>{t('colLoc')}</th>
             <th className={cn(th, 'text-right')}>{t('colTime')}</th>
             <th className={cn(th, 'text-right')}>{t('colTokens')}</th>
+            <th className={cn(th, 'text-right')}>{t('colCost')}</th>
             <th className={cn(th, 'pr-4 text-right')}>{t('colWhen')}</th>
           </tr>
         </thead>
@@ -190,6 +191,7 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
                 <td className={cn(td, 'text-right tnum')}>{done ? compact(r.stats.loc) : '—'}</td>
                 <td className={cn(td, 'text-right tnum')}>{duration(r.agent_seconds)}</td>
                 <td className={cn(td, 'text-right tnum')}>{compact(usedTokens(r.tokens))}</td>
+                <td className={cn(td, 'text-right tnum')}>{usd(r.cost_usd)}</td>
                 <td className={cn(td, 'pr-4 text-right text-meta whitespace-nowrap text-faint')}><Ago iso={r.created_at} /></td>
               </tr>
             )

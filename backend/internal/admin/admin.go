@@ -87,6 +87,7 @@ type User struct {
 	Runs30d   int        `json:"runs_30d"`
 	OpenRuns  int        `json:"open_runs"`
 	Used30d   int64      `json:"used_30d"`
+	Cost30d   float64    `json:"cost_30d"` // dollars at list prices on API keys (subscriptions and uploaded agents left out)
 	LastRunAt *time.Time `json:"last_run_at"`
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -169,7 +170,11 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 			}
 			o.Users = append(o.Users, u)
 		}
-		return rows.Err()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		rows.Close()
+		return priceUsers(ctx, tx, o.Users)
 	})
 	return o, err
 }
@@ -198,6 +203,34 @@ func priceSpend(ctx context.Context, tx pgx.Tx, since string, sp *Spend) error {
 			sp.CostUSD += *c
 		} else if in+out+cr+cw > 0 {
 			sp.Unpriced += n
+		}
+	}
+	return rows.Err()
+}
+
+// priceUsers fills each user's last-30-days spending in dollars.
+func priceUsers(ctx context.Context, tx pgx.Tx, users []User) error {
+	at := map[string]int{}
+	for i, u := range users {
+		at[u.ID] = i
+	}
+	rows, err := tx.Query(ctx, `SELECT a.owner_id, a.model, a.provider, coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
+			coalesce(sum(r.tokens_cache_read), 0), coalesce(sum(r.tokens_cache_write), 0)
+		FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.created_at > now() - interval '30 days'
+		GROUP BY a.owner_id, a.model, a.provider`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var owner, model, provider string
+		var in, out, cr, cw int64
+		if err := rows.Scan(&owner, &model, &provider, &in, &out, &cr, &cw); err != nil {
+			return err
+		}
+		i, ok := at[owner]
+		if c := pricing.Cost(model, in, out, cr, cw); ok && c != nil && !pricing.Subscription(provider) {
+			users[i].Cost30d += *c
 		}
 	}
 	return rows.Err()

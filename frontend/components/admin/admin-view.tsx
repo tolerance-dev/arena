@@ -190,6 +190,7 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
               <th className="px-3 py-2 text-right font-medium">{t('colAgents')}</th>
               <th className="px-3 py-2 text-right font-medium">{t('colRuns')}</th>
               <th className="px-3 py-2 text-right font-medium">{t('colTokens')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('colCost')}</th>
               <th className="px-3 py-2 font-medium">{t('colLast')}</th>
               <th className="px-4 py-2 text-right font-medium">{t('colAccess')}</th>
             </tr>
@@ -218,6 +219,7 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                 <td className="px-3 py-2.5 text-right tnum">
                   {compact(u.used_30d)}
                 </td>
+                <td className="px-3 py-2.5 text-right tnum">{u.cost_30d ? usd(u.cost_30d) : '—'}</td>
                 <td className="px-3 py-2.5 text-ui text-muted-foreground">{u.last_run_at ? <Ago iso={u.last_run_at} /> : t('never')}</td>
                 <td className="px-4 py-2.5 text-right">
                   {u.role !== 'admin' && (

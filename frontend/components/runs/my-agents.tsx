@@ -254,6 +254,7 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
             <div className="truncate font-semibold">{agent.name}</div>
             <div className="truncate text-meta text-muted-foreground">
               {providerLabel(agent.provider)}{agent.key_hint && <> · <span className="font-mono">{agent.key_hint}</span></>} · {t.plural('runs', agent.runs)}
+              {agent.spent_usd != null && agent.runs > 0 && <> · {t(agent.provider.endsWith('-sub') ? 'spentSub' : 'spent', { usd: usd(agent.spent_usd) })}</>}
             </div>
           </div>
         </div>

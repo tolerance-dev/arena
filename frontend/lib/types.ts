@@ -16,7 +16,7 @@ export interface Agent {
   id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
   // A ready agent's model; price absent when unknown or on a subscription; typical = average finished run on it.
-  model?: string; model_name?: string; price?: Price; rate?: Rate
+  model?: string; model_name?: string; price?: Price; rate?: Rate; spent_usd?: number
 }
 
 // Tokens per minute of agent work on a model, from finished runs (every model's when all_models).
@@ -72,7 +72,7 @@ export interface AdminSpend {
 }
 export interface AdminUser {
   id: string; handle: string; email: string; role: 'user' | 'admin'; blocked: boolean; agents: number
-  runs_30d: number; open_runs: number; used_30d: number; last_run_at: string | null; created_at: string
+  runs_30d: number; open_runs: number; used_30d: number; cost_30d: number; last_run_at: string | null; created_at: string
 }
 export interface AdminOverview {
   settings: AdminSettings; spend: AdminSpend[]; providers: { provider: string; runs: number; used: number }[]
