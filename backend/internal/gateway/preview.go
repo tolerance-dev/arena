@@ -36,8 +36,9 @@ type Previews struct {
 	max       int    // previews running (or starting) at once
 	log       *slog.Logger
 
-	mu      sync.Mutex
-	running map[string]*preview
+	mu       sync.Mutex
+	running  map[string]*preview
+	stopping map[string]chan struct{} // label → closed once its old container and network are gone
 }
 
 type preview struct {
@@ -70,11 +71,35 @@ func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, limit int, log *
 		anc = site
 	}
 	return &Previews{pool: pool, domain: strings.ToLower(domain), prefix: strings.ToLower(prefix), ancestors: anc, site: site,
-		max: max(1, limit), log: log.With("component", "preview"), running: map[string]*preview{}}
+		max: max(1, limit), log: log.With("component", "preview"), running: map[string]*preview{}, stopping: map[string]chan struct{}{}}
 }
 
 // containerName is the preview's container and its network.
 func containerName(label string) string { return "arena-preview-" + label }
+
+// stop takes pv out of the running set and removes its container (p.mu held). Until that is done the label stays in
+// p.stopping, so a new start of the same label waits instead of having its fresh container removed.
+func (p *Previews) stop(pv *preview) {
+	if p.running[pv.label] != pv {
+		return
+	}
+	delete(p.running, pv.label)
+	done := make(chan struct{})
+	prev := p.stopping[pv.label]
+	p.stopping[pv.label] = done
+	go func() {
+		if prev != nil {
+			<-prev
+		}
+		drop(pv.label)
+		close(done)
+		p.mu.Lock()
+		if p.stopping[pv.label] == done {
+			delete(p.stopping, pv.label)
+		}
+		p.mu.Unlock()
+	}()
+}
 
 // drop removes a preview's container and network, best effort.
 func drop(label string) {
@@ -97,10 +122,9 @@ func (p *Previews) Run(ctx context.Context) {
 		case <-t.C:
 		}
 		p.mu.Lock()
-		for label, pv := range p.running {
+		for _, pv := range p.running {
 			if !pv.starting && time.Since(pv.lastUsed) > previewIdle {
-				delete(p.running, label)
-				go drop(label)
+				p.stop(pv)
 			}
 		}
 		p.mu.Unlock()
@@ -128,7 +152,7 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unknown preview", http.StatusNotFound)
 		return
 	}
-	pv, err := p.ensure(r.Context(), label)
+	pv, st, err := p.ensure(r.Context(), label)
 	if errors.Is(err, errBusy) {
 		page(w, http.StatusServiceUnavailable, "All previews are busy", "Other people are watching the apps that run right now. "+
 			"This page tries again by itself; meanwhile, here is how this app looked when it was checked.", 15, p.busyExtra(label))
@@ -138,11 +162,11 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusNotFound, "Preview unavailable", err.Error(), 0, "")
 		return
 	}
-	if pv.failed != "" {
-		page(w, http.StatusBadGateway, "The app did not start", pv.failed, 0, "")
+	if st.failed != "" {
+		page(w, http.StatusBadGateway, "The app did not start", st.failed, 0, "")
 		return
 	}
-	if !pv.ready {
+	if !st.ready {
 		page(w, http.StatusServiceUnavailable, "Starting the app…", "The agent's app is booting from its snapshot. This page refreshes by itself.", 2, "")
 		return
 	}
@@ -161,8 +185,11 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			if r.Context().Err() != nil {
+				return // the viewer went away mid-request: the app is fine
+			}
 			p.mu.Lock()
-			delete(p.running, label)
+			p.stop(pv)
 			p.mu.Unlock()
 			page(w, http.StatusBadGateway, "The app stopped", "It will be started again on the next request.", 2, "")
 		},
@@ -170,13 +197,20 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
-// ensure returns the preview for label, starting its container when needed.
-func (p *Previews) ensure(ctx context.Context, label string) (*preview, error) {
+// state is a copy of a preview's progress, taken under p.mu.
+type state struct {
+	ready  bool
+	failed string
+}
+
+// ensure returns the preview for label and its state, starting its container when needed.
+func (p *Previews) ensure(ctx context.Context, label string) (*preview, state, error) {
 	p.mu.Lock()
 	if pv, ok := p.running[label]; ok {
 		pv.lastUsed = time.Now()
+		st := state{pv.ready, pv.failed}
 		p.mu.Unlock()
-		return pv, nil
+		return pv, st, nil
 	}
 	p.mu.Unlock()
 
@@ -186,32 +220,43 @@ func (p *Previews) ensure(ctx context.Context, label string) (*preview, error) {
 		return tx.QueryRow(ctx, `SELECT status = 'done' AND app_started AND image IS NOT NULL FROM runs WHERE id = $1`, runID).Scan(&ok)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New("no such run")
+		return nil, state{}, errors.New("no such run")
 	}
 	if err != nil {
-		return nil, errors.New("database unavailable")
+		return nil, state{}, errors.New("database unavailable")
 	}
 	if !ok {
-		return nil, errors.New("this run has no app to preview")
+		return nil, state{}, errors.New("this run has no app to preview")
 	}
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if pv, ok := p.running[label]; ok {
-		return pv, nil
+		pv.lastUsed = time.Now()
+		return pv, state{pv.ready, pv.failed}, nil
 	}
-	if len(p.running) >= p.max && !p.makeRoom() {
-		return nil, errBusy
+	// Previews still being removed hold their memory too. Freeing a slot for the newcomer means waiting for that
+	// container to go before starting.
+	var wait []chan struct{}
+	if len(p.running)+len(p.stopping) >= p.max {
+		victim := p.makeRoom()
+		if victim == "" {
+			return nil, state{}, errBusy
+		}
+		wait = append(wait, p.stopping[victim])
+	}
+	if ch := p.stopping[label]; ch != nil {
+		wait = append(wait, ch)
 	}
 	pv := &preview{label: label, lastUsed: time.Now(), starting: true}
 	p.running[label] = pv
-	go p.start(pv, runs.ImageFor(runID))
-	return pv, nil
+	go p.start(pv, runs.ImageFor(runID), wait)
+	return pv, state{}, nil
 }
 
 // makeRoom frees one slot (p.mu held): a preview that failed to start, else the least recently used one nobody has
-// watched for previewInUse. Starting previews keep their slot. It reports whether a slot was freed.
-func (p *Previews) makeRoom() bool {
+// watched for previewInUse. Starting previews keep their slot. It returns the stopped label, "" when none could go.
+func (p *Previews) makeRoom() string {
 	var failed, idle *preview
 	for _, pv := range p.running {
 		switch {
@@ -227,11 +272,10 @@ func (p *Previews) makeRoom() bool {
 		victim = idle
 	}
 	if victim == nil {
-		return false
+		return ""
 	}
-	delete(p.running, victim.label)
-	go drop(victim.label)
-	return true
+	p.stop(victim)
+	return victim.label
 }
 
 // busyExtra is the busy page's screenshot of the run and a link to its page (HTML; label is checked hex).
@@ -244,7 +288,10 @@ func (p *Previews) busyExtra(label string) string {
 		`<p><a href="` + run + `" target="_top">Open the run page</a></p>`
 }
 
-func (p *Previews) start(pv *preview, image string) {
+func (p *Previews) start(pv *preview, image string, wait []chan struct{}) {
+	for _, ch := range wait {
+		<-ch
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), previewStart+30*time.Second)
 	defer cancel()
 	set := func(ready bool, failed string) {
