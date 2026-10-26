@@ -164,7 +164,8 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
             <Input id="api_key" name="api_key" type="password" required autoComplete="off" placeholder="sk-…" />
           )}
           <p className="text-xs text-muted-foreground">
-            {providerValue === 'claude-sub' ? t('keyHintClaudeSub') : providerValue === 'chatgpt-sub' ? t('keyHintChatgptSub') : t('agentKeyHint')}
+            {providerValue === 'claude-sub' ? t('keyHintClaudeSub') : providerValue === 'chatgpt-sub' ? t('keyHintChatgptSub') : t('agentKeyHint')}{' '}
+            <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">{t('keyPrivacyLink')}</Link>
           </p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
