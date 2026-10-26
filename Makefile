@@ -1,4 +1,4 @@
-.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-worker run-web images seed test test-fast
+.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-worker run-web images seed snapshot-save snapshot-load test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -56,6 +56,32 @@ db: .env docker
 # internal network. Rebuilt from backend/ on every start (cached when nothing changed).
 gateway: .env docker
 	$(COMPOSE) up -d --build gateway
+
+# One database for every checkout: make snapshot-save where the real runs are (it holds real agents' keys, sealed with
+# the dev secret, so it lives outside the repo, readable by you only), make snapshot-load in another checkout (new
+# Superset workspaces load it in setup). A loaded copy doesn't spend anything by itself: its unfinished runs are
+# cancelled and the weekly tournament is off. Run snapshots (live previews, recheck) stay with the checkout that made
+# them, whose worker may remove them after a day; screenshots and sources are in the database.
+SNAPSHOT ?= $(HOME)/.local/share/tolerance/snapshot.dump
+
+snapshot-save: db
+	@mkdir -p "$(dir $(SNAPSHOT))"
+	@open=$$($(COMPOSE) exec -T postgres psql -U arena_migrate -d arena -Atc "SELECT count(*) FROM runs WHERE status IN ('queued', 'agent', 'checking')"); \
+		[ "$$open" = 0 ] || echo "  note: $$open runs are still going: a loaded copy gets them cancelled"
+	@umask 077 && $(COMPOSE) exec -T postgres pg_dump -U arena_migrate -d arena -Fc > "$(SNAPSHOT).tmp" && mv "$(SNAPSHOT).tmp" "$(SNAPSHOT)"
+	@echo "saved $(SNAPSHOT) ($$(du -h "$(SNAPSHOT)" | cut -f1))"
+
+snapshot-load: db
+	@test -s "$(SNAPSHOT)" || { echo "no snapshot at $(SNAPSHOT): run make snapshot-save in the checkout with the runs"; exit 1; }
+	$(COMPOSE) exec -T postgres psql -U arena_migrate -d postgres -v ON_ERROR_STOP=1 -q \
+		-c 'DROP DATABASE IF EXISTS arena WITH (FORCE)' -c 'CREATE DATABASE arena'
+	@$(COMPOSE) exec -T postgres psql -U arena_migrate -d arena -q -c 'CREATE ROLE arena_app' >/dev/null 2>&1 || true
+	$(COMPOSE) exec -T postgres pg_restore -U arena_migrate -d arena --no-owner --exit-on-error < "$(SNAPSHOT)"
+	$(COMPOSE) exec -T postgres psql -U arena_migrate -d arena -v ON_ERROR_STOP=1 -q \
+		-c "UPDATE runs SET status = 'infra_error', failure_reason = 'cancelled', finished_at = now(), worker_id = NULL WHERE status IN ('queued', 'agent', 'checking')" \
+		-c 'UPDATE settings SET tournament_since = NULL'
+	$(MAKE) migrate
+	@echo "loaded $(SNAPSHOT)"
 
 migrate:
 	cd backend && ARENA_MIGRATE_DATABASE_URL="postgres://arena_migrate:$(POSTGRES_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \

@@ -64,4 +64,11 @@ if [ -n "$port_base" ]; then
   echo "  web=${web_port} api=${api_port} postgres=${pg_port} gateway=${gateway_port}"
 fi
 
+# The shared local database (make snapshot-save in the checkout with the real runs), when there is one.
+snapshot="${HOME}/.local/share/tolerance/snapshot.dump"
+if [ -s "$snapshot" ]; then
+  echo "==> Loading the shared database snapshot"
+  make snapshot-load >/dev/null || echo "  Could not load $snapshot; the database starts empty (make snapshot-load to retry)" >&2
+fi
+
 echo "==> Setup complete"

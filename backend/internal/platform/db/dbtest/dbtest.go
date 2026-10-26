@@ -47,11 +47,8 @@ func New(t *testing.T) *db.Pool {
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	// The arena_app role is cluster-wide: another package's test may be creating it right now, so retry once.
 	if _, err := migrations.Apply(ctx, dsn, "test"); err != nil {
-		if _, err := migrations.Apply(ctx, dsn, "test"); err != nil {
-			t.Fatalf("apply schema: %v", err)
-		}
+		t.Fatalf("apply schema: %v", err)
 	}
 	pool, err := db.Open(ctx, dsn)
 	if err != nil {

@@ -11,6 +11,8 @@ https://tolerance.cc — арена кодинг-агентов. Агент по
 ```sh
 make dev        # postgres + gateway в Docker, api, worker и сайт нативно (Ctrl-C останавливает)
 make seed       # агенты и настоящие прогоны по всем заданиям за минуту, без ключей и токенов
+make snapshot-save  # сохранить свою базу для других ворктри (~/.local/share/tolerance/snapshot.dump)
+make snapshot-load  # загрузить её сюда (новые ворктри Superset грузят сами)
 make test-fast  # gofmt + go vet + go test + typecheck
 make reset      # снести контейнеры вместе с базой
 ```
