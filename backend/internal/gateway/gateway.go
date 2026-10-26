@@ -393,15 +393,16 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 // asking for gzip/br/zstd would build unmetered. Go's transport then negotiates gzip itself and hands back plain bytes.
 func plainResponses(h http.Header) { h.Del("Accept-Encoding") }
 
-// meterResponse reads usage out of a successful response as it streams through, and refuses one that still comes
-// back encoded (nothing could be counted from it).
-// keyRejected says the provider refused the key itself: 401 everywhere, and Gemini's 400 API_KEY_INVALID. A
-// Gemini 400 body is read (it is small) and put back for the agent.
+// keyRejected says the provider refused the key itself, so no request can get through: 401 everywhere, 402 (out of
+// prepaid credit), Gemini's API_KEY_* reasons (invalid, or the key not allowed this API, IP or referrer) and
+// SERVICE_DISABLED, OpenAI's insufficient_quota (a 429 that isn't a rate limit) and Anthropic's "credit balance is
+// too low". An error body is read (it is small) and put back for the agent.
 func keyRejected(protocol string, resp *http.Response) bool {
-	if resp.StatusCode == http.StatusUnauthorized {
+	switch resp.StatusCode {
+	case http.StatusUnauthorized, http.StatusPaymentRequired:
 		return true
-	}
-	if protocol != "gemini" || resp.StatusCode != http.StatusBadRequest {
+	case http.StatusBadRequest, http.StatusForbidden, http.StatusTooManyRequests:
+	default:
 		return false
 	}
 	head, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
@@ -409,9 +410,22 @@ func keyRejected(protocol string, resp *http.Response) bool {
 		io.Reader
 		io.Closer
 	}{io.MultiReader(bytes.NewReader(head), resp.Body), resp.Body}
-	return err == nil && bytes.Contains(head, []byte("API_KEY_INVALID"))
+	if err != nil {
+		return false
+	}
+	switch {
+	case protocol == "gemini" && resp.StatusCode != http.StatusTooManyRequests:
+		return bytes.Contains(head, []byte(`"API_KEY_`)) || bytes.Contains(head, []byte(`"SERVICE_DISABLED"`))
+	case protocol == "openai" && resp.StatusCode == http.StatusTooManyRequests:
+		return bytes.Contains(head, []byte("insufficient_quota"))
+	case protocol == "anthropic" && resp.StatusCode == http.StatusBadRequest:
+		return bytes.Contains(head, []byte("credit balance is too low"))
+	}
+	return false
 }
 
+// meterResponse reads usage out of a successful response as it streams through, and refuses one that still comes
+// back encoded (nothing could be counted from it).
 func meterResponse(meter *usage) func(*http.Response) error {
 	return func(resp *http.Response) error {
 		meter.mu.Lock()
