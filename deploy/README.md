@@ -33,10 +33,13 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 - **Sandbox hardening** (off until done by hand on the host; `ARENA_SANDBOX_RUNTIME`, `ARENA_SANDBOX_DISK` in
   `/opt/tolerance/.env`, read by api and gateway, `internal/sandbox`). Pause the queue in /admin first: restarting
   Docker kills running containers.
-  - gVisor: install runsc from gVisor's apt repo (gvisor.dev/docs/user_guide/install), `sudo runsc install &&
-    sudo systemctl restart docker`, check `docker run --rm --runtime=runsc --network none arena-runtime:1 node -v`,
-    then set `ARENA_SANDBOX_RUNTIME=runsc` and deploy. Afterwards run the demo agent on each task and check it still
-    gets every check (Chromium screenshots included); unset the variable to go back to runc.
+  - gVisor: **on since 2026-10-26** (runsc release-20261019.0 from gVisor's apt repo, `ARENA_SANDBOX_RUNTIME=runsc`).
+    Installed with `runsc install --runtime runsc -- --overlay2=none && systemctl reload docker` (reload, not
+    restart: `live-restore` is on anyway). `--overlay2=none` is required: gVisor's default keeps a container's file
+    changes in sandbox memory, so `docker commit` (the snapshot) and `docker cp` (sources, /verify/out) see nothing and
+    every run ends in infra_error. Names on a run's network don't resolve under gVisor (no embedded DNS), so
+    `sandbox.Create` writes them into /etc/hosts. Checked: the demo agent on hotels → 37/37 with both screenshots, and
+    the live preview, all under runsc. Back to runc: unset the variable and deploy.
   - Disk cap per container (`ARENA_SANDBOX_DISK=20G` → `--storage-opt size=`): only works when Docker's data dir is
     overlay2 on XFS mounted with `pquota`; on ext4 Docker refuses to create the containers, so every run would fail.
     Without it a single file is capped at 500 MB (`--ulimit fsize`).
