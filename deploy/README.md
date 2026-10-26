@@ -24,23 +24,10 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   A failed copy warns and doesn't fail the backup.
 - `compose.yml` and `Caddyfile` are the server's source of truth. The Caddyfile also serves `mentor.nualimov.dev`
   (its stack is `/root/nualimov.dev`): keep that block.
-- **DNS is Bunny** (since 2026-10-26; registrar Namecheap, NS `kiki.bunny.net`/`coco.bunny.net`). Russian ISPs
-  choke connections to foreign hosting, Cloudflare's proxy included, after ~16 KB, so the site needed a VPN in
-  Russia. tolerance.cc, www and `*` are script records: the DNS edge script `tolerance-geo` (`bunny-geo.js`; Bunny → Edge Scripting,
-  zone 969831) answers Russia with the relay below and everyone else, VPN users included, with this host. Some VPNs
-  can't reach Selectel at all, which is why the relay isn't everyone's address. Caddy (`tolerance-caddy`,
-  `caddy/Dockerfile` = caddy + the Bunny DNS module) gets Let's Encrypt certificates for tolerance.cc, www and the
-  `*.tolerance.cc` wildcard through DNS-01 with `BUNNY_API_KEY` in `/opt/tolerance/.env`; `server.sh` refuses to
-  deploy without it. No CDN, no DDoS shield. mentor.nualimov.dev (Cloudflare zone nualimov.dev, not proxied) is a
-  CNAME to `edge.tolerance.cc`, a script record like the others, so it gets the same split.
-- **Relay in Russia**: `139.100.217.119`, a Selectel VM (project "My First Project", ru-1b, SL1.1-1024 + 8 GB basic
-  disk, `tolerance-relay`; SSH as root with the owner's key, from an address Selectel lets in). Selectel to UpCloud
-  is a clean datacenter link. HAProxy there passes TCP 443 to this host with PROXY protocol v2 (Caddy trusts the
-  header only from that IP, see the Caddyfile) and TCP 80 as is. TLS stays here; the relay holds no certificate or
-  secret. Without it: make the script answer this host's address for everyone. The Selectel account is prepaid in
-  rubles: keep the balance up or Russia loses the site.
-- **Live previews** are `https://p-<hex>.tolerance.cc`: the `*` script record above and the wildcard certificate.
-- `/opt/tolerance/.env` holds the OAuth keys.
+- **Domains, DNS, the relay in Russia, what's left on Cloudflare**: see [Domains](#domains-bunny-the-relay-cloudflare)
+  below.
+- **Live previews** are `https://p-<hex>.tolerance.cc`: the `*` script record and the wildcard certificate (below).
+- `/opt/tolerance/.env` holds the OAuth keys and `BUNNY_API_KEY`.
 - **Hidden checks**: `/opt/tolerance/tasks-hidden/<task>/checks.json` (mounted into the worker and the api as
   `ARENA_TASKS_HIDDEN_DIR`, read at start). They run after the public checks on other records of the same data
   (picked at random when generated) and count in the score; the site shows them only as `hidden check N`, with no
@@ -76,3 +63,50 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   `{service="api"} | json | status >= 500`, `{service=~"api|worker|gateway", level="ERROR"}`,
   `{service="api"} | json | msg="alert"`, `sum by (status) (count_over_time({service="api"} | json [5m]))`.
   Uptime: UptimeRobot watches https://tolerance.cc.
+
+## Domains: Bunny, the relay, Cloudflare
+
+Why it looks like this: Russian ISPs choke connections to foreign hosting after ~16 KB, Cloudflare's proxy included,
+so the site needed a VPN in Russia. Until 2026-10-26 everything went through Cloudflare (DNS + proxy, #156 dropped
+the proxy); now DNS is Bunny and Russia goes through a relay inside Russia (#184, #186, #188).
+
+```
+visitor ── DNS: tolerance.cc? ──► Bunny (kiki/coco.bunny.net, script tolerance-geo)
+                                     │ country == RU          │ everyone else (VPN users included)
+                                     ▼                        ▼
+                         139.100.217.119 (Selectel)     81.27.103.131 (UpCloud)
+                         HAProxy, TCP only ──────────────► Caddy: TLS, routing ──► web / api / gateway (previews)
+                         443 with PROXY v2, 80 as is
+```
+
+**Bunny** (bunny.net, the owner's account) is only DNS here: no CDN, no pull zone, no DDoS shield.
+- Registrar Namecheap; tolerance.cc's NS are `kiki.bunny.net` and `coco.bunny.net` (DNS zone 969831).
+- tolerance.cc, www and `*` (so `p-<hex>` previews and `edge.tolerance.cc` too) are *script records*: Bunny runs
+  the DNS edge script `tolerance-geo` (Edge Scripting, script 99095) for every query. It answers an A record from
+  the visitor's country: RU → the relay, anything else → this host. TTL 60 s, so a change reaches people in a minute.
+  `bunny-geo.js` is a read-only copy: edit the script in Bunny's dashboard (Edge Scripting → tolerance-geo), then
+  mirror it here. Why not the relay for everyone: some VPNs can't reach Selectel at all.
+- Certificates: Caddy (`tolerance-caddy` = caddy + `caddy-dns/bunny`, `caddy/Dockerfile`) gets Let's Encrypt
+  certificates for tolerance.cc, www and the `*.tolerance.cc` wildcard through DNS-01, writing TXT records into the
+  Bunny zone with `BUNNY_API_KEY` (Bunny's account API key) from `/opt/tolerance/.env`. `server.sh` refuses to
+  deploy without it. A rotated key goes into `.env` and a deploy, or certificate renewals start failing.
+- Check what Bunny answers: `dig +short tolerance.cc @kiki.bunny.net` (this host) and, as if from Russia,
+  `dig +short +subnet=95.163.0.0/24 tolerance.cc @kiki.bunny.net` (the relay).
+
+**The relay** (`139.100.217.119`, Selectel VM `tolerance-relay`: project "My First Project", ru-1b, SL1.1-1024 +
+8 GB basic disk; SSH as root with the owner's key, from an address Selectel lets in). Selectel to UpCloud is a clean
+datacenter link, so the 16 KB choke doesn't apply. HAProxy passes TCP 443 to this host with PROXY protocol v2 and
+TCP 80 as is. TLS ends here, not there: the relay holds no certificate or secret. Caddy trusts the PROXY header only
+from the relay's IP (`listener_wrappers` in the Caddyfile), so the api and logs see the real client; HTTP/3 is
+off because the relay carries TCP only. The Selectel account is prepaid in rubles: keep the balance up or Russia
+loses the site. Relay down → change the script to return `81.27.103.131` for everyone (Russia then needs a VPN
+again until it's back). A new relay IP → change it in the script, `bunny-geo.js` and the Caddyfile's `allow`.
+
+**Cloudflare** — what's left:
+- The zone **nualimov.dev** (NS `bob`/`emma.ns.cloudflare.com`) for mentor.nualimov.dev, the other site on this
+  host. It should be a CNAME to `edge.tolerance.cc`, DNS only (grey cloud), so it gets the same RU split; Caddy gets
+  its certificate by HTTP-01. With the orange cloud (proxied) it still works, but Russia needs a VPN again.
+- **R2** for the off-site backups, if `BACKUP_REMOTE` points there (see Off-site copies above).
+- The GitHub `production` secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` are leftovers from the proxy days:
+  nothing uses them now.
+- Nothing about tolerance.cc lives in Cloudflare any more: no DNS, proxy, Origin CA certificate or cache purge.
