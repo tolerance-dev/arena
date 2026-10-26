@@ -165,9 +165,9 @@ healthy() {
 
 cmd_deploy() {
   local tag=$1 reset=${2:-} prev
-  # Caddy gets the certificates through Cloudflare DNS (see the Caddyfile): without the token it can't.
-  if ! grep -q '^CLOUDFLARE_API_TOKEN=.' .env; then
-    echo "CLOUDFLARE_API_TOKEN is missing from .env (Zone.DNS edit on the zone, for Caddy's certificates; see the Caddyfile)" >&2
+  # Caddy gets the certificates through Bunny DNS (see the Caddyfile): without the key it can't.
+  if ! grep -q '^BUNNY_API_KEY=.' .env; then
+    echo "BUNNY_API_KEY is missing from .env (Bunny's account API key, for Caddy's certificates; see the Caddyfile)" >&2
     exit 1
   fi
   # The hidden checks (README.md), copied in by hand; made here so the api's bind mount isn't a root-owned dir.
