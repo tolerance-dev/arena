@@ -80,6 +80,8 @@ services:
       ARENA_GATEWAY_FAKE: ${ARENA_GATEWAY_FAKE:-false}
       ARENA_PREVIEW_DOMAIN: preview.localhost
       ARENA_PREVIEW_MAX: ${ARENA_PREVIEW_MAX:-6}
+      ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
+      ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:-http://localhost:${WEB_PORT:-3000}}
     user: "0"
     volumes:

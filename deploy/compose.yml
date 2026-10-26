@@ -65,6 +65,9 @@ services:
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
       ARENA_PREVIEW_URL: https://p-{id}.${ARENA_DOMAIN:?}
       ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-2}
+      # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
+      ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
+      ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
@@ -94,6 +97,8 @@ services:
       ARENA_PREVIEW_PREFIX: p-
       # Live previews at once, 512 MB each, next to ARENA_RUN_CONCURRENCY agents of up to 6 GB on a 16 GB host.
       ARENA_PREVIEW_MAX: ${ARENA_PREVIEW_MAX:-6}
+      ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
+      ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
