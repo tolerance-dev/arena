@@ -16,7 +16,11 @@ export interface Agent {
   id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
   // A ready agent's model; price absent when unknown or on a subscription; typical = average finished run on it.
-  model?: string; model_name?: string; price?: Price; typical_cost_usd?: number; typical_runs?: number
+  model?: string; model_name?: string; price?: Price; rate?: Rate
+}
+
+// Tokens per minute of agent work on a model, from finished runs (every model's when all_models).
+export interface Rate { in: number; out: number; cache_read: number; cache_write: number; runs: number; avg_minutes: number; all_models?: boolean
 }
 
 export type RunStatus = 'queued' | 'agent' | 'checking' | 'done' | 'infra_error'

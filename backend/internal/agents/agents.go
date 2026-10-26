@@ -54,16 +54,27 @@ type Agent struct {
 	ModelName string `json:"model_name,omitempty"`
 	// Price is the model's list price (nil when the model is unknown; on a subscription key no money is spent).
 	Price *pricing.Price `json:"price,omitempty"`
-	// TypicalCostUSD is the average finished run on this model that called it (every agent's, any task) at list
-	// price; TypicalRuns how many runs that average is over.
-	TypicalCostUSD *float64  `json:"typical_cost_usd,omitempty"`
-	TypicalRuns    int       `json:"typical_runs,omitempty"`
-	KeyHint        string    `json:"key_hint,omitempty"`
-	Files          int       `json:"files"`
-	Owner          string    `json:"owner"`
-	Runs           int       `json:"runs"`
-	BestScore      *int      `json:"best_score"`
-	CreatedAt      time.Time `json:"created_at"`
+	// Rate is how fast runs on this model spend tokens, per minute of agent work, from finished runs that called it
+	// (every agent's, any task): the site multiplies it by a time limit and the price for an estimate. With no run on
+	// this model yet it is every model's (AllModels). nil when nothing has run.
+	Rate      *Rate     `json:"rate,omitempty"`
+	KeyHint   string    `json:"key_hint,omitempty"`
+	Files     int       `json:"files"`
+	Owner     string    `json:"owner"`
+	Runs      int       `json:"runs"`
+	BestScore *int      `json:"best_score"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Rate is tokens per minute of agent work, by kind, over Runs finished runs.
+type Rate struct {
+	In         float64 `json:"in"`
+	Out        float64 `json:"out"`
+	CacheRead  float64 `json:"cache_read"`
+	CacheWrite float64 `json:"cache_write"`
+	Runs       int     `json:"runs"`
+	AvgMinutes float64 `json:"avg_minutes"` // how long those runs worked, on average (many stop before their limit)
+	AllModels  bool    `json:"all_models,omitempty"`
 }
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_agent", msg) }
@@ -243,18 +254,31 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
 	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
-	t.n, t.tin, t.tout, t.tcr, t.tcw
+	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw
 	FROM agents a JOIN users u ON u.id = a.owner_id
-	LEFT JOIN LATERAL (SELECT count(*) AS n, avg(r.tokens_in)::float8 AS tin, avg(r.tokens_out)::float8 AS tout,
-			avg(r.tokens_cache_read)::float8 AS tcr, avg(r.tokens_cache_write)::float8 AS tcw
-		FROM runs r JOIN agents b ON b.id = r.agent_id WHERE a.model <> '' AND b.model = a.model AND r.status = 'done' AND r.llm_requests > 0) t ON true`
+	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true
+	LEFT JOIN LATERAL (` + rateSums + `) g ON true`
+
+// rateSums totals the finished runs that called a model and ran a while (the rows behind Rate).
+const rateSums = `SELECT count(*) AS n, sum(r.agent_seconds)::float8 AS secs, sum(r.tokens_in)::float8 AS tin,
+		sum(r.tokens_out)::float8 AS tout, sum(r.tokens_cache_read)::float8 AS tcr, sum(r.tokens_cache_write)::float8 AS tcw
+	FROM runs r JOIN agents b ON b.id = r.agent_id WHERE r.status = 'done' AND r.llm_requests > 0 AND r.agent_seconds > 0`
+
+// rate turns the sums of rateSums into tokens per minute; nil without runs.
+func rate(n int, secs, in, out, cr, cw *float64) *Rate {
+	if n == 0 || secs == nil || *secs <= 0 {
+		return nil
+	}
+	m := *secs / 60
+	return &Rate{In: *in / m, Out: *out / m, CacheRead: *cr / m, CacheWrite: *cw / m, Runs: n, AvgMinutes: m / float64(n)}
+}
 
 func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var a Agent
-	var n int
-	var tin, tout, tcr, tcw *float64
+	var mn, gn int
+	var ms, mi, mo, mr, mw, gs, gi, gout, gr, gw *float64
 	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
-		&a.Runs, &a.BestScore, &n, &tin, &tout, &tcr, &tcw)
+		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
@@ -263,9 +287,10 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 		a.ModelName = m.Name
 		p := m.Price
 		a.Price = &p
-		if n > 0 && tin != nil {
-			a.TypicalCostUSD = pricing.Cost(a.Model, int64(*tin), int64(*tout), int64(*tcr), int64(*tcw))
-			a.TypicalRuns = n
+		if a.Rate = rate(mn, ms, mi, mo, mr, mw); a.Rate == nil {
+			if a.Rate = rate(gn, gs, gi, gout, gr, gw); a.Rate != nil {
+				a.Rate.AllModels = true
+			}
 		}
 	}
 	if !withKey {

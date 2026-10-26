@@ -16,7 +16,7 @@ import { useT } from '@/lib/i18n/client'
 import { errorText } from '@/lib/i18n/messages/errors'
 import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Agent, ExampleAgent, ExampleModel, Run, TaskSummary } from '@/lib/types'
-import { costCeiling, usd } from '@/lib/format'
+import { runEstimate, usd } from '@/lib/format'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, ProviderOptions, providerLabel, usePoll, type RT } from './bits'
@@ -207,6 +207,11 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
   const [provider, setProvider] = useState<string>(agent.provider)
   const chosen = task || (tasks.some((x) => x.slug === preset) ? preset : '') || tasks[0]?.slug || ''
   const limits = { time_limit_s: minutes ? Math.round(Number(minutes) * 60) : 0, token_budget: budgetK ? Math.round(Number(budgetK) * 1000) : 0 }
+  // Quick time picks up to the task's limit; an empty field means the task's own.
+  const picked = tasks.find((x) => x.slug === chosen)
+  const taskMinutes = Math.round((picked?.time_limit_s ?? 0) / 60)
+  const choices = [...new Set([5, 10, 15, 30, taskMinutes])].filter((m) => m > 0 && m <= taskMinutes).sort((a, b) => a - b)
+  const runMinutes = minutes ? Number(minutes) : taskMinutes
 
   async function launch(slugs: string[]) {
     setBusy(true)
@@ -262,7 +267,13 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
           <Button size="icon" variant="ghost" aria-label={t('moreSettings')} aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreHorizontal /></Button>
         </div>
       </div>
-      <CostHint agent={agent} budget={limits.token_budget || (tasks.find((x) => x.slug === chosen)?.token_budget ?? 0)} t={t} />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {choices.length > 1 && (
+          <Segmented label={t('runTime')} value={String(runMinutes)} onChange={(v) => setMinutes(v)}
+            options={choices.map((m) => ({ value: String(m), label: t('minutesShort', { n: m }) }))} />
+        )}
+        <CostEstimate agent={agent} minutes={runMinutes} budget={limits.token_budget || (picked?.token_budget ?? 0)} t={t} />
+      </div>
       {err && <p className="mt-2 text-body text-destructive">{err}</p>}
       {more && (
         <div className="mt-4 grid gap-4 rounded-lg bg-muted p-4 sm:grid-cols-2">
@@ -296,18 +307,28 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
   )
 }
 
-// What a run of this agent will roughly cost: the average finished run on its model, and the budget's ceiling.
-function CostHint({ agent, budget, t }: { agent: Agent; budget: number; t: RT }) {
-  if (!agent.price) return agent.model ? null : <p className="mt-2 text-meta text-muted-foreground">{t('costHintUnknown')}</p>
+// What a run of this agent should cost for the picked time: the model's spending rate × minutes at its price.
+function CostEstimate({ agent, minutes, budget, t }: { agent: Agent; minutes: number; budget: number; t: RT }) {
+  const note = (text: string) => <span className="text-meta text-muted-foreground">{text}</span>
+  if (!agent.price) return agent.model ? null : note(t('costUnknownAgent'))
   const p = agent.price
-  if (p.in + p.out + p.cache_read + p.cache_write === 0) return <p className="mt-2 text-meta text-muted-foreground">{t('costHintFree')}</p>
-  const ceiling = usd(costCeiling(p, budget))
-  const sub = agent.provider.endsWith('-sub')
+  if (p.in + p.out + p.cache_read + p.cache_write === 0) return note(t('costFree'))
+  if (!agent.rate) return note(t('costNoRuns'))
+  const e = runEstimate(p, agent.rate, minutes, budget)
+  // Agents often finish before the limit: what a run of the usual length costs.
+  const usual = Math.min(minutes, agent.rate.avg_minutes)
+  const parts = [
+    usual < minutes - 0.5 && t('costUsual', { m: Math.max(1, Math.round(usual)), usd: usd(runEstimate(p, agent.rate, usual, budget).total) }),
+    t('costPerMin', { usd: usd(e.perMin) }),
+    agent.rate.all_models ? t('costBasisAll', { n: agent.rate.runs }) : t('costBasisModel', { n: agent.rate.runs }),
+    e.budgetMin != null && t('costBudgetEnds', { m: Math.max(1, Math.round(e.budgetMin)) }),
+    agent.provider.endsWith('-sub') && t('costSubNote'),
+  ].filter(Boolean)
   return (
-    <p className="mt-2 text-meta text-muted-foreground">
-      {agent.typical_cost_usd != null
-        ? t(sub ? 'costHintSub' : 'costHint', { typical: usd(agent.typical_cost_usd), n: agent.typical_runs ?? 0, ceiling })
-        : t(sub ? 'costHintSubNoRuns' : 'costHintNoRuns', { ceiling })}
-    </p>
+    <span className="text-body">
+      <span className="text-muted-foreground">{t('costUpTo')}</span> <span className="font-semibold tnum">≈ {usd(e.total)}</span>{' '}
+      <span className="text-muted-foreground">{t('costFor', { m: minutes })}</span>
+      <span className="block text-meta text-muted-foreground">{parts.join(' · ')}</span>
+    </span>
   )
 }
