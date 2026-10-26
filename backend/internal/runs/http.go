@@ -16,7 +16,6 @@ type TaskView struct {
 	Brief     string   `json:"brief"`
 	DataFiles []string `json:"data_files"`
 	Checks    []string `json:"checks"`
-	Board     []Run    `json:"leaderboard"`
 	Compare   []Run    `json:"compare"`
 	Recent    []Run    `json:"recent"`
 }
@@ -37,18 +36,9 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, httpx.NotFound())
 			return
 		}
-		sums, err := s.Summaries(r.Context())
-		if err != nil {
-			httpx.WriteError(w, r, err)
-			return
-		}
 		v := TaskView{Brief: t.Brief, DataFiles: t.DataNames(), Checks: t.CheckNames()}
-		for _, sm := range sums {
-			if sm.Slug == t.Slug {
-				v.TaskSummary = sm
-			}
-		}
-		if v.Board, err = s.Leaderboard(r.Context(), t.Slug); err == nil {
+		var err error
+		if v.TaskSummary, err = s.Summary(r.Context(), t); err == nil {
 			v.Recent, err = s.Recent(r.Context(), t.Slug, "", 20)
 		}
 		if err == nil {

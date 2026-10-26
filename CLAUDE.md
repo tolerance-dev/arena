@@ -134,8 +134,8 @@ change anyone's agents and runs. `/admin` (API `/api/v1/admin/*`) shows token sp
 ```
 backend/cmd/api              config, handler.go (ALL routing), main (server + runs worker)
 backend/cmd/gateway          LLM/registry proxy + live previews
-backend/cmd/migrate          goose up
-backend/migrations           00001 (arena_app role), 00002_schema.sql (the whole schema)
+backend/cmd/migrate          creates the arena_app role, applies schema.sql to an empty database
+backend/migrations           schema.sql (the whole schema), migrations.go (Apply)
 backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
 backend/internal/admin       /admin: spending, switches (settings row: queue pause, user runs, judge), user blocks
 backend/internal/runs        runs service/routes, worker, verify.py (checks + judge), LOC stats
@@ -160,7 +160,7 @@ session.
   internal network with only the gateway; the real LLM keys never enter a sandbox; the checker (verify.py, the judge token) never runs inside the
   agent's snapshot, only in a clean `arena-runtime:1` next to the app's container.
 - `infra_error` is the platform's fault, never a score.
-- **Database: no data worth keeping yet** (prod included): edit `backend/migrations/00002_schema.sql` in place and
+- **Database: no data worth keeping yet** (prod included): edit `backend/migrations/schema.sql` in place and
   recreate the DB (`make reset` locally, `reset_db=true` on prod) instead of adding migrations or writing
   compatibility/cleanup code.
 - Agent-written logs are sanitized server-side (`internal/platform/sanitize`).

@@ -1,40 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
-import { api } from '@/lib/api'
-import type { Run, TaskSummary, TaskView } from '@/lib/types'
+import type { Run, TaskSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, CheckStrip, Score, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
 
-// Each task's leaderboard (the best run per agent), refreshed with the task list.
-export function useBoards(tasks: TaskSummary[] | undefined) {
-  const slugs = tasks?.map((x) => x.slug).join(',') ?? ''
-  const [boards, setBoards] = useState<Record<string, Run[]> | null>(null)
-  useEffect(() => {
-    if (!slugs) return
-    let live = true
-    const load = async () => {
-      const pairs = await Promise.all(slugs.split(',').map((s) =>
-        api<TaskView>(`/tasks/${encodeURIComponent(s)}`).then((v) => [s, v.leaderboard] as const).catch(() => [s, [] as Run[]] as const)))
-      if (live) setBoards(Object.fromEntries(pairs))
-    }
-    void load()
-    const id = setInterval(() => void load(), 15_000)
-    return () => { live = false; clearInterval(id) }
-  }, [slugs])
-  return boards
-}
-
 export type Standing = { id: string; name: string; owner: string; provider: string; cells: Record<string, Run>; average: number; rank: number }
 
 // Agents ranked by the average of their best score on every task (a task they have not run counts as 0).
-export function rankAgents(tasks: TaskSummary[], boards: Record<string, Run[]>): Standing[] {
+export function rankAgents(tasks: TaskSummary[]): Standing[] {
   const rows = new Map<string, Omit<Standing, 'average' | 'rank'>>()
   for (const task of tasks) {
-    for (const r of boards[task.slug] ?? []) {
+    for (const r of task.leaderboard) {
       if (r.score == null) continue
       const row = rows.get(r.agent.id) ?? { id: r.agent.id, name: r.agent.name, owner: r.agent.owner, provider: r.agent.provider, cells: {} }
       row.cells[task.slug] = r
