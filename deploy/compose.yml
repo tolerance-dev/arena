@@ -68,6 +68,9 @@ services:
       # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
       ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
       ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
+      # Alerts (internal/alerts) also go to this Telegram chat when both are set; else only to the log.
+      ARENA_ALERT_TELEGRAM_TOKEN: ${ARENA_ALERT_TELEGRAM_TOKEN:-}
+      ARENA_ALERT_TELEGRAM_CHAT: ${ARENA_ALERT_TELEGRAM_CHAT:-}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}

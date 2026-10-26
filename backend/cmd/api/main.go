@@ -16,6 +16,7 @@ import (
 
 	"tolerance/internal/admin"
 	"tolerance/internal/agents"
+	"tolerance/internal/alerts"
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/clientip"
 	"tolerance/internal/platform/db"
@@ -75,6 +76,11 @@ func main() {
 	go func() {
 		defer wg.Done()
 		runs.NewWorker(pool, log, runs.WorkerConfig{Concurrency: cfg.runConcurrency}).Run(ctx)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		alerts.New(pool, log, cfg.runConcurrency).Run(ctx)
 	}()
 
 	server := &http.Server{
