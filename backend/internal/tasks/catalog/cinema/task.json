@@ -15,5 +15,573 @@
     "The Little Frontier",
     "The Silent Kingdom"
   ],
-  "checks": []
+  "checks": [
+    {
+      "name": "title page shows the title with its director and year",
+      "page": "/titles/m2",
+      "text": [
+        "The Silent Garden",
+        "Alba Ruiz",
+        "2016"
+      ]
+    },
+    {
+      "name": "search page lists the matching titles",
+      "page": "/search?q=Harbor",
+      "text": [
+        "The Midnight Harbor",
+        "The Broken Harbor",
+        "The Endless Harbor"
+      ]
+    },
+    {
+      "name": "catalog: every title",
+      "method": "GET",
+      "path": "/api/titles",
+      "expect": [
+        {
+          "path": "titles",
+          "len": 48
+        }
+      ]
+    },
+    {
+      "name": "catalog: search by title",
+      "method": "GET",
+      "path": "/api/titles?q=Harbor",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m29",
+            "m3",
+            "m40"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: search ignores case",
+      "method": "GET",
+      "path": "/api/titles?q=harbor",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m29",
+            "m3",
+            "m40"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: filter by genre",
+      "method": "GET",
+      "path": "/api/titles?genre=comedy",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m1",
+            "m13",
+            "m15",
+            "m17",
+            "m25",
+            "m33",
+            "m35",
+            "m37",
+            "m40",
+            "m7",
+            "m8"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: series only",
+      "method": "GET",
+      "path": "/api/titles?type=series",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m16",
+            "m24",
+            "m32",
+            "m40",
+            "m48",
+            "m8"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: genre and type together",
+      "method": "GET",
+      "path": "/api/titles?genre=comedy&type=series",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m40",
+            "m8"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by rating",
+      "method": "GET",
+      "path": "/api/titles?sort=rating",
+      "expect": [
+        {
+          "path": "titles",
+          "len": 48
+        },
+        {
+          "path": "titles",
+          "sorted_by": "-rating"
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by year",
+      "method": "GET",
+      "path": "/api/titles?sort=year",
+      "expect": [
+        {
+          "path": "titles",
+          "len": 48
+        },
+        {
+          "path": "titles",
+          "sorted_by": "-year"
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by date added",
+      "method": "GET",
+      "path": "/api/titles?sort=added",
+      "expect": [
+        {
+          "path": "titles.0.id",
+          "equals": "m27"
+        },
+        {
+          "path": "titles.1.id",
+          "equals": "m39"
+        }
+      ]
+    },
+    {
+      "name": "title: a movie with its details",
+      "method": "GET",
+      "path": "/api/titles/m2",
+      "expect": [
+        {
+          "path": "director",
+          "equals": "Alba Ruiz"
+        },
+        {
+          "path": "cast",
+          "equals": [
+            "Ethan Cole",
+            "Ivan Sokolov",
+            "Sam Okafor"
+          ]
+        },
+        {
+          "path": "duration_min",
+          "equals": 119
+        }
+      ]
+    },
+    {
+      "name": "title: a series with seasons and episodes",
+      "method": "GET",
+      "path": "/api/titles/m8",
+      "expect": [
+        {
+          "path": "seasons",
+          "len": 3
+        },
+        {
+          "path": "seasons.0.episodes",
+          "len": 7
+        }
+      ]
+    },
+    {
+      "name": "title: an unknown title is 404",
+      "method": "GET",
+      "path": "/api/titles/m999",
+      "status": 404
+    },
+    {
+      "name": "home: top rated, highest first",
+      "method": "GET",
+      "path": "/api/home",
+      "expect": [
+        {
+          "path": "top_rated",
+          "ids": [
+            "m36",
+            "m11",
+            "m24",
+            "m30",
+            "m38",
+            "m18",
+            "m32",
+            "m15",
+            "m26",
+            "m47"
+          ]
+        },
+        {
+          "path": "top_rated",
+          "sorted_by": "-rating"
+        }
+      ]
+    },
+    {
+      "name": "home: new arrivals, latest first",
+      "method": "GET",
+      "path": "/api/home",
+      "expect": [
+        {
+          "path": "new_arrivals",
+          "ids": [
+            "m27",
+            "m39",
+            "m6",
+            "m45",
+            "m11",
+            "m22",
+            "m41",
+            "m5",
+            "m8",
+            "m19"
+          ]
+        },
+        {
+          "path": "new_arrivals.0.id",
+          "equals": "m27"
+        }
+      ]
+    },
+    {
+      "name": "sign in: a wrong password is refused",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "wrong"
+      },
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "sign in: a free user",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "pass001"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "free": "token"
+      }
+    },
+    {
+      "name": "sign in: a premium user",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "boris.rossi@example.com",
+        "password": "pass002"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "prem": "token"
+      }
+    },
+    {
+      "name": "me: the signed-in user's plan",
+      "method": "GET",
+      "path": "/api/me",
+      "auth": "free",
+      "expect": [
+        {
+          "path": "plan",
+          "equals": "free"
+        }
+      ]
+    },
+    {
+      "name": "me: signed out is refused",
+      "method": "GET",
+      "path": "/api/me",
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "play: needs a signed-in user",
+      "method": "GET",
+      "path": "/api/titles/m2/play",
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "play: a free title plays from the start",
+      "method": "GET",
+      "path": "/api/titles/m2/play",
+      "auth": "free",
+      "expect": [
+        {
+          "path": "duration_s",
+          "equals": 7140
+        },
+        {
+          "path": "position_s",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "name": "premium: a free plan can't play a premium title",
+      "method": "GET",
+      "path": "/api/titles/m1/play",
+      "auth": "free",
+      "status": 403
+    },
+    {
+      "name": "premium: the premium plan plays it",
+      "method": "GET",
+      "path": "/api/titles/m1/play",
+      "auth": "prem",
+      "expect": [
+        {
+          "path": "duration_s",
+          "equals": 5820
+        }
+      ]
+    },
+    {
+      "name": "progress: saving where the user stopped",
+      "method": "PUT",
+      "path": "/api/progress/m2",
+      "auth": "free",
+      "body": {
+        "position_s": 600
+      },
+      "status_in": [
+        200,
+        201,
+        204
+      ]
+    },
+    {
+      "name": "progress: play resumes from it",
+      "method": "GET",
+      "path": "/api/titles/m2/play",
+      "auth": "free",
+      "expect": [
+        {
+          "path": "position_s",
+          "equals": 600
+        }
+      ]
+    },
+    {
+      "name": "progress: past the end is refused",
+      "method": "PUT",
+      "path": "/api/progress/m4",
+      "auth": "free",
+      "body": {
+        "position_s": 7021
+      },
+      "status_in": [
+        400,
+        422
+      ]
+    },
+    {
+      "name": "premium: a free plan can't save progress on a premium title",
+      "method": "PUT",
+      "path": "/api/progress/m1",
+      "auth": "free",
+      "body": {
+        "position_s": 60
+      },
+      "status": 403
+    },
+    {
+      "name": "progress: a second title",
+      "method": "PUT",
+      "path": "/api/progress/m4",
+      "auth": "free",
+      "body": {
+        "position_s": 120
+      },
+      "status_in": [
+        200,
+        201,
+        204
+      ]
+    },
+    {
+      "name": "continue watching: the latest first, with the position",
+      "method": "GET",
+      "path": "/api/home",
+      "auth": "free",
+      "expect": [
+        {
+          "path": "continue_watching",
+          "ids": [
+            "m2",
+            "m4"
+          ]
+        },
+        {
+          "path": "continue_watching.0.id",
+          "equals": "m4"
+        },
+        {
+          "path": "continue_watching[id=m2].position_s",
+          "equals": 600
+        }
+      ]
+    },
+    {
+      "name": "continue watching: someone else's is not shown",
+      "method": "GET",
+      "path": "/api/home",
+      "auth": "prem",
+      "expect": [
+        {
+          "path": "continue_watching[id=m2]",
+          "absent": true
+        }
+      ]
+    },
+    {
+      "name": "watchlist: needs a signed-in user",
+      "method": "GET",
+      "path": "/api/watchlist",
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "watchlist: add a title",
+      "method": "PUT",
+      "path": "/api/watchlist/m2",
+      "auth": "prem",
+      "status_in": [
+        200,
+        201,
+        204
+      ]
+    },
+    {
+      "name": "watchlist: add a series",
+      "method": "PUT",
+      "path": "/api/watchlist/m8",
+      "auth": "prem",
+      "status_in": [
+        200,
+        201,
+        204
+      ]
+    },
+    {
+      "name": "watchlist: adding twice keeps one",
+      "method": "PUT",
+      "path": "/api/watchlist/m2",
+      "auth": "prem",
+      "status_in": [
+        200,
+        201,
+        204
+      ]
+    },
+    {
+      "name": "watchlist: an unknown title is 404",
+      "method": "PUT",
+      "path": "/api/watchlist/m999",
+      "auth": "prem",
+      "status": 404
+    },
+    {
+      "name": "watchlist: lists what was added",
+      "method": "GET",
+      "path": "/api/watchlist",
+      "auth": "prem",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m2",
+            "m8"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "watchlist: another user's is separate",
+      "method": "GET",
+      "path": "/api/watchlist",
+      "auth": "free",
+      "expect": [
+        {
+          "path": "titles",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "name": "watchlist: remove a title",
+      "method": "DELETE",
+      "path": "/api/watchlist/m2",
+      "auth": "prem",
+      "status_in": [
+        200,
+        204
+      ]
+    },
+    {
+      "name": "watchlist: the removed title is gone",
+      "method": "GET",
+      "path": "/api/watchlist",
+      "auth": "prem",
+      "expect": [
+        {
+          "path": "titles",
+          "ids": [
+            "m8"
+          ]
+        }
+      ]
+    }
+  ]
 }
