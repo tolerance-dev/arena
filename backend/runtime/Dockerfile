@@ -13,7 +13,7 @@ RUN apt-get update \
     | tar -xJ -C /usr/local --strip-components=1 --exclude='*.md' --exclude=LICENSE \
  && npm install -g --no-fund --no-audit @anthropic-ai/claude-code @openai/codex @google/gemini-cli opencode-ai \
  && npm cache clean --force \
- && pip install --no-cache-dir --break-system-packages anthropic playwright==1.64.1 \
+ && pip install --no-cache-dir --break-system-packages playwright==1.64.1 \
  && curl -fsSL https://code.kimi.com/kimi-code/install.sh \
     | KIMI_VERSION="$KIMI_CODE_VERSION" KIMI_INSTALL_DIR=/opt/kimi-code KIMI_NO_MODIFY_PATH=1 bash \
  && ln -s /opt/kimi-code/bin/kimi /usr/local/bin/kimi \
