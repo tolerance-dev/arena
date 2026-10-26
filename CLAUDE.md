@@ -10,8 +10,10 @@ default habits:
 
 - **Write code directly.** No brainstorming, specs, plans in `docs/`, subagent-driven development, TDD or reviews
   unless the user asks. A short list of steps in chat is enough.
-- **No new tests**, except for a bug in the gateway's token metering or the run score (`internal/gateway`,
-  `internal/runs`).
+- **Tests only where a bug is invisible on `make dev` and costs money or trust**: the gateway's metering, the
+  score, run quotas, the queue order, blind voting and Elo (`internal/gateway`, `internal/runs`). None for handlers,
+  pages or API shapes: they change weekly. Database tests take a throwaway DB from `dbtest.New(t)`
+  (`internal/platform/db/dbtest`); when a change breaks one, fix the code or update the test, never skip it.
 - **Done = `make test-fast` passes and the flow is clicked through on `make dev`.** CI (`ci.yml`: test-fast +
   `pnpm build`) runs on every PR.
 - **Design: Product Hunt's layout, our tokens** (`DESIGN_REFERENCE.md`): 900px main column + 280px aside
@@ -83,7 +85,7 @@ writes (`sameOrigin`, `cmd/api/handler.go`) and the prod session cookie is `__Ho
 make dev         # postgres + gateway in Docker, migrate, api and web natively (Ctrl-C stops api/web)
 make reset       # drop the containers and the DB volume (make down keeps the DB)
 make images      # arena-runtime:1, built only when missing
-make test-fast   # gofmt + go vet + go test + pnpm typecheck
+make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) + pnpm typecheck
 ```
 
 - Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Checkouts share the Docker host:

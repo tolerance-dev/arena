@@ -4,60 +4,14 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
-	"os"
 	"sync"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-
 	"tolerance/internal/platform/db"
+	"tolerance/internal/platform/db/dbtest"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
-	"tolerance/internal/tasks"
 )
-
-// quotaDB gives the test a fresh database with schema.sql, made from ARENA_TEST_DATABASE_URL (a role that may
-// create databases, e.g. make dev's arena_migrate); without it the test is skipped.
-func quotaDB(t *testing.T) *db.Pool {
-	t.Helper()
-	dsn := os.Getenv("ARENA_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("ARENA_TEST_DATABASE_URL not set")
-	}
-	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = admin.Close(ctx) })
-	name := "arena_test_" + idgen.New("q")[2:18]
-	if _, err := admin.Exec(ctx, `CREATE DATABASE `+name); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _, _ = admin.Exec(ctx, `DROP DATABASE `+name+` WITH (FORCE)`) })
-	if _, err := admin.Exec(ctx, `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'arena_app') THEN CREATE ROLE arena_app; END IF; END $$`); err != nil {
-		t.Fatal(err)
-	}
-	u, err := url.Parse(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	u.Path = "/" + name
-	schema, err := os.ReadFile("../../migrations/schema.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	pool, err := db.Open(ctx, u.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	if _, err := pool.Raw().Exec(ctx, string(schema)); err != nil {
-		t.Fatal(err)
-	}
-	return pool
-}
 
 type quotaFixture struct {
 	t     *testing.T
@@ -68,10 +22,7 @@ type quotaFixture struct {
 }
 
 func newQuotaFixture(t *testing.T) *quotaFixture {
-	pool := quotaDB(t)
-	if err := tasks.Load(""); err != nil {
-		t.Fatal(err)
-	}
+	pool := dbtest.New(t)
 	f := &quotaFixture{t: t, pool: pool, s: NewService(pool, "", 1), user: idgen.New("usr")}
 	f.sql(`INSERT INTO users (id, email, handle) VALUES ($1, $1 || '@example.com', $1)`, f.user)
 	f.agent = f.newAgent()

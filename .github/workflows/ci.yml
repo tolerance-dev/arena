@@ -11,7 +11,7 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    # For the tests that need a database (internal/runs quota): each makes its own from ARENA_TEST_DATABASE_URL.
+    # For the database tests (internal/platform/db/dbtest): each makes its own from ARENA_TEST_DATABASE_URL.
     services:
       postgres:
         image: postgres:16-alpine
