@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Check, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { compact, duration, usedTokens } from '@/lib/format'
+import { compact, duration, usd, usedTokens } from '@/lib/format'
 import type { Rating, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack, type RT } from './bits'
@@ -65,6 +65,7 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
           value: (r) => r.agent_seconds, better: 'low',
         },
         { label: t('metricTokens'), cell: (r) => <span className="tnum">{compact(usedTokens(r.tokens))}</span>, value: (r) => usedTokens(r.tokens), better: 'low' },
+        { label: t('metricCost'), cell: (r) => <span className="tnum">{usd(r.cost_usd)}</span>, value: (r) => r.cost_usd, better: 'low' },
         { label: t('cmpRequests'), cell: (r) => <span className="tnum">{r.tokens.requests}</span>, value: (r) => r.tokens.requests, better: 'low' },
         { label: t('metricLoc'), cell: (r) => <span className="tnum">{compact(r.stats.loc)}<span className="text-faint"> · {t('metricFiles', { n: r.stats.files })}</span></span> },
         {
