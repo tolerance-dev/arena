@@ -100,7 +100,9 @@ make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) +
 - Each checkout has its own DB volume (compose project = dir name), empty at first and removed with the
   workspace (`.superset/teardown.sh`): new workspaces load the shared snapshot in setup when there is one, else
   `make seed` fills it. Don't share one volume between checkouts. The snapshot holds real agents' keys: never commit
-  or upload it; a loaded copy has its open runs cancelled and the weekly tournament off.
+  or upload it; a loaded copy has its open runs cancelled and the weekly tournament off. Real-model data is made
+  once in the main checkout and shared this way (README → «Настоящие прогоны»): in a worktree, load the snapshot
+  rather than start real runs, which spend the owner's keys.
 - Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Checkouts share the Docker host:
   `ARENA_STACK` (`arena-<checkout dir>`) scopes sandbox labels and cleanup per checkout.
 - Stopping your dev servers: kill by your own listening ports (`lsof -ti tcp:$API_PORT -sTCP:LISTEN | xargs kill`;
