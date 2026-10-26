@@ -74,7 +74,7 @@ run-api:
 		go run ./cmd/api
 
 run-web:
-	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) pnpm dev -p $(WEB_PORT)
+	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) pnpm dev -p $(WEB_PORT)
 
 # The sandbox runtime every agent, check and preview container starts from. Built only when missing;
 # `docker rmi arena-runtime:1` to force a rebuild.
