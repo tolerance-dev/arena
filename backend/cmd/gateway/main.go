@@ -18,6 +18,7 @@ import (
 	"tolerance/internal/gateway"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/secretbox"
+	"tolerance/internal/runs"
 	"tolerance/internal/sandbox"
 )
 
@@ -59,6 +60,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
+	// Whatever agents are working lost their requests in flight with the gateway before this one: their runs get a
+	// mark, and an agent that crashes on it is the platform's failure, not a score.
+	if n, err := runs.MarkGatewayRestart(ctx, pool); err != nil {
+		log.Error("mark runs cut by the restart", "err", err)
+	} else if n > 0 {
+		log.Warn("gateway restarted under running agents", "runs", n)
+	}
 
 	cfg := gateway.Config{
 		Subscriptions: os.Getenv("ARENA_SUBSCRIPTIONS") == "true",
@@ -108,7 +116,9 @@ func main() {
 	case err := <-errs:
 		log.Error("serve", "err", err)
 	}
-	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Requests in flight (an LLM answer can take a while) get time to finish; deploy/compose.yml's stop_grace_period
+	// is a bit longer.
+	shutdown, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 	for _, s := range servers {
 		_ = s.Shutdown(shutdown)
