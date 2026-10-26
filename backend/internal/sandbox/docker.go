@@ -54,6 +54,7 @@ type Spec struct {
 	Pids    int
 	CapAdd  []string
 	Labels  map[string]string
+	Hosts   []string // extra /etc/hosts lines as "name:ip" (--add-host)
 }
 
 func (s Spec) createArgs() []string {
@@ -87,6 +88,9 @@ func (s Spec) createArgs() []string {
 	}
 	if DiskLimit != "" {
 		args = append(args, "--storage-opt", "size="+DiskLimit)
+	}
+	for _, h := range s.Hosts {
+		args = append(args, "--add-host", h)
 	}
 	for _, c := range s.CapAdd {
 		args = append(args, "--cap-add", c)
@@ -225,7 +229,43 @@ func PublicIPs(ctx context.Context, container string) ([]string, error) {
 
 // Create creates (but does not start) a container and returns its id.
 func Create(ctx context.Context, s Spec) (string, error) {
+	if Runtime != "" && s.Network != "" {
+		// gVisor's network stack doesn't see the iptables rule that sends 127.0.0.11 to Docker's embedded DNS, so
+		// names on the network don't resolve inside it. Write them into /etc/hosts instead: everything already on
+		// the network (the gateway, attached with it, and the app before its checker).
+		hosts, err := networkHosts(ctx, s.Network)
+		if err != nil {
+			return "", err
+		}
+		s.Hosts = append(s.Hosts, hosts...)
+	}
 	return docker(ctx, nil, s.createArgs()...)
+}
+
+// networkHosts is "name:ip" for each container on network, plus "gateway:ip" for this stack's gateway.
+func networkHosts(ctx context.Context, network string) ([]string, error) {
+	out, err := docker(ctx, nil, "network", "inspect", "-f", `{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}`, network)
+	if err != nil {
+		return nil, err
+	}
+	gw, _ := docker(ctx, nil, "ps", "--format", "{{.Names}}", "--filter", "label=arena.gateway="+Stack)
+	gateways := map[string]bool{}
+	for _, n := range strings.Fields(gw) {
+		gateways[n] = true
+	}
+	var hosts []string
+	for _, line := range strings.Split(out, "\n") {
+		name, cidr, ok := strings.Cut(strings.TrimSpace(line), " ")
+		ip, _, _ := strings.Cut(cidr, "/")
+		if !ok || ip == "" {
+			continue
+		}
+		hosts = append(hosts, name+":"+ip)
+		if gateways[name] {
+			hosts = append(hosts, "gateway:"+ip)
+		}
+	}
+	return hosts, nil
 }
 
 // Remove force-removes a container, best effort.

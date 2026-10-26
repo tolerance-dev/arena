@@ -429,6 +429,15 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		defer sandbox.Remove(appID)
 	}
 
+	// The app starts first, before the checker is created: under gVisor the checker gets the app's address in
+	// /etc/hosts at creation (sandbox.Create). verify.py times the start from this moment (one host clock).
+	var appStart float64
+	if appID != "" {
+		if err := sandbox.StartDetached(ctx, appID); err != nil {
+			return err
+		}
+		appStart = float64(time.Now().UnixMilli()) / 1000
+	}
 	id, err := sandbox.Create(ctx, sandbox.Spec{
 		Name: "arena-check-" + hex, Image: sandbox.Image, Network: c.network,
 		Memory: "2g", CPUs: "2", Pids: 4096, Workdir: "/verify", Labels: labels,
@@ -439,14 +448,6 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return err
 	}
 	defer sandbox.Remove(id)
-	// The app starts first; verify.py times its start from this moment (the containers share the host's clock).
-	var appStart float64
-	if appID != "" {
-		if err := sandbox.StartDetached(ctx, appID); err != nil {
-			return err
-		}
-		appStart = float64(time.Now().UnixMilli()) / 1000
-	}
 	spec, err := json.Marshal(map[string]any{
 		"task": c.task, "checks": task.Checks, "ui": task.UI, "ui_text": task.UIText,
 		"app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
