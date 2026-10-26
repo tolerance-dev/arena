@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     serverApi<{ items: TaskSummary[] }>('/tasks'),
     serverApi<{ items: Agent[] }>('/agents'),
   ])
-  const pages: MetadataRoute.Sitemap = ['', '/leaderboard', '/agents', '/privacy', '/terms'].map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: 'hourly' }))
+  const pages: MetadataRoute.Sitemap = ['', '/leaderboard', '/agents', '/how', '/privacy', '/terms'].map((p) => ({ url: `${SITE_URL}${p}`, changeFrequency: 'hourly' }))
   for (const t of tasks?.items ?? []) pages.push({ url: `${SITE_URL}/t/${t.slug}`, changeFrequency: 'hourly' })
   for (const a of agents?.items ?? []) pages.push({ url: `${SITE_URL}/agents/${a.id}`, lastModified: a.created_at, changeFrequency: 'daily' })
   return pages

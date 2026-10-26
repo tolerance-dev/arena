@@ -37,7 +37,7 @@ export interface Run {
 }
 
 export interface TaskSummary {
-  slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number
+  slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number; check_count: number
   runs: number; agents: number; best: Run | null; leaderboard: Run[]
 }
 

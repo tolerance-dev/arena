@@ -248,6 +248,7 @@ type TaskSummary struct {
 	Tagline     tasks.Text `json:"tagline"`
 	TimeLimitS  int        `json:"time_limit_s"`
 	TokenBudget int64      `json:"token_budget"`
+	CheckCount  int        `json:"check_count"`
 	Runs        int        `json:"runs"`
 	Agents      int        `json:"agents"`
 	Best        *Run       `json:"best"`
@@ -256,7 +257,7 @@ type TaskSummary struct {
 
 // Summary is one task with its counts and leaderboard.
 func (s *Service) Summary(ctx context.Context, t *tasks.Task) (TaskSummary, error) {
-	ts := TaskSummary{Slug: t.Slug, Title: t.Title, Tagline: t.Tagline, TimeLimitS: t.TimeLimitS, TokenBudget: t.TokenBudget}
+	ts := TaskSummary{Slug: t.Slug, Title: t.Title, Tagline: t.Tagline, TimeLimitS: t.TimeLimitS, TokenBudget: t.TokenBudget, CheckCount: len(t.CheckNames())}
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `SELECT count(*), count(DISTINCT agent_id) FROM runs WHERE task = $1`, t.Slug).Scan(&ts.Runs, &ts.Agents)
 	})

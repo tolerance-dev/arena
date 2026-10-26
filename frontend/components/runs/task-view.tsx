@@ -96,7 +96,7 @@ export function TaskView({ slug }: { slug: string }) {
                     ))}
                   </ol>
                 ) : <p className="text-body text-muted-foreground">{t('noChecksList')}</p>}
-                <p className="mt-3 text-body text-muted-foreground">{t('scoreRule')}</p>
+                <p className="mt-3 text-body text-muted-foreground">{t('scoreRule')} <Link href="/how" className="font-medium text-primary hover:underline">{t('howLink')}</Link></p>
               </AsideBlock>
               {data.data_files.length > 0 && (
                 <AsideBlock title={t('dataTitle')}>
