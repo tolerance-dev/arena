@@ -241,9 +241,13 @@ func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, e
 }
 
 // rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
+// rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
 // time or tokens is an experiment, not a result to compare. And to runs scored by the task's current checks ($4):
-// scores from other checks aren't comparable (an admin can re-check an older run's snapshot to bring it back).
-const rankedLimits = ` AND time_limit_s <= $2 AND token_budget <= $3 AND checks_version = $4`
+// scores from other checks aren't comparable (an admin can re-check an older run's snapshot to bring it back). A run
+// that spent more than its budget (the gateway's reservations keep that rare, see internal/gateway/budget.go) isn't
+// ranked either, by any margin.
+const rankedLimits = ` AND time_limit_s <= $2 AND token_budget <= $3 AND checks_version = $4
+	AND tokens_in + tokens_out + tokens_cache_write <= token_budget`
 
 func taskLimits(task string) (int, int64, string) {
 	if t := tasks.BySlug(task); t != nil {
