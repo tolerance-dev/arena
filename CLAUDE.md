@@ -12,7 +12,7 @@ working skeleton, fast. This section overrides any skills and default habits:
   change needs a plan, a short list of steps in chat is enough.
 - **No new tests**, except for a bug in the gateway's token metering or the run score (`internal/gateway`,
   `internal/runs`).
-- **"Done" = it compiles and works locally**: `make test-fast`, then `make dev` (or `make up`) and the flow
+- **"Done" = it compiles and works locally**: `make test-fast`, then `make dev` and the flow
   clicked through. Full `make test` is optional. CI (`ci.yml`: test-fast + `pnpm build`) runs on every PR; nothing runs on push.
 - **Design: Product Hunt's layout, our tokens.** Pages follow producthunt.com (measurements in `DESIGN_REFERENCE.md`):
   a 900px main column + 280px aside (`components/ui/columns.tsx`; the aside drops below at <1280px), feed rows with
@@ -120,7 +120,6 @@ Monorepo: `backend/` (Go module `tolerance`) and `frontend/` (Next.js, talks to 
 
 ```sh
 make dev         # postgres + gateway in Docker, migrate, then api and web natively (Ctrl-C stops api/web)
-make up          # whole stack in Docker
 make down        # make reset also wipes the DB volume
 make images      # arena-runtime:1 (sandbox image), built only when missing
 make gateway     # rebuild + restart the gateway container (after Go changes in internal/gateway)
