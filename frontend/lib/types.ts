@@ -40,6 +40,8 @@ export interface Run {
   stats: { loc: number; files: number; languages: Record<string, number>; start_seconds?: number; console_errors: number }
   checks: Check[]; score: number | null; app_started: boolean
   has_shot: boolean; has_shot_mobile: boolean; has_source: boolean
+  has_snapshot: boolean // the app's snapshot is kept: an admin can check it again
+  rechecks: number // times the snapshot was checked again (the result is the latest)
   preview_url?: string; agent_log?: string; check_log?: string; log_tail?: string
   created_at: string; started_at: string | null; finished_at: string | null
   queue_position?: number; queue_wait_s?: number // a queued run's place (1 = next) and estimated wait

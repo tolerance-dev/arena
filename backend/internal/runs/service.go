@@ -91,8 +91,11 @@ type Run struct {
 	HasShot       bool     `json:"has_shot"`
 	HasShotMobile bool     `json:"has_shot_mobile"`
 	HasSource     bool     `json:"has_source"`
-	PreviewURL    string   `json:"preview_url,omitempty"`
-	AgentLog      string   `json:"agent_log,omitempty"`
+	// HasSnapshot: the app's snapshot is still kept, so its checks can run again (Recheck).
+	HasSnapshot bool   `json:"has_snapshot"`
+	Rechecks    int    `json:"rechecks"`
+	PreviewURL  string `json:"preview_url,omitempty"`
+	AgentLog    string `json:"agent_log,omitempty"`
 	// LogTail is the end of the agent's log, for lists: what it is doing now, or why it stopped.
 	LogTail    string     `json:"log_tail"`
 	CheckLog   string     `json:"check_log,omitempty"`
@@ -107,8 +110,8 @@ type Run struct {
 const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, a.model, u.handle, r.status, r.failure_reason, r.agent_exit,
 	r.time_limit_s, r.token_budget, r.tokens_in, r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, r.llm_requests,
 	r.agent_seconds, r.stats, r.checks, r.score, r.app_started,
-	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.created_at, r.started_at, r.finished_at,
-	right(r.agent_log, 800)`
+	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.image IS NOT NULL, r.rechecks,
+	r.created_at, r.started_at, r.finished_at, right(r.agent_log, 800)`
 
 const runFrom = ` FROM runs r JOIN agents a ON a.id = r.agent_id JOIN users u ON u.id = a.owner_id`
 
@@ -119,7 +122,7 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 		&r.Status, &r.FailureReason, &r.AgentExit, &r.TimeLimitS, &r.TokenBudget, &r.Tokens.In, &r.Tokens.Out,
 		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests,
 		&r.AgentSeconds, &stats, &checks, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
-		&r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail}
+		&r.HasSnapshot, &r.Rechecks, &r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return r, httpx.NotFound()
@@ -395,6 +398,32 @@ func (s *Service) Cancel(ctx context.Context, ownerID, id string) error {
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.StateConflict("The run has already finished, or it isn't yours")
 		}
+		return err
+	})
+}
+
+// Recheck queues a finished run again to check its app only: the worker starts it from the kept snapshot and runs
+// the current checks, without the agent (no tokens, same code). The new result replaces the old one. For an
+// infra_error in the checks, or after the checks changed.
+func (s *Service) Recheck(ctx context.Context, id string) error {
+	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		var status string
+		var snapshot bool
+		err := tx.QueryRow(ctx, `SELECT status, image IS NOT NULL AND agent_exit IS NOT NULL FROM runs WHERE id = $1 FOR UPDATE`, id).Scan(&status, &snapshot)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return httpx.NotFound()
+		}
+		if err != nil {
+			return err
+		}
+		if status != "done" && status != "infra_error" {
+			return httpx.StateConflict("The run is still going")
+		}
+		if !snapshot {
+			return httpx.StateConflict("The run's snapshot is gone (or the agent never finished): it can't be checked again")
+		}
+		_, err = tx.Exec(ctx, `UPDATE runs SET status = 'queued', recheck = true, rechecks = rechecks + 1, failure_reason = NULL,
+			finished_at = NULL, updated_at = now() WHERE id = $1`, id)
 		return err
 	})
 }

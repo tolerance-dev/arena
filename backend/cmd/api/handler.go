@@ -61,6 +61,7 @@ func newHandler(cfg config, d deps) http.Handler {
 
 	adminMux := http.NewServeMux()
 	admin.RegisterRoutes(adminMux, d.admin)
+	runs.RegisterAdminRoutes(adminMux, d.runs)
 
 	public := http.NewServeMux()
 	agents.RegisterPublicRoutes(public, d.agents)

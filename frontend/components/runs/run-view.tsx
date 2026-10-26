@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronRight, Download, ExternalLink, Maximize2, Monitor, Smartphone, X } from 'lucide-react'
+import { Check, ChevronRight, Download, ExternalLink, Maximize2, Monitor, RotateCw, Smartphone, X } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
@@ -281,6 +281,11 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
       {mine && isActive(run) && (
         <Button variant="destructive" className="w-full" disabled={busy} onClick={() => void act(() => post(`/my/runs/${run.id}/cancel`), onChange)}>Отменить прогон</Button>
       )}
+      {me?.can_admin && !isActive(run) && run.has_snapshot && (
+        <Button variant="outline" className="w-full" disabled={busy} onClick={() => void act(() => post(`/admin/runs/${run.id}/recheck`), onChange)}>
+          <RotateCw /> Проверить заново
+        </Button>
+      )}
       {mine && !isActive(run) && (
         <Button variant="destructive" className="w-full" disabled={busy} onBlur={() => setArmed(false)}
           onClick={() => armed ? void act(() => del(`/my/runs/${run.id}`), () => router.push(`/t/${run.task}`)) : setArmed(true)}>
@@ -296,7 +301,9 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
 function Checks({ run }: { run: Run }) {
   return (
     <section>
-      <SectionTitle aside="В том порядке, в каком шли на одном свежем сервере">Автоматические проверки</SectionTitle>
+      <SectionTitle aside={run.rechecks > 0
+        ? plural(run.rechecks, 'Проверено заново {n} раз: тот же код, текущие проверки', 'Проверено заново {n} раза: тот же код, текущие проверки', 'Проверено заново {n} раз: тот же код, текущие проверки')
+        : 'В том порядке, в каком шли на одном свежем сервере'}>Автоматические проверки</SectionTitle>
       <ol className="overflow-hidden rounded-xl border-2 border-border">
         {run.checks.map((c, i) => (
           <li key={`${i}-${c.name}`} className={cn('flex items-start gap-3 px-4 py-2.5 text-title not-first:border-t not-first:border-border', !c.passed && 'bg-destructive/5')}>
