@@ -22,6 +22,7 @@ import (
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
 	"tolerance/internal/platform/secretbox"
+	"tolerance/internal/pricing"
 	"tolerance/internal/sandbox"
 )
 
@@ -44,16 +45,25 @@ func NewService(pool *db.Pool, box *secretbox.Box) *Service { return &Service{po
 
 // Agent is the public face of an agent (no key, no bundle).
 type Agent struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Provider    string    `json:"provider"`
-	KeyHint     string    `json:"key_hint,omitempty"`
-	Files       int       `json:"files"`
-	Owner       string    `json:"owner"`
-	Runs        int       `json:"runs"`
-	BestScore   *int      `json:"best_score"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Provider    string `json:"provider"`
+	// Model is the catalog model a ready agent runs (pricing.Models; empty for an uploaded agent: unknown).
+	Model     string `json:"model,omitempty"`
+	ModelName string `json:"model_name,omitempty"`
+	// Price is the model's list price (nil when the model is unknown; on a subscription key no money is spent).
+	Price *pricing.Price `json:"price,omitempty"`
+	// TypicalCostUSD is the average finished run on this model that called it (every agent's, any task) at list
+	// price; TypicalRuns how many runs that average is over.
+	TypicalCostUSD *float64  `json:"typical_cost_usd,omitempty"`
+	TypicalRuns    int       `json:"typical_runs,omitempty"`
+	KeyHint        string    `json:"key_hint,omitempty"`
+	Files          int       `json:"files"`
+	Owner          string    `json:"owner"`
+	Runs           int       `json:"runs"`
+	BestScore      *int      `json:"best_score"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_agent", msg) }
@@ -162,6 +172,7 @@ func BundleFiles(data []byte) (map[string]sandbox.File, error) {
 
 type CreateInput struct {
 	Name, Description, Provider, APIKey string
+	Model                               string // a pricing.Models slug, or "" (unknown)
 	Bundle                              []byte
 }
 
@@ -219,8 +230,8 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "You already have 10 agents: delete one first")
 			}
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint)
+		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint, in.Model)
 		return err
 	})
 	if err != nil {
@@ -229,18 +240,34 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	return s.Get(ctx, id, true)
 }
 
-const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.key_hint, a.bundle_files, u.handle, a.created_at,
+const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
-	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done')
-	FROM agents a JOIN users u ON u.id = a.owner_id`
+	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
+	t.n, t.tin, t.tout, t.tcr, t.tcw
+	FROM agents a JOIN users u ON u.id = a.owner_id
+	LEFT JOIN LATERAL (SELECT count(*) AS n, avg(r.tokens_in)::float8 AS tin, avg(r.tokens_out)::float8 AS tout,
+			avg(r.tokens_cache_read)::float8 AS tcr, avg(r.tokens_cache_write)::float8 AS tcw
+		FROM runs r JOIN agents b ON b.id = r.agent_id WHERE a.model <> '' AND b.model = a.model AND r.status = 'done' AND r.llm_requests > 0) t ON true`
 
 func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var a Agent
-	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt, &a.Runs, &a.BestScore)
+	var n int
+	var tin, tout, tcr, tcw *float64
+	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
+		&a.Runs, &a.BestScore, &n, &tin, &tout, &tcr, &tcw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
 	a.CreatedAt = a.CreatedAt.UTC()
+	if m := pricing.BySlug(a.Model); m != nil {
+		a.ModelName = m.Name
+		p := m.Price
+		a.Price = &p
+		if n > 0 && tin != nil {
+			a.TypicalCostUSD = pricing.Cost(a.Model, int64(*tin), int64(*tout), int64(*tcr), int64(*tcw))
+			a.TypicalRuns = n
+		}
+	}
 	if !withKey {
 		a.KeyHint = ""
 	}
@@ -286,6 +313,19 @@ func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key stri
 		return Agent{}, err
 	}
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		// A ready agent's model must be served at the new key kind too (the worker sets MODEL by it).
+		var model string
+		if err := tx.QueryRow(ctx, `SELECT model FROM agents WHERE id = $1`, id).Scan(&model); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return httpx.NotFound()
+			}
+			return err
+		}
+		if m := pricing.BySlug(model); m != nil {
+			if _, ok := m.IDs[provider]; !ok {
+				return invalid(m.Name + " isn't available with that kind of key")
+			}
+		}
 		tag, err := tx.Exec(ctx, `UPDATE agents SET provider = $2, api_key = $3, key_hint = $4, updated_at = now()
 			WHERE id = $1 AND ($5 = '' OR owner_id = $5)`, id, provider, sealed, hint, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {

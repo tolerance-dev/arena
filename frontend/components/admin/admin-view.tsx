@@ -10,7 +10,7 @@ import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/empty-state'
 import { api, post, put } from '@/lib/api'
-import { compact } from '@/lib/format'
+import { compact, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { adminMessages } from '@/lib/i18n/messages/admin'
 import { errorText } from '@/lib/i18n/messages/errors'
@@ -157,7 +157,8 @@ function SpendBlock({ spend, t }: { spend: AdminSpend[]; t: AT }) {
           ))}
         </span>
       }>{t('spendTitle')}</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Stat label={t('agentCost')} value={usd(s.cost_usd)} note={s.unpriced ? t('unpriced', { n: s.unpriced }) : t('atListPrice')} />
         <Stat label={t('agentTokens')} value={compact(s.in + s.cache_write + s.out)}
           note={t('breakdown', { in: compact(s.in), out: compact(s.out), cache: compact(s.cache_read + s.cache_write), req: compact(s.requests) })} />
         <Stat label={t('runsCount')} value={String(s.runs)} note={s.failed ? t('failed', { n: s.failed }) : undefined} />

@@ -12,7 +12,7 @@ import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Meta } from '@/components/ui/feed'
 import { Segmented } from '@/components/ui/segmented'
 import { del, post } from '@/lib/api'
-import { compact, duration, grouped, usedTokens } from '@/lib/format'
+import { compact, duration, grouped, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { errorText } from '@/lib/i18n/messages/errors'
 import { runsMessages } from '@/lib/i18n/messages/runs'
@@ -215,6 +215,9 @@ function Numbers({ run, t }: { run: Run; t: RT }) {
             <span className="mt-1 block">{t('metricBudget', { pct })}, {t('metricRequests', { n: run.tokens.requests })}</span>
             {used > 0 && <span className="block">{t('metricTokensDetail', { in: compact(run.tokens.in + run.tokens.cache_write), out: compact(run.tokens.out), cached: compact(run.tokens.cache_read) })}</span>}
           </>} />
+        <Line label={t('metricCost')} value={run.cost_usd == null ? '—' : usd(run.cost_usd)}
+          sub={run.cost_usd == null ? t('costUnknown') : run.agent.provider.endsWith('-sub') ? t('costSubscription', { model: run.agent.model_name ?? '' })
+            : t('costModel', { model: run.agent.model_name ?? '' })} />
         <Line label={t('metricLoc')} value={done ? grouped(run.stats.loc, t.locale) : '—'} sub={done ? t('metricFiles', { n: run.stats.files }) : undefined} />
         <Line label={t('metricStart')} value={run.stats.start_seconds ? `${run.stats.start_seconds} s` : '—'} />
       </dl>

@@ -25,3 +25,16 @@ export function grouped(n: number, locale: Locale = 'en') {
 export function usedTokens(t: { in: number; out: number; cache_write: number }) {
   return t.in + t.cache_write + t.out
 }
+
+// Dollars: cents under $100, whole dollars above; a non-zero amount under a cent shows as "<$0.01".
+export function usd(n: number | null | undefined) {
+  if (n == null) return '—'
+  if (n > 0 && n < 0.01) return '<$0.01'
+  return n >= 100 ? `$${Math.round(n)}` : `$${n.toFixed(2)}`
+}
+
+// The most a run can cost on this price: the budget counts input, cache writes and output, so every budgeted token at
+// the dearest of those three (cache reads are outside the budget and cheap).
+export function costCeiling(price: { in: number; out: number; cache_write: number }, budget: number) {
+  return (budget * Math.max(price.in, price.out, price.cache_write)) / 1e6
+}

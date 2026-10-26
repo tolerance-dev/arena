@@ -23,6 +23,7 @@ import (
 	"tolerance/internal/agents"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/sanitize"
+	"tolerance/internal/pricing"
 	"tolerance/internal/sandbox"
 	"tolerance/internal/tasks"
 )
@@ -167,6 +168,7 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 type claimed struct {
 	id, task, agentID string
 	provider          string // where the agent's key is spent: run.sh picks model names by it (ARENA_PROVIDER)
+	model             string // a ready agent's catalog model: MODEL is its id at this provider
 	network           string // the run's own internal network (sandbox.CreateNetwork)
 	timeLimit         time.Duration
 	budget            int64
@@ -179,8 +181,8 @@ func (w *Worker) process(ctx context.Context, id string) {
 	c.id = id
 	var limitS int
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, r.time_limit_s, r.token_budget, a.bundle
-			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &limitS, &c.budget, &c.bundle)
+		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, a.model, r.time_limit_s, r.token_budget, a.bundle
+			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &c.model, &limitS, &c.budget, &c.bundle)
 	})
 	c.timeLimit = time.Duration(limitS) * time.Second
 	// The agent, and later the app and the checker, live on the run's own network with only the gateway.
@@ -271,6 +273,11 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			"DISABLE_TELEMETRY=1", "DO_NOT_TRACK=1", "CI=1", "HOME=/root",
 		},
 		Cmd: []string{"sh", "-c", "chmod +x /agent/run.sh 2>/dev/null; cd /work && exec /agent/run.sh"},
+	}
+	if m := pricing.BySlug(c.model); m != nil {
+		if mid, ok := m.IDs[c.provider]; ok {
+			spec.Env = append(spec.Env, "MODEL="+mid)
+		}
 	}
 	id, err := sandbox.Create(ctx, spec)
 	if err != nil {

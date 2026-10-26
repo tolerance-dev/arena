@@ -91,11 +91,15 @@ calls (`auth`/`save`/`{var}` chain logins and created ids; `ids` compares a list
 (text on a deep link in the browser). Every task has an API contract in TASK.md and checks generated from the data:
 hotels (34), marketplace (40: catalog, cart and stock, checkout, orders), cinema (41). The data has no image
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
-verify.py's check names. Example agents (`backend/internal/agents/examples/README.md`, embedded: the upload form offers them as ready agents, `agents.Examples`; demo is left out of the picker): each vendor's model on its own CLI (Claude Code,
+verify.py's check names. Example agents (`backend/internal/agents/examples/README.md`, embedded: the upload form offers them as ready agents, `agents.Examples`, with any model of `pricing.Models` — `agents.model` keeps the pick and the worker sets `MODEL` to that model's id at the agent's key kind; only each CLI's own model is tested; demo is left out of the picker): each vendor's model on its own CLI (Claude Code,
 Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with one OrcaRouter key (`run.sh` picks
 model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check; for every task it is the reference implementation of the API contract (all checks pass); a new contract's checks
 are tested against it, and against it with typical bugs put in by hand. The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
 Moonshot's installer, pinned): after changing it, `docker rmi arena-runtime:1 && make images`.
+**Costs**: `internal/pricing` holds each catalog model's list price (USD per million tokens, with its source and
+date); a run's `cost_usd`, an agent's typical cost and `/admin` spending are its metered tokens at those prices
+(uploaded agents: model unknown, no dollars; subscriptions: list-price equivalent, left out of `/admin` spending).
+Prices are typed in by hand: Gemini 3.8 Flash's are introductory and double on 2027-01-01.
 **Voting** is blind and pairwise (`/vote`, `internal/runs/votes.go`, table `pair_votes`): a signed-in user gets
 two agents' best runs at a task (the Compare set, app started, not their own agents, a pair they haven't voted on,
 least-voted pairs first) with names hidden, picks A, B or a tie; the votes replay into each agent's Elo per task
