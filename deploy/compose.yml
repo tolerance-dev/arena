@@ -123,6 +123,9 @@ services:
     command: ["gateway"]
     restart: unless-stopped
     logging: *logging
+    # A stop lets the requests in flight finish (25 s in cmd/gateway). Agents' runs it still cuts are infra_error, not
+    # a score (runs.MarkGatewayRestart).
+    stop_grace_period: 30s
     environment:
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}

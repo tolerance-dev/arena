@@ -359,7 +359,9 @@ func (w *Worker) process(ctx context.Context, id string) {
 	if err == nil {
 		err = w.check(ctx, c, log)
 	}
-	if ctx.Err() != nil {
+	if errors.Is(err, errCutByGateway) {
+		log.Warn("agent failed after a gateway restart: infra_error")
+	} else if ctx.Err() != nil {
 		// The worker gave the run up (drain ran out or abort): its containers are gone with the deferred removes.
 		log.Warn("run stopped by the worker shutting down")
 		_ = w.exec(context.Background(), refundQuota(`UPDATE runs SET status = 'infra_error', finished_at = now(), updated_at = now(),
@@ -523,15 +525,14 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 		return nil
 	}
 	secs := int(math.Round(time.Since(started).Seconds()))
-	if reason == "" {
-		// The agent may have exited on the provider's refusal before the watch saw the mark.
-		var mark string
-		_ = w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			return tx.QueryRow(ctx, `SELECT coalesce(agent_exit, '') FROM runs WHERE id = $1`, c.id).Scan(&mark)
-		})
-		if mark == "key_rejected" {
-			reason = mark
-		}
+	// The gateway's mark as the agent left it: the agent may have exited on the provider's refusal before the watch
+	// saw it, or after a gateway restart cut its connections (MarkGatewayRestart).
+	var mark string
+	_ = w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT coalesce(agent_exit, '') FROM runs WHERE id = $1`, c.id).Scan(&mark)
+	})
+	if reason == "" && mark == "key_rejected" {
+		reason = mark
 	}
 	if reason == "key_rejected" {
 		// Nothing to check: the agent never got a model. Done without a score, and the run doesn't count against
@@ -552,6 +553,16 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 	}
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE run_id = $1 AND purpose = 'agent'`, c.id)
 	log.Info("agent finished", "exit", exit, "seconds", secs)
+	if cutByGateway(mark, exit) {
+		// Not the agent's failure: no score, and the run doesn't count against the owner's limits.
+		err := w.exec(ctx, refundQuota(`UPDATE runs SET status = 'infra_error', failure_reason = $2, agent_exit = $3, agent_seconds = $4,
+			agent_log = $5, finished_at = now(), updated_at = now() WHERE id = $1 AND status = 'agent' RETURNING id`),
+			c.id, gatewayRestartReason, exit, secs, sanitize.CleanLog(res.Output, maxLog))
+		if err != nil {
+			return err
+		}
+		return errCutByGateway
+	}
 
 	image := ImageFor(c.id)
 	if err := sandbox.Commit(ctx, id, image, "ENV ANTHROPIC_API_KEY=", "ENV OPENAI_API_KEY=", "ENV GEMINI_API_KEY=", `CMD ["sh"]`); err != nil {
@@ -562,6 +573,34 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			WHERE id = $1 AND status = 'agent'`, c.id, exit, secs, image, sanitize.CleanLog(res.Output, maxLog))
 		return err
 	})
+}
+
+// gatewayRestartMark is agent_exit while the agent works, set by a gateway that (re)started under it.
+const gatewayRestartMark = "gateway_restart"
+
+const gatewayRestartReason = "the gateway restarted (a platform deploy) while the agent was working and cut its connection to the model"
+
+// errCutByGateway: build already marked the run infra_error, there is nothing to check.
+var errCutByGateway = errors.New("agent cut off by a gateway restart")
+
+// MarkGatewayRestart marks the runs whose agent is working right now. The gateway calls it on start: a restart (every
+// deploy recreates it) has just cut those agents' requests to the model, and refused new ones meanwhile. Marks the
+// gateway set earlier (budget, key_rejected) stay.
+func MarkGatewayRestart(ctx context.Context, pool *db.Pool) (int64, error) {
+	var n int64
+	err := pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `UPDATE runs SET agent_exit = $1, updated_at = now() WHERE status = 'agent' AND agent_exit IS NULL`,
+			gatewayRestartMark)
+		n = tag.RowsAffected()
+		return err
+	})
+	return n, err
+}
+
+// cutByGateway: the agent crashed after a gateway restart cut it off, so the run is the platform's failure. An agent
+// that carried on (finished, ran out of time or budget) is checked as usual.
+func cutByGateway(mark, exit string) bool {
+	return mark == gatewayRestartMark && strings.HasPrefix(exit, "error:")
 }
 
 // recordRuntime adds the image the agent's container was created from to the run's manifest, once.

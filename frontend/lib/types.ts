@@ -32,7 +32,7 @@ export interface Run {
   id: string; task: string; task_title: string
   agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
-  agent_exit: string | null // ok | timeout | budget | key_rejected | error:N
+  agent_exit: string | null // ok | timeout | budget | key_rejected | error:N; gateway_restart while building
   time_limit_s: number; token_budget: number
   tokens: Tokens
   cost_usd: number | null // at list price; null when the model is unknown, 0 on a subscription

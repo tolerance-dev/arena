@@ -108,7 +108,7 @@ func (s pgStore) closeBudget(ctx context.Context, runID string) error {
 func (s pgStore) rejectKey(ctx context.Context, runID string) error {
 	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `UPDATE runs SET agent_exit = 'key_rejected', updated_at = now()
-			WHERE id = $1 AND status = 'agent' AND agent_exit IS NULL AND llm_requests = 0`, runID)
+			WHERE id = $1 AND status = 'agent' AND (agent_exit IS NULL OR agent_exit = 'gateway_restart') AND llm_requests = 0`, runID)
 		return err
 	})
 }

@@ -27,7 +27,7 @@ export const PHASE: Partial<Record<RunStatus, string>> = {
   queued: 'Ждёт свободного места', agent: 'Агент пишет приложение', checking: 'Проверка: запуск, проверки, скриншоты',
 }
 
-const EXIT: Record<string, string> = { ok: 'закончил сам', timeout: 'упёрся в лимит времени', budget: 'кончились токены', key_rejected: 'провайдер отклонил ключ' }
+const EXIT: Record<string, string> = { ok: 'закончил сам', timeout: 'упёрся в лимит времени', budget: 'кончились токены', key_rejected: 'провайдер отклонил ключ', gateway_restart: 'платформа перезапускалась' }
 export const isActive = (r: Pick<Run, 'status'>) => ACTIVE.includes(r.status)
 
 // A queued run's place and wait: "Place in the queue: 3 · starts in about 40 min". null when it isn't queued.
