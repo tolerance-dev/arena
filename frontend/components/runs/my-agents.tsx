@@ -210,7 +210,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
           <KeyHint provider={providerValue} />
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy}><Upload /> {busy ? 'Загружаем…' : 'Загрузить агента'}</Button>
+          <Button type="submit" disabled={busy}><Upload /> {busy ? 'Проверяем ключ…' : 'Загрузить агента'}</Button>
           {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
@@ -253,6 +253,8 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
   const [armed, setArmed] = useState(false)
   const [more, setMore] = useState(false)
   const [key, setKey] = useState('')
+  const [keyState, setKeyState] = useState<'idle' | 'checking' | 'saved'>('idle')
+  const [keyErr, setKeyErr] = useState('')
   const [provider, setProvider] = useState<string>(agent.provider)
   const chosen = task || (tasks.some((x) => x.slug === preset) ? preset : '') || tasks[0]?.slug || ''
   const limits = { time_limit_s: minutes ? Math.round(Number(minutes) * 60) : 0, token_budget: budgetK ? Math.round(Number(budgetK) * 1000) : 0 }
@@ -287,12 +289,16 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
     }
   }
   async function saveKey() {
+    setKeyState('checking')
+    setKeyErr('')
     try {
       await put(`/my/agents/${agent.id}/key`, { provider, api_key: key })
       setKey('')
+      setKeyState('saved')
       onChange()
     } catch (e) {
-      setErr(errorText(e))
+      setKeyErr(errorText(e))
+      setKeyState('idle')
     }
   }
 
@@ -344,12 +350,14 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Заменить ключ</Label>
             <div className="flex flex-wrap gap-2">
-              <select className={cn(field, 'w-48')} value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <select className={cn(field, 'w-48')} value={provider} onChange={(e) => { setProvider(e.target.value); setKeyState('idle'); setKeyErr('') }}>
                 <ProviderOptions subscriptions={subscriptions} />
               </select>
-              <Input type="password" {...noAutofill} className="min-w-0 flex-1" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-…" />
-              <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20}>Сохранить</Button>
+              <Input type="password" {...noAutofill} className="min-w-0 flex-1" value={key} onChange={(e) => { setKey(e.target.value); setKeyState('idle'); setKeyErr('') }} placeholder="sk-…" />
+              <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20 || keyState === 'checking'}>{keyState === 'checking' ? 'Проверяем…' : 'Сохранить'}</Button>
             </div>
+            {keyErr && <p role="alert" className="text-xs text-destructive">{keyErr}</p>}
+            {keyState === 'saved' && <p role="status" className="text-xs font-medium text-foreground">Ключ проверен и сохранён.</p>}
             <KeyHint provider={provider} />
           </div>
           <div className="sm:col-span-2">

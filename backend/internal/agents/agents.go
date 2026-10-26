@@ -40,6 +40,8 @@ type Service struct {
 	// subscription ("" = nobody; ARENA_SUBSCRIPTIONS=true sets the site owner). A subscription is its owner's own:
 	// no other user, admins included, may key or run an agent on it (runs.Create checks the second half).
 	SubscriptionEmail string
+	// CheckKeys asks the provider whether a key works before saving it (off in tests and with a fake gateway).
+	CheckKeys bool
 }
 
 func NewService(pool *db.Pool, box *secretbox.Box) *Service { return &Service{pool: pool, box: box} }
@@ -116,6 +118,9 @@ func (s *Service) sealKey(provider, key string, subscriptionOK bool) (sealed []b
 	} else {
 		if len(key) < 20 || strings.ContainsAny(key, " \n\t") {
 			return nil, "", invalid("That doesn't look like an API key")
+		}
+		if err := keyKind(provider, key); err != nil {
+			return nil, "", err
 		}
 		hint = "…" + key[len(key)-4:]
 	}
@@ -203,6 +208,9 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	}
 	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
 	if err != nil {
+		return Agent{}, err
+	}
+	if err := s.checkKey(ctx, in.Provider, in.APIKey); err != nil {
 		return Agent{}, err
 	}
 	if !bytes.HasPrefix(in.Bundle, []byte("PK")) {
@@ -358,6 +366,9 @@ func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key stri
 	}
 	sealed, hint, err := s.sealKey(provider, key, ok)
 	if err != nil {
+		return Agent{}, err
+	}
+	if err := s.checkKey(ctx, provider, strings.TrimSpace(key)); err != nil {
 		return Agent{}, err
 	}
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
