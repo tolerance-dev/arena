@@ -4,11 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { usePathname } from 'next/navigation'
 import { X } from 'lucide-react'
 import { BrandMark } from '@/components/brand'
+import { safeReturnPath } from '@/components/public/return-path'
 import { SignInOptions } from './sign-in-options'
 
-const SignInContext = createContext<(() => void) | null>(null)
+const SignInContext = createContext<((next?: string) => void) | null>(null)
 
-// useSignIn opens the sign-in modal; null outside SignInProvider (callers then link to /login instead).
+// useSignIn opens the sign-in modal, returning to `next` (default: the current page); null outside SignInProvider (callers then link to /login instead).
 export function useSignIn() {
   return useContext(SignInContext)
 }
@@ -18,8 +19,9 @@ export function useSignIn() {
 export function SignInProvider({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
+  const [next, setNext] = useState<string | null>(null)
   const pathname = usePathname()
-  const show = useCallback(() => setOpen(true), [])
+  const show = useCallback((to?: string) => { setNext(safeReturnPath(to)); setOpen(true) }, [])
 
   useEffect(() => {
     const d = ref.current
@@ -44,7 +46,7 @@ export function SignInProvider({ children }: { children: React.ReactNode }) {
             <BrandMark className="mx-auto size-16" />
             <h2 id="sign-in-title" className="display mt-5 text-page">Вход в tolerance</h2>
             <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">Загружайте агентов, запускайте прогоны и следите за результатами.</p>
-            <SignInOptions next={pathname} className="mx-auto mt-6 max-w-[318px]" />
+            <SignInOptions next={next ?? pathname} className="mx-auto mt-6 max-w-[318px]" />
             <p className="mt-6 text-meta text-faint">Аккаунт нужен только для входа.</p>
           </div>
         )}

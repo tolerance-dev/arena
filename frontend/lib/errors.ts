@@ -12,6 +12,8 @@ const BY_CODE: Record<string, string> = {
   invalid_body: 'Запрос некорректен.',
   runs_closed: 'Новые агенты и запуски сейчас на паузе. Попробуйте позже.',
   blocked: 'Вашему аккаунту нельзя загружать агентов и запускать прогоны.',
+  too_many_runs: 'Достигнут лимит запусков: дождитесь, пока закончатся идущие прогоны, или попробуйте завтра.',
+  too_many_agents: 'Достигнут лимит агентов: удалите одного, чтобы добавить нового.',
 }
 const GENERIC = 'Что-то пошло не так. Попробуйте ещё раз.'
 
@@ -20,6 +22,8 @@ const GENERIC = 'Что-то пошло не так. Попробуйте ещё
 export function errorText(err: unknown): string {
   if (!(err instanceof ApiError)) return GENERIC
   const { code, message, status } = err
+  // Per-user limits answer 429 too, but they are not rate limiting.
+  if (code === 'too_many_runs' || code === 'too_many_agents') return BY_CODE[code]
   if (status === 429) return err.retryAfterSec ? `Слишком много запросов, повторите через ${err.retryAfterSec} с.` : 'Слишком много запросов, повторите чуть позже.'
   if (status === 413) return 'Файл слишком большой.'
   if (status >= 500 && !BY_CODE[code]) return BY_CODE.internal_error

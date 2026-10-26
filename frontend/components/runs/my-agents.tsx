@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink, Layers, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
-import { useSignIn } from '@/components/auth/sign-in-dialog'
-import { loginHref } from '@/components/public/return-path'
+import { SignInOptions } from '@/components/auth/sign-in-options'
 import { Button } from '@/components/ui/button'
 import { Input, fieldClass } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,29 +25,30 @@ const field = fieldClass
 // running right now comes first, then the agents, each with its launch controls in one row.
 export function MyAgents() {
   const { me, loading } = useMe()
-  const signIn = useSignIn()
   const agents = usePoll<{ items: Agent[] }>(me ? '/my/agents' : null, 30_000)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 60_000)
   const runs = usePoll<{ items: Run[] }>(me ? '/my/runs' : null, 3_000)
   const [adding, setAdding] = useState<boolean | null>(null)
+  // The agent just added: its row, with the time and cost, is where the first run starts.
+  const [fresh, setFresh] = useState('')
   // /my?task=<slug> (the task page's "Run your agent"): that task comes preselected in every agent's row.
   const [preset, setPreset] = useState('')
   useEffect(() => setPreset(new URLSearchParams(window.location.search).get('task') ?? ''), [])
 
   if (loading) return <div className="h-96 animate-pulse rounded-lg bg-muted" />
   if (!me) {
+    const task = tasks.data?.items.find((x) => x.slug === preset)
     return (
       <div className="max-w-md space-y-4">
         <h1 className="display text-page">Мои агенты</h1>
-        <p className="text-muted-foreground">Войдите, чтобы загружать агентов и запускать прогоны.</p>
-        {signIn
-          ? <Button onClick={signIn}>Войти</Button>
-          : <Button render={<Link href={loginHref('/my')} />} nativeButton={false}>Войти</Button>}
+        <p className="text-muted-foreground">Войдите, чтобы загружать агентов и запускать прогоны. Понадобится API-ключ модели: он тратится только вашим агентом.</p>
+        {task && <p className="text-body">Задание: <span className="font-semibold">{task.title}</span></p>}
+        <SignInOptions next={preset ? `/my?task=${encodeURIComponent(preset)}` : '/my'} />
       </div>
     )
   }
   const refresh = () => { void agents.reload(); void runs.reload() }
-  const started = () => { refresh(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const started = () => { setFresh(''); refresh(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const none = agents.data?.items.length === 0
   const showForm = adding ?? none
   return (
@@ -59,11 +59,11 @@ export function MyAgents() {
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> Новый агент</Button>
         )}>Ваши агенты</SectionTitle>
-        {showForm && <NewAgent onDone={() => { setAdding(false); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
+        {showForm && <NewAgent onDone={(a) => { setAdding(false); setFresh(a.id); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
         {none && !showForm && <EmptyState>Агентов пока нет. Загрузите первого выше.</EmptyState>}
         {!!agents.data?.items.length && (
           <ul className={cn('divide-y divide-border rounded-xl border-2 border-border', showForm && 'mt-6')}>
-            {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} tasks={tasks.data?.items ?? []} preset={preset} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
+            {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} fresh={a.id === fresh} tasks={tasks.data?.items ?? []} preset={preset} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
           </ul>
         )}
       </section>
@@ -99,7 +99,7 @@ function DeleteAccount() {
 
 const EXAMPLES_URL = 'https://github.com/tolerance-dev/arena/tree/main/backend/internal/agents/examples'
 
-function NewAgent({ onDone, onCancel, subscriptions }: { onDone: () => void; onCancel?: () => void; subscriptions: boolean }) {
+function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean }) {
   const catalog = usePoll<{ items: ExampleAgent[]; models: ExampleModel[] }>('/agents/examples', 3_600_000).data
   const examples = catalog?.items ?? []
   const [source, setSource] = useState<'example' | 'file'>('example')
@@ -127,10 +127,10 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: () => void; onC
       const data = new FormData(form)
       if (example) data.set('example', example.slug)
       if (example && model) data.set('model', model.slug)
-      await upload<Agent>('/my/agents', data)
+      const agent = await upload<Agent>('/my/agents', data)
       form.reset()
       setName(null)
-      onDone()
+      onDone(agent)
     } catch (e) {
       setErr(errorText(e))
     } finally {
@@ -217,8 +217,8 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: () => void; onC
 }
 
 // One agent in one row: who it is, then a task and "Start". Limits, the key and deleting hide behind "⋯".
-function AgentRow({ agent, tasks, preset, onChange, onStarted, subscriptions }: {
-  agent: Agent; tasks: TaskSummary[]; preset: string; onChange: () => void; onStarted: () => void; subscriptions: boolean
+function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscriptions }: {
+  agent: Agent; fresh: boolean; tasks: TaskSummary[]; preset: string; onChange: () => void; onStarted: () => void; subscriptions: boolean
 }) {
   const [task, setTask] = useState('')
   const [minutes, setMinutes] = useState('')
@@ -236,6 +236,8 @@ function AgentRow({ agent, tasks, preset, onChange, onStarted, subscriptions }: 
   const taskMinutes = Math.round((picked?.time_limit_s ?? 0) / 60)
   const choices = [...new Set([5, 10, 15, 30, taskMinutes])].filter((m) => m > 0 && m <= taskMinutes).sort((a, b) => a - b)
   const runMinutes = minutes ? Number(minutes) : taskMinutes
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (fresh) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, [fresh])
 
   async function launch(slugs: string[]) {
     setBusy(true)
@@ -270,7 +272,8 @@ function AgentRow({ agent, tasks, preset, onChange, onStarted, subscriptions }: 
   }
 
   return (
-    <div className="px-4 py-3.5">
+    <div ref={ref} className={cn('px-4 py-3.5', fresh && 'bg-primary/5')}>
+      {fresh && <p role="status" className="mb-3 text-body font-medium">Агент сохранён. Выберите задание и время, проверьте оценку стоимости и запустите.</p>}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-1 basis-64 items-center gap-3">
           <AgentAvatar name={agent.name} size="sm" />
