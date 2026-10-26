@@ -76,3 +76,15 @@ func (s *Service) checkKey(ctx context.Context, provider, key string) error {
 }
 
 const orcaRouterModels = "https://api.orcarouter.ai/v1/models"
+
+// maskKey is how a saved key is shown back, like the providers' own consoles do: its public kind prefix
+// ("sk-ant-api03-", "sk-proj-", "AIza") and its last four characters, e.g. "sk-ant-api03-…a1b2".
+func maskKey(key string) string {
+	prefix := ""
+	if i := strings.LastIndex(key[:min(len(key)-8, 16)], "-"); i >= 0 {
+		prefix = key[:i+1]
+	} else if strings.HasPrefix(key, "AIza") {
+		prefix = "AIza"
+	}
+	return prefix + "…" + key[len(key)-4:]
+}

@@ -122,7 +122,7 @@ func (s *Service) sealKey(provider, key string, subscriptionOK bool) (sealed []b
 		if err := keyKind(provider, key); err != nil {
 			return nil, "", err
 		}
-		hint = "…" + key[len(key)-4:]
+		hint = maskKey(key)
 	}
 	sealed, err = s.box.Seal(key)
 	return sealed, hint, err
