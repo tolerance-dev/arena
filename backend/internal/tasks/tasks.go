@@ -80,7 +80,8 @@ func (t *Task) hash() error {
 		data.Write(t.DataFiles[n])
 	}
 	t.DataHash = sum(data.Bytes())
-	spec, err := json.Marshal(map[string]any{"checks": t.Checks, "ui": t.UI, "ui_text": t.UIText})
+	// The hidden checks count in the score, so a new hidden set is a new checks version (the hash reveals nothing).
+	spec, err := json.Marshal(map[string]any{"checks": t.AllChecks(), "ui": t.UI, "ui_text": t.UIText})
 	t.ChecksHash = sum(spec)
 	return err
 }
