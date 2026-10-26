@@ -1,7 +1,12 @@
 name: ci
-# Prototype mode: nothing runs on push. Run it by hand (Actions → ci → Run workflow).
+# Runs on every pull request (Claude merges its own PRs, so this catches what a session forgot to check) and by hand.
 on:
+  pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
