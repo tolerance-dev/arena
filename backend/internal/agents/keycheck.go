@@ -61,13 +61,18 @@ func (s *Service) checkKey(ctx context.Context, provider, key string) error {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<10))
-	// Google answers a bad key with 400 API_KEY_INVALID, the others with 401. A 403 can be a working key that may
-	// not list models (an OpenAI restricted key), so it passes.
+	// Google answers a bad key with 400 API_KEY_INVALID and a key not allowed the Gemini API (its API restrictions,
+	// or the API off in its project) with 403 API_KEY_SERVICE_BLOCKED or SERVICE_DISABLED; the others say 401. Another
+	// 403 can be a working key that may not list models (an OpenAI restricted key), so it passes.
 	// A subscription token is refused only when Anthropic calls it bad, not when the endpoint just won't take OAuth.
 	msg := strings.ToLower(string(body))
 	bad := resp.StatusCode == http.StatusUnauthorized
 	if provider == "claude-sub" {
 		bad = bad && (strings.Contains(msg, "invalid") || strings.Contains(msg, "expired") || strings.Contains(msg, "revoked"))
+	}
+	if provider == "google" && resp.StatusCode == http.StatusForbidden &&
+		(strings.Contains(string(body), `"API_KEY_`) || strings.Contains(string(body), `"SERVICE_DISABLED"`)) {
+		return httpx.New(http.StatusBadRequest, "key_blocked", "Google doesn't let this key use the Gemini API")
 	}
 	if bad || (provider == "google" && resp.StatusCode == http.StatusBadRequest && strings.Contains(string(body), "API_KEY_INVALID")) {
 		return httpx.New(http.StatusBadRequest, "key_rejected", "The provider rejected this key")

@@ -401,4 +401,32 @@ func TestRejectedKey(t *testing.T) {
 	if keyRejected("anthropic", gemini(invalid)) {
 		t.Error("a 400 outside Gemini was taken as a rejected key")
 	}
+
+	// A key that can't buy a single answer (blocked from the API, out of credit) is refused like a bad one; a rate
+	// limit or another error is not.
+	reply := func(status int, body string) *http.Response {
+		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}
+	}
+	for _, c := range []struct {
+		protocol string
+		status   int
+		body     string
+		want     bool
+	}{
+		{"gemini", 403, `{"error":{"code":403,"status":"PERMISSION_DENIED","details":[{"reason": "API_KEY_SERVICE_BLOCKED"}]}}`, true},
+		{"gemini", 403, `{"error":{"code":403,"status":"PERMISSION_DENIED","details":[{"reason": "SERVICE_DISABLED"}]}}`, true},
+		{"gemini", 402, `{"error":{"code":402,"message":"Your prepayment credits are depleted."}}`, true},
+		{"openai", 402, `{"error":{"message":"Insufficient credits"}}`, true},
+		{"openai", 429, `{"error":{"type":"insufficient_quota","code":"insufficient_quota"}}`, true},
+		{"anthropic", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}`, true},
+		{"gemini", 403, `{"error":{"code":403,"status":"PERMISSION_DENIED","message":"no access to this model"}}`, false},
+		{"gemini", 429, `{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}`, false},
+		{"openai", 429, `{"error":{"type":"requests","code":"rate_limit_exceeded"}}`, false},
+		{"anthropic", 429, `{"type":"error","error":{"type":"rate_limit_error"}}`, false},
+		{"anthropic", 403, `{"type":"error","error":{"type":"permission_error"}}`, false},
+	} {
+		if got := keyRejected(c.protocol, reply(c.status, c.body)); got != c.want {
+			t.Errorf("%s %d %s: rejected = %v, want %v", c.protocol, c.status, c.body, got, c.want)
+		}
+	}
 }

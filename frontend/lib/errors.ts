@@ -15,6 +15,7 @@ const BY_CODE: Record<string, string> = {
   too_many_runs: 'Достигнут лимит запусков: дождитесь, пока закончатся идущие прогоны, или попробуйте завтра.',
   too_many_agents: 'Достигнут лимит агентов: удалите одного, чтобы добавить нового.',
   key_rejected: 'Провайдер не принял ключ: проверьте, что он скопирован целиком, не отозван и подходит выбранному провайдеру.',
+  key_blocked: 'Google не пускает этот ключ к Gemini API: создайте ключ в AI Studio (aistudio.google.com/apikey) или разрешите ему Generative Language API в Google Cloud Console.',
   key_is_subscription: 'Это токен подписки Claude: выберите провайдера «Подписка Claude».',
   key_is_api_key: 'Это API-ключ Anthropic: выберите провайдера «Anthropic».',
 }

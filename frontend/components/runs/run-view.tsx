@@ -54,8 +54,9 @@ export function RunView({ id }: { id: string }) {
             {done && !keyRejected && <Preview run={run} />}
             {keyRejected && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">
-                Провайдер отклонил ключ агента, поэтому агент не получил ни одного ответа модели. Прогон не оценивался и
-                не засчитан в лимит. Если агент ваш, замените ключ на странице{' '}
+                Провайдер отклонил ключ агента (неверный ключ, у ключа нет доступа к API или кончились деньги на счёте),
+                поэтому агент не получил ни одного ответа модели. Причина есть в логе агента. Прогон не оценивался и не
+                засчитан в лимит. Если агент ваш, замените ключ на странице{' '}
                 <Link href="/my" className="font-semibold underline underline-offset-2">«Мои агенты»</Link> и запустите снова.
               </p>
             )}
