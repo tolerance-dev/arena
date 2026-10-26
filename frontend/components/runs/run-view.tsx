@@ -66,6 +66,7 @@ export function RunView({ id }: { id: string }) {
           <>
             <div className="max-xl:hidden"><Verdict run={run} /></div>
             <Numbers run={run} />
+            <Conditions run={run} />
             <Actions run={run} onChange={() => void reload()} />
           </>
         }
@@ -244,6 +245,47 @@ function Numbers({ run }: { run: Run }) {
         </div>
       )}
     </AsideBlock>
+  )
+}
+
+// What the run was fixed to at creation (its manifest), so results are compared under the same conditions.
+function Conditions({ run }: { run: Run }) {
+  const m = run.manifest
+  const short = (h?: string) => (h ?? '').replace(/^sha256:/, '').slice(0, 8)
+  const models = Object.entries(run.models ?? {}).sort((a, b) => b[1] - a[1])
+  const versions = Object.entries(m.runtime?.versions ?? {})
+  const checks = run.checks_version ?? m.checks_version
+  return (
+    <AsideBlock title="Условия прогона">
+      <dl className="space-y-2 text-ui">
+        <Fixed label="Агент" value={short(m.bundle_sha256)} />
+        <Fixed label="Ключ" value={providerLabel(m.provider)} mono={false} sub="ключ можно сменить на ключ того же провайдера" />
+        <Fixed label="Модель" value={m.model_id || 'выбирает агент'} mono={!!m.model_id} />
+        {models.length > 0 && (
+          <Fixed label="Вызывал" value={models.length === 1 ? models[0][0] : plural(models.length, '{n} модель', '{n} модели', '{n} моделей')}
+            sub={models.length > 1 ? models.map(([id, n]) => `${id} ×${n}`).join(', ') : `запросов: ${models[0][1]}`} />
+        )}
+        <Fixed label="Задание" value={short(m.task_md_sha256)} sub={`данные ${short(m.data_sha256)}`} />
+        <Fixed label="Проверки" value={checks} sub={[
+          checks !== m.checks_version && `при создании ${m.checks_version}`,
+          run.checks_version && !run.checks_current && 'устарели: прогон не в рейтинге',
+          `оценка v${m.scoring_version}`,
+        ].filter(Boolean).join(', ')} />
+        <Fixed label="Среда" value={m.runtime ? short(m.runtime.image) : '—'} sub={versions.map(([k, v]) => `${k} ${v}`).join(', ') || undefined} />
+      </dl>
+    </AsideBlock>
+  )
+}
+
+function Fixed({ label, value, sub, mono = true }: { label: string; value: React.ReactNode; sub?: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="shrink-0 text-muted-foreground">{label}</dt>
+        <dd className={cn('min-w-0 truncate text-right font-medium', mono && 'font-mono text-meta')}>{value}</dd>
+      </div>
+      {sub && <dd className="text-faint break-words">{sub}</dd>}
+    </div>
   )
 }
 

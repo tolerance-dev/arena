@@ -49,8 +49,8 @@ func (f fixture) agent(owner, name string) string {
 // queued adds a queued run created at.
 func (f fixture) queued(agent string, at time.Time) string {
 	id := idgen.New("run")
-	f.exec(`INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget, created_at) VALUES ($1, $2, 'marketplace', 1800, 1000000, $3)`,
-		id, agent, at)
+	f.exec(`INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget, manifest, created_at)
+		VALUES ($1, $2, 'marketplace', 1800, 1000000, '{"provider": "anthropic"}', $3)`, id, agent, at)
 	return id
 }
 
@@ -68,8 +68,9 @@ func (f fixture) done(agent, task string, score int, shot string) string {
 		f.t.Fatalf("no task %q", task)
 	}
 	id := idgen.New("run")
-	f.exec(`INSERT INTO runs (id, agent_id, task, status, time_limit_s, token_budget, score, app_started, shot, started_at, finished_at)
-		VALUES ($1, $2, $3, 'done', $4, $5, $6, true, $7, now() - interval '20 minutes', now())`,
-		id, agent, task, t.TimeLimitS, t.TokenBudget, score, []byte(shot))
+	f.exec(`INSERT INTO runs (id, agent_id, task, status, time_limit_s, token_budget, score, app_started, shot, started_at, finished_at,
+			manifest, checks_version)
+		VALUES ($1, $2, $3, 'done', $4, $5, $6, true, $7, now() - interval '20 minutes', now(), $8, $9)`,
+		id, agent, task, t.TimeLimitS, t.TokenBudget, score, []byte(shot), newManifest(t, "anthropic", "", ""), checksVersion(t))
 	return id
 }

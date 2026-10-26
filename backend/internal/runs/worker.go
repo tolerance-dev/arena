@@ -23,7 +23,6 @@ import (
 	"tolerance/internal/agents"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/sanitize"
-	"tolerance/internal/pricing"
 	"tolerance/internal/sandbox"
 	"tolerance/internal/tasks"
 )
@@ -264,8 +263,8 @@ func (w *Worker) collectImages(ctx context.Context) {
 			// By id, not the image column: a snapshot exists a moment before the column is set.
 			rows, err := tx.Query(ctx, `SELECT id FROM runs WHERE
 					status IN ('queued', 'agent', 'checking') OR finished_at IS NULL OR finished_at > now() - interval '1 day'
-					OR id IN (SELECT DISTINCT ON (agent_id, task, time_limit_s, token_budget) id FROM runs WHERE status = 'done' AND score IS NOT NULL
-						ORDER BY agent_id, task, time_limit_s, token_budget, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
+					OR id IN (SELECT DISTINCT ON (agent_id, task, time_limit_s, token_budget, checks_version) id FROM runs WHERE status = 'done' AND score IS NOT NULL
+						ORDER BY agent_id, task, time_limit_s, token_budget, checks_version, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
 			if err != nil {
 				return err
 			}
@@ -322,9 +321,8 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 
 type claimed struct {
 	id, task, agentID string
-	provider          string // where the agent's key is spent: run.sh picks model names by it (ARENA_PROVIDER)
-	model             string // a ready agent's catalog model: MODEL is its id at this provider
-	network           string // the run's own internal network (sandbox.CreateNetwork)
+	manifest          Manifest // provider (ARENA_PROVIDER), model id (MODEL), bundle hash: as fixed at creation
+	network           string   // the run's own internal network (sandbox.CreateNetwork)
 	timeLimit         time.Duration
 	budget            int64
 	bundle            []byte
@@ -336,10 +334,17 @@ func (w *Worker) process(ctx context.Context, id string) {
 	var c claimed
 	c.id = id
 	var limitS int
+	var manifest []byte
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, a.model, r.time_limit_s, r.token_budget, a.bundle, r.recheck
-			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &c.model, &limitS, &c.budget, &c.bundle, &c.recheck)
+		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, r.manifest, r.time_limit_s, r.token_budget, a.bundle, r.recheck
+			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &manifest, &limitS, &c.budget, &c.bundle, &c.recheck)
 	})
+	if err == nil {
+		err = json.Unmarshal(manifest, &c.manifest)
+	}
+	if err == nil && sha(c.bundle) != c.manifest.BundleHash {
+		err = errors.New("the agent's bundle changed after the run was created")
+	}
 	c.timeLimit = time.Duration(limitS) * time.Second
 	// The agent, and later the app and the checker, live on the run's own network with only the gateway.
 	c.network = "arena-run-" + PreviewHost(id)
@@ -429,23 +434,24 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			"OPENAI_BASE_URL=" + gw + "/openai/v1", "OPENAI_API_KEY=" + token,
 			"GOOGLE_GEMINI_BASE_URL=" + gw + "/gemini", "GEMINI_API_KEY=" + token,
 			"npm_config_registry=" + gw + "/npm/", "PIP_INDEX_URL=" + gw + "/pypi/simple/", "PIP_TRUSTED_HOST=gateway",
-			"ARENA_TASK=" + c.task, "ARENA_PROVIDER=" + c.provider, fmt.Sprintf("ARENA_TIME_LIMIT_S=%d", int(c.timeLimit.Seconds())),
+			"ARENA_TASK=" + c.task, "ARENA_PROVIDER=" + c.manifest.Provider, fmt.Sprintf("ARENA_TIME_LIMIT_S=%d", int(c.timeLimit.Seconds())),
 			fmt.Sprintf("ARENA_DEADLINE=%d", deadline.Unix()), fmt.Sprintf("ARENA_TOKEN_BUDGET=%d", c.budget),
 			"TASK_FILE=/work/TASK.md", "IS_SANDBOX=1", "DISABLE_AUTOUPDATER=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
 			"DISABLE_TELEMETRY=1", "DO_NOT_TRACK=1", "CI=1", "HOME=/root",
 		},
 		Cmd: []string{"sh", "-c", "chmod +x /agent/run.sh 2>/dev/null; cd /work && exec /agent/run.sh"},
 	}
-	if m := pricing.BySlug(c.model); m != nil {
-		if mid, ok := m.IDs[c.provider]; ok {
-			spec.Env = append(spec.Env, "MODEL="+mid)
-		}
+	if c.manifest.ModelID != "" {
+		spec.Env = append(spec.Env, "MODEL="+c.manifest.ModelID)
 	}
 	id, err := sandbox.Create(ctx, spec)
 	if err != nil {
 		return err
 	}
 	defer sandbox.Remove(id)
+	if err := w.recordRuntime(ctx, c.id, id); err != nil {
+		return fmt.Errorf("runtime: %w", err)
+	}
 	if err := sandbox.CopyIn(ctx, id, "/agent", bundle, 0); err != nil {
 		return err
 	}
@@ -533,6 +539,27 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			WHERE id = $1 AND status = 'agent'`, c.id, exit, secs, image, sanitize.CleanLog(res.Output, maxLog))
 		return err
 	})
+}
+
+// recordRuntime adds the image the agent's container was created from to the run's manifest, once.
+func (w *Worker) recordRuntime(ctx context.Context, runID, container string) error {
+	image, labels, err := sandbox.ImageOf(ctx, container)
+	if err != nil {
+		return err
+	}
+	rt := Runtime{Image: image, Versions: map[string]string{}}
+	// arena.versions (runtime/Dockerfile): "name@version" separated by spaces.
+	for _, f := range strings.Fields(labels["arena.versions"]) {
+		if i := strings.LastIndex(f, "@"); i > 0 {
+			rt.Versions[f[:i]] = f[i+1:]
+		}
+	}
+	raw, err := json.Marshal(rt)
+	if err != nil {
+		return err
+	}
+	return w.exec(ctx, `UPDATE runs SET manifest = manifest || jsonb_build_object('runtime', $2::jsonb) WHERE id = $1 AND NOT manifest ? 'runtime'`,
+		runID, raw)
 }
 
 // verifyResult is what verify.py writes to /verify/out/result.json.
@@ -661,9 +688,9 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	log.Info("run checked", "score", score, "loc", stats.LOC)
 	return w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', recheck = false, stats = $2, checks = $3, score = $4, app_started = $5,
-			shot = $6, shot_mobile = $7, source_zip = $8, check_log = $9, finished_at = now(), updated_at = now()
+			shot = $6, shot_mobile = $7, source_zip = $8, check_log = $9, checks_version = $10, finished_at = now(), updated_at = now()
 			WHERE id = $1 AND status = 'checking'`,
-			c.id, statsJSON, checksJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog))
+			c.id, statsJSON, checksJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog), checksVersion(task))
 		return err
 	})
 }

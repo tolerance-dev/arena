@@ -249,7 +249,8 @@ func apiError(w http.ResponseWriter, provider string, status int, kind, msg stri
 }
 
 type grant struct {
-	runID, provider string
+	runID, provider string // provider: the run's, fixed at creation (runs.Manifest)
+	keyProvider     string // the agent's key's now: a key switched to another provider mid-run is refused
 	sealed          []byte
 	budget, used    int64
 	status          string
@@ -271,11 +272,11 @@ func tokenFrom(r *http.Request) string {
 func (g *Gateway) lookup(ctx context.Context, token string) (grant, error) {
 	var gr grant
 	err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT t.run_id, a.provider, a.api_key, r.token_budget,
+		return tx.QueryRow(ctx, `SELECT t.run_id, r.manifest->>'provider', a.provider, a.api_key, r.token_budget,
 				r.tokens_in + r.tokens_out + r.tokens_cache_write, r.status
 			FROM gateway_tokens t JOIN runs r ON r.id = t.run_id JOIN agents a ON a.id = r.agent_id
 			WHERE t.token_hash = $1 AND t.purpose = 'agent' AND t.expires_at > now()`, runs.TokenHash(token)).
-			Scan(&gr.runID, &gr.provider, &gr.sealed, &gr.budget, &gr.used, &gr.status)
+			Scan(&gr.runID, &gr.provider, &gr.keyProvider, &gr.sealed, &gr.budget, &gr.used, &gr.status)
 	})
 	return gr, err
 }
@@ -336,6 +337,10 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		apiError(w, provider, http.StatusTooManyRequests, "rate_limit_error", "token budget exhausted for this run")
 		return
 	}
+	if gr.keyProvider != gr.provider {
+		apiError(w, provider, http.StatusForbidden, "permission_error", "the agent's key was switched to "+gr.keyProvider+" after this run started on "+gr.provider)
+		return
+	}
 	if subscription(gr.provider) && !g.cfg.Subscriptions {
 		apiError(w, provider, http.StatusForbidden, "permission_error", "subscriptions are off on this gateway")
 		return
@@ -349,7 +354,7 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		apiError(w, provider, http.StatusBadGateway, "api_error", "cannot open the agent's key")
 		return
 	}
-	meter := &usage{}
+	meter := &usage{model: requestedModel(provider, path, body)}
 	defer func() { g.record(gr, meter) }()
 
 	if g.cfg.FakeUpstream {
@@ -431,6 +436,30 @@ type usage struct {
 	mu                             sync.Mutex
 	in, out, cacheRead, cacheWrite int64
 	seen                           bool
+	model                          string // the model the request asked for (requestedModel), "" = unknown
+}
+
+// modelName is what a model id may look like to be recorded: it comes from the agent and shows on the site.
+var modelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,99}$`)
+
+// requestedModel is the model a generation request asks for: Gemini names it in the path, the others in the body.
+func requestedModel(protocol, path string, body []byte) string {
+	var m string
+	if protocol == "gemini" {
+		if sm := geminiPath.FindStringSubmatch(path); sm != nil {
+			m = sm[1]
+		}
+	} else {
+		var req struct {
+			Model string `json:"model"`
+		}
+		_ = json.Unmarshal(body, &req)
+		m = req.Model
+	}
+	if !modelName.MatchString(m) {
+		return ""
+	}
+	return m
 }
 
 func num(m map[string]any, k string) int64 {
@@ -552,10 +581,16 @@ func (b *meteredBody) Close() error {
 	return b.ReadCloser.Close()
 }
 
+// maxModels caps the distinct model ids recorded per run.
+const maxModels = 20
+
 func (g *Gateway) record(gr grant, u *usage) {
 	u.mu.Lock()
-	in, out, cr, cw, seen := u.in, u.out, u.cacheRead, u.cacheWrite, u.seen
+	in, out, cr, cw, seen, model := u.in, u.out, u.cacheRead, u.cacheWrite, u.seen, u.model
 	u.mu.Unlock()
+	if !seen {
+		model = "" // only metered requests count: an upstream error or a token count is no use of a model
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	reqs := 0
@@ -563,9 +598,13 @@ func (g *Gateway) record(gr grant, u *usage) {
 		reqs = 1
 	}
 	if err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		// models gets the request under its model, up to maxModels distinct ids (an agent can name any model).
 		_, err := tx.Exec(ctx, `UPDATE runs SET tokens_in = tokens_in + $2, tokens_out = tokens_out + $3, tokens_cache_read = tokens_cache_read + $4,
-			tokens_cache_write = tokens_cache_write + $5, llm_requests = llm_requests + $6, updated_at = now() WHERE id = $1`,
-			gr.runID, in, out, cr, cw, reqs)
+			tokens_cache_write = tokens_cache_write + $5, llm_requests = llm_requests + $6,
+			models = CASE WHEN $7 = '' OR (NOT models ? $7 AND (SELECT count(*) FROM jsonb_object_keys(models)) >= $8) THEN models
+				ELSE models || jsonb_build_object($7::text, coalesce((models->>$7)::int, 0) + 1) END,
+			updated_at = now() WHERE id = $1`,
+			gr.runID, in, out, cr, cw, reqs, model, maxModels)
 		return err
 	}); err != nil {
 		g.log.Error("record usage", "run_id", gr.runID, "err", err)

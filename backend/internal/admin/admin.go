@@ -127,9 +127,9 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 			}
 			o.Spend = append(o.Spend, sp)
 		}
-		rows, err := tx.Query(ctx, `SELECT a.provider, count(*), coalesce(sum(r.tokens_in + r.tokens_cache_write + r.tokens_out), 0)
-			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.created_at > now() - interval '30 days'
-			GROUP BY a.provider ORDER BY 3 DESC`)
+		rows, err := tx.Query(ctx, `SELECT (r.manifest->>'provider'), count(*), coalesce(sum(r.tokens_in + r.tokens_cache_write + r.tokens_out), 0)
+			FROM runs r WHERE r.created_at > now() - interval '30 days'
+			GROUP BY (r.manifest->>'provider') ORDER BY 3 DESC`)
 		if err != nil {
 			return err
 		}
@@ -183,10 +183,10 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 
 // priceSpend adds the dollar cost of the runs created since `since` (a Postgres interval).
 func priceSpend(ctx context.Context, tx pgx.Tx, since string, sp *Spend) error {
-	rows, err := tx.Query(ctx, `SELECT a.model, a.provider, count(*), coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
+	rows, err := tx.Query(ctx, `SELECT coalesce(r.manifest->>'model', ''), (r.manifest->>'provider'), count(*), coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
 			coalesce(sum(r.tokens_cache_read), 0), coalesce(sum(r.tokens_cache_write), 0)
-		FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.created_at > now() - $1::interval
-		GROUP BY a.model, a.provider`, since)
+		FROM runs r WHERE r.created_at > now() - $1::interval
+		GROUP BY coalesce(r.manifest->>'model', ''), (r.manifest->>'provider')`, since)
 	if err != nil {
 		return err
 	}
@@ -216,10 +216,10 @@ func priceUsers(ctx context.Context, tx pgx.Tx, users []User) error {
 	for i, u := range users {
 		at[u.ID] = i
 	}
-	rows, err := tx.Query(ctx, `SELECT a.owner_id, a.model, a.provider, coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
+	rows, err := tx.Query(ctx, `SELECT a.owner_id, coalesce(r.manifest->>'model', ''), (r.manifest->>'provider'), coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
 			coalesce(sum(r.tokens_cache_read), 0), coalesce(sum(r.tokens_cache_write), 0)
 		FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.created_at > now() - interval '30 days'
-		GROUP BY a.owner_id, a.model, a.provider`)
+		GROUP BY a.owner_id, coalesce(r.manifest->>'model', ''), (r.manifest->>'provider')`)
 	if err != nil {
 		return err
 	}
