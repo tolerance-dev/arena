@@ -302,7 +302,113 @@ dump("cinema", "movies.json", movies)
 dump("cinema", "genres.json", [{"id": g, "name": g.replace("-", " ").title()} for g in genres])
 dump("cinema", "plans.json", [{"id": "free", "name": "Free", "price_month": 0, "includes_premium": False},
                                {"id": "premium", "name": "Premium", "price_month": 9.99, "includes_premium": True}])
-dump("cinema", "users.json", users(8, lambda i: {"plan": "premium" if i % 2 == 0 else "free"}))
+cinema_users = users(8, lambda i: {"plan": "premium" if i % 2 == 0 else "free"})
+dump("cinema", "users.json", cinema_users)
+
+# ---------- cinema: the API checks ----------
+# Computed from the data, like the hotels checks; they follow the API contract in cinema/TASK.md. No randomness
+# here (R is not touched), so regenerating keeps the data.
+cc = []
+def cchk(name, method, path, **kw):
+    cc.append({"name": name, "method": method, "path": path, **kw})
+
+mv = {m["id"]: m for m in movies}
+def title_ids(pred):
+    return sorted(m["id"] for m in movies if pred(m))
+
+def top_n(key, n=10):
+    ranked = sorted(movies, key=key, reverse=True)
+    assert key(ranked[n - 1]) != key(ranked[n]), "a tie at the boundary makes the row ambiguous"
+    return ranked[:n]
+
+free_u, prem_u = cinema_users[0], cinema_users[1]
+assert free_u["plan"] == "free" and prem_u["plan"] == "premium"
+free_movies = [m for m in movies if m["type"] == "movie" and not m["premium"]]
+prem_movie = next(m for m in movies if m["type"] == "movie" and m["premium"])
+fm1, fm2 = free_movies[0], free_movies[1]
+series = next(m for m in movies if m["type"] == "series")
+word = next(w for w in words2 if 2 <= sum(w in m["title"] for m in movies) <= 4)
+by_word = title_ids(lambda m: word.lower() in m["title"].lower())
+genre = "comedy"
+by_genre = title_ids(lambda m: genre in m["genres"])
+all_series = title_ids(lambda m: m["type"] == "series")
+both_genre = next(g for g in genres if 0 < len(title_ids(lambda m: g in m["genres"] and m["type"] == "series")) < len(all_series))
+both = title_ids(lambda m: both_genre in m["genres"] and m["type"] == "series")
+rated, added = top_n(lambda m: m["rating"]), top_n(lambda m: m["added_at"])
+
+# Pages: deep links render the data (in a real browser).
+cc.append({"name": "title page shows the title with its director and year", "page": f"/titles/{fm1['id']}",
+           "text": [fm1["title"], fm1["director"], str(fm1["year"])]})
+cc.append({"name": "search page lists the matching titles", "page": f"/search?q={word}",
+           "text": [mv[i]["title"] for i in by_word]})
+
+# Catalog.
+cchk("catalog: every title", "GET", "/api/titles", expect=[{"path": "titles", "len": len(movies)}])
+cchk("catalog: search by title", "GET", f"/api/titles?q={word}", expect=[{"path": "titles", "ids": by_word}])
+cchk("catalog: search ignores case", "GET", f"/api/titles?q={word.lower()}", expect=[{"path": "titles", "ids": by_word}])
+cchk("catalog: filter by genre", "GET", f"/api/titles?genre={genre}", expect=[{"path": "titles", "ids": by_genre}])
+cchk("catalog: series only", "GET", "/api/titles?type=series", expect=[{"path": "titles", "ids": all_series}])
+cchk("catalog: genre and type together", "GET", f"/api/titles?genre={both_genre}&type=series", expect=[{"path": "titles", "ids": both}])
+cchk("catalog: sort by rating", "GET", "/api/titles?sort=rating",
+     expect=[{"path": "titles", "len": len(movies)}, {"path": "titles", "sorted_by": "-rating"}])
+cchk("catalog: sort by year", "GET", "/api/titles?sort=year",
+     expect=[{"path": "titles", "len": len(movies)}, {"path": "titles", "sorted_by": "-year"}])
+cchk("catalog: sort by date added", "GET", "/api/titles?sort=added",
+     expect=[{"path": "titles.0.id", "equals": added[0]["id"]}, {"path": "titles.1.id", "equals": added[1]["id"]}])
+cchk("title: a movie with its details", "GET", f"/api/titles/{fm1['id']}",
+     expect=[{"path": "director", "equals": fm1["director"]}, {"path": "cast", "equals": fm1["cast"]},
+             {"path": "duration_min", "equals": fm1["duration_min"]}])
+cchk("title: a series with seasons and episodes", "GET", f"/api/titles/{series['id']}",
+     expect=[{"path": "seasons", "len": len(series["seasons"])},
+             {"path": "seasons.0.episodes", "len": len(series["seasons"][0]["episodes"])}])
+cchk("title: an unknown title is 404", "GET", "/api/titles/m999", status=404)
+cchk("home: top rated, highest first", "GET", "/api/home",
+     expect=[{"path": "top_rated", "ids": [m["id"] for m in rated]}, {"path": "top_rated", "sorted_by": "-rating"}])
+cchk("home: new arrivals, latest first", "GET", "/api/home",
+     expect=[{"path": "new_arrivals", "ids": [m["id"] for m in added]}, {"path": "new_arrivals.0.id", "equals": added[0]["id"]}])
+
+# Sign in and plans.
+cchk("sign in: a wrong password is refused", "POST", "/api/login", body={"email": free_u["email"], "password": "wrong"}, status_in=[401, 403])
+cchk("sign in: a free user", "POST", "/api/login", body={"email": free_u["email"], "password": free_u["password"]},
+     expect=[{"path": "token", "exists": True}], save={"free": "token"})
+cchk("sign in: a premium user", "POST", "/api/login", body={"email": prem_u["email"], "password": prem_u["password"]},
+     expect=[{"path": "token", "exists": True}], save={"prem": "token"})
+cchk("me: the signed-in user's plan", "GET", "/api/me", auth="free", expect=[{"path": "plan", "equals": "free"}])
+cchk("me: signed out is refused", "GET", "/api/me", status_in=[401, 403])
+
+# Playback and premium.
+cchk("play: needs a signed-in user", "GET", f"/api/titles/{fm1['id']}/play", status_in=[401, 403])
+cchk("play: a free title plays from the start", "GET", f"/api/titles/{fm1['id']}/play", auth="free",
+     expect=[{"path": "duration_s", "equals": fm1["duration_min"] * 60}, {"path": "position_s", "equals": 0}])
+cchk("premium: a free plan can't play a premium title", "GET", f"/api/titles/{prem_movie['id']}/play", auth="free", status=403)
+cchk("premium: the premium plan plays it", "GET", f"/api/titles/{prem_movie['id']}/play", auth="prem",
+     expect=[{"path": "duration_s", "equals": prem_movie["duration_min"] * 60}])
+cchk("progress: saving where the user stopped", "PUT", f"/api/progress/{fm1['id']}", auth="free",
+     body={"position_s": 600}, status_in=[200, 201, 204])
+cchk("progress: play resumes from it", "GET", f"/api/titles/{fm1['id']}/play", auth="free",
+     expect=[{"path": "position_s", "equals": 600}])
+cchk("progress: past the end is refused", "PUT", f"/api/progress/{fm2['id']}", auth="free",
+     body={"position_s": fm2["duration_min"] * 60 + 1}, status_in=[400, 422])
+cchk("premium: a free plan can't save progress on a premium title", "PUT", f"/api/progress/{prem_movie['id']}", auth="free",
+     body={"position_s": 60}, status=403)
+cchk("progress: a second title", "PUT", f"/api/progress/{fm2['id']}", auth="free", body={"position_s": 120}, status_in=[200, 201, 204])
+cchk("continue watching: the latest first, with the position", "GET", "/api/home", auth="free",
+     expect=[{"path": "continue_watching", "ids": [fm1["id"], fm2["id"]]}, {"path": "continue_watching.0.id", "equals": fm2["id"]},
+             {"path": f"continue_watching[id={fm1['id']}].position_s", "equals": 600}])
+cchk("continue watching: someone else's is not shown", "GET", "/api/home", auth="prem",
+     expect=[{"path": f"continue_watching[id={fm1['id']}]", "absent": True}])
+
+# Watchlist.
+cchk("watchlist: needs a signed-in user", "GET", "/api/watchlist", status_in=[401, 403])
+cchk("watchlist: add a title", "PUT", f"/api/watchlist/{fm1['id']}", auth="prem", status_in=[200, 201, 204])
+cchk("watchlist: add a series", "PUT", f"/api/watchlist/{series['id']}", auth="prem", status_in=[200, 201, 204])
+cchk("watchlist: adding twice keeps one", "PUT", f"/api/watchlist/{fm1['id']}", auth="prem", status_in=[200, 201, 204])
+cchk("watchlist: an unknown title is 404", "PUT", "/api/watchlist/m999", auth="prem", status=404)
+cchk("watchlist: lists what was added", "GET", "/api/watchlist", auth="prem",
+     expect=[{"path": "titles", "ids": sorted([fm1["id"], series["id"]])}])
+cchk("watchlist: another user's is separate", "GET", "/api/watchlist", auth="free", expect=[{"path": "titles", "len": 0}])
+cchk("watchlist: remove a title", "DELETE", f"/api/watchlist/{fm1['id']}", auth="prem", status_in=[200, 204])
+cchk("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="prem", expect=[{"path": "titles", "ids": [series["id"]]}])
 
 # ---------- task.json ----------
 task_json("marketplace", 1, {"en": "Marketplace", "ru": "Маркетплейс"},
@@ -319,5 +425,5 @@ assert sum(m["rating"] == top["rating"] for m in movies) == 1 and sum(m["added_a
 task_json("cinema", 3, {"en": "Online cinema", "ru": "Онлайн-кинотеатр"},
           {"en": "Netflix in miniature: rows of titles, title pages, a player, a watchlist, a premium plan.",
            "ru": "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум."},
-          [top["title"], newest["title"]])
+          [top["title"], newest["title"]], cc)
 print("ok", len(products), len(hotels), len(rooms), len(movies), "top", top["title"], "newest", newest["title"])

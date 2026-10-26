@@ -3,7 +3,7 @@
 # hand-made storefront for whichever task it got: a Python standard-library server that serves the data as JSON and
 # one plain HTML page per task. It passes the automatic checks and gives the preview something to show; it is not a
 # full product (no cart or player). For hotels it implements the API contract and the pages from TASK.md: the
-# reference the hotels checks are tested against. No real agent work.
+# reference the hotels checks are tested against; the same for cinema. No real agent work.
 set -eu
 cd /work
 curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
@@ -111,7 +111,99 @@ class HotelsAPI:
         return None
 
 
-API = HotelsAPI() if TASK == "hotels" else None
+class CinemaAPI:
+    """The cinema API contract from TASK.md, in memory."""
+
+    FIELDS = ("id", "title", "type", "year", "genres", "rating", "premium", "added_at")
+
+    def __init__(self):
+        self.titles = {m["id"]: m for m in json.loads(DATA["movies"])}
+        self.users = json.loads(DATA["users"])
+        self.premium_plans = {p["id"] for p in json.loads(DATA["plans"]) if p["includes_premium"]}
+        self.tokens, self.progress, self.watchlist, self.tick = {}, {}, {}, 0
+
+    def item(self, m, **extra):
+        return {**{k: m[k] for k in self.FIELDS}, **extra}
+
+    @staticmethod
+    def duration(m, q):
+        if m["type"] == "movie":
+            return m["duration_min"] * 60
+        try:
+            s = next(s for s in m["seasons"] if s["number"] == int(q.get("season") or 1))
+            return next(e for e in s["episodes"] if e["number"] == int(q.get("episode") or 1))["duration_min"] * 60
+        except (StopIteration, ValueError):
+            return None
+
+    def handle(self, method, path, q, body, auth):
+        user = self.tokens.get(auth.removeprefix("Bearer ").strip()) if auth else None
+        parts = path.strip("/").split("/")[1:]  # without "api"
+        if method == "GET" and parts == ["titles"]:
+            items = [m for m in self.titles.values()
+                     if q.get("q", "").lower() in m["title"].lower()
+                     and (not q.get("genre") or q["genre"] in m["genres"]) and (not q.get("type") or m["type"] == q["type"])]
+            key = {"rating": "rating", "year": "year", "added": "added_at"}.get(q.get("sort"))
+            if key:
+                items.sort(key=lambda m: m[key], reverse=True)
+            return 200, {"titles": [self.item(m) for m in items]}
+        if method == "GET" and parts == ["home"]:
+            top = lambda key: [self.item(m) for m in sorted(self.titles.values(), key=lambda m: m[key], reverse=True)[:10]]
+            res = {"top_rated": top("rating"), "new_arrivals": top("added_at")}
+            if user:
+                mine = sorted(self.progress.get(user["id"], {}).items(), key=lambda kv: kv[1][1], reverse=True)
+                res["continue_watching"] = [self.item(self.titles[i], position_s=p) for i, (p, _) in mine]
+            return 200, res
+        if method == "POST" and parts == ["login"]:
+            u = next((u for u in self.users if u["email"] == body.get("email") and u["password"] == body.get("password")), None)
+            if not u:
+                return 401, {"error": "wrong email or password"}
+            token = secrets.token_hex(16)
+            self.tokens[token] = u
+            return 200, {"token": token}
+        if method == "GET" and len(parts) == 2 and parts[0] == "titles":
+            m = self.titles.get(parts[1])
+            return (200, m) if m else (404, {"error": "no such title"})
+        if parts[:1] not in (["me"], ["titles"], ["progress"], ["watchlist"]):
+            return None
+        if not user:
+            return 401, {"error": "sign in first"}
+        if method == "GET" and parts == ["me"]:
+            return 200, {k: user[k] for k in ("id", "name", "email", "plan")}
+        if method == "GET" and parts == ["watchlist"]:
+            return 200, {"titles": [self.item(self.titles[i]) for i in self.watchlist.get(user["id"], [])]}
+        m = self.titles.get(parts[1]) if len(parts) >= 2 else None
+        if not m:
+            return 404, {"error": "no such title"}
+        if parts[0] == "watchlist":
+            wl = self.watchlist.setdefault(user["id"], [])
+            if method == "PUT":
+                if m["id"] not in wl:
+                    wl.insert(0, m["id"])
+                return 200, {"titles": wl}
+            if method == "DELETE":
+                if m["id"] in wl:
+                    wl.remove(m["id"])
+                return 204, None
+            return None
+        if m["premium"] and user["plan"] not in self.premium_plans:
+            return 403, {"error": "this title needs the premium plan"}
+        dur = self.duration(m, q)
+        if dur is None:
+            return 404, {"error": "no such episode"}
+        saved = self.progress.setdefault(user["id"], {})
+        if method == "GET" and parts[2:] == ["play"]:
+            return 200, {"title_id": m["id"], "duration_s": dur, "position_s": saved.get(m["id"], (0, 0))[0]}
+        if method == "PUT" and parts[0] == "progress":
+            pos = body.get("position_s")
+            if not isinstance(pos, (int, float)) or isinstance(pos, bool) or not 0 <= pos <= dur:
+                return 400, {"error": "position_s must be between 0 and the duration"}
+            self.tick += 1
+            saved[m["id"]] = (pos, self.tick)
+            return 200, {"title_id": m["id"], "position_s": pos}
+        return None
+
+
+API = {"hotels": HotelsAPI, "cinema": CinemaAPI}.get(TASK, lambda: None)()
 
 
 class H(BaseHTTPRequestHandler):
@@ -120,7 +212,7 @@ class H(BaseHTTPRequestHandler):
         if not API or not u.path.startswith("/api/"):
             return False
         body = {}
-        if method == "POST":
+        if method in ("POST", "PUT"):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
             except ValueError:
@@ -132,11 +224,15 @@ class H(BaseHTTPRequestHandler):
         res = API.handle(method, u.path, q, body, self.headers.get("Authorization", ""))
         if res is None:
             return False
-        self.send(res[0], "application/json", json.dumps(res[1]).encode())
+        self.send(res[0], "application/json", b"" if res[1] is None else json.dumps(res[1]).encode())
         return True
 
     def do_POST(self):
         if not self.api("POST"):
+            self.send(404, "application/json", b'{"error": "not found"}')
+
+    def do_PUT(self):
+        if not self.api("PUT"):
             self.send(404, "application/json", b'{"error": "not found"}')
 
     def do_DELETE(self):
@@ -269,17 +365,34 @@ HTML
 
 cat > ui/cinema.html <<HTML
 <!doctype html><html lang="en"><head><title>Online cinema</title>$HEAD</head><body style="background:#111;color:#eee">
-<header><b>Cinema</b></header>
+<header><b><a href="/" style="color:#fff;text-decoration:none">Cinema</a></b>
+<form action="/search" style="flex:1"><input name="q" placeholder="Search titles" aria-label="Search titles"></form></header>
 <main id="rows"></main>
 <script>
-const row = (title, items) => \`<h2>\${esc(title)}</h2><div class="row">\${items.map((m) => \`<div class="card" style="background:#1d1d22;color:#eee">
-  \${art(m.id, m.title)}<div class="body"><div class="muted">\${m.year} · ★ \${m.rating}\${m.premium ? " · Premium" : ""}</div></div></div>\`).join("")}</div>\`
-Promise.all([get("movies"), get("genres")]).then(([movies, genres]) => {
-  const by = (f) => [...movies].sort(f).slice(0, 12)
-  \$("#rows").innerHTML = row("Top rated", by((a, b) => b.rating - a.rating))
-    + row("New arrivals", by((a, b) => b.added_at.localeCompare(a.added_at)))
-    + genres.slice(0, 4).map((g) => row(g.name, movies.filter((m) => m.genres.includes(g.id)))).join("")
-})
+// /titles/{id}, /search and /watchlist (deep links from TASK.md) render from the API; / shows the home rows.
+const card = (m) => \`<div class="card" style="background:#1d1d22;color:#eee"><a href="/titles/\${m.id}" style="color:inherit">
+  \${art(m.id, m.title)}</a><div class="body"><div>\${esc(m.title)}</div><div class="muted">\${m.year} · ★ \${m.rating}\${m.premium ? " · Premium" : ""}</div></div></div>\`
+const row = (title, items) => \`<h2>\${esc(title)}</h2><div class="row">\${items.map(card).join("")}</div>\`
+const api = (p) => fetch("/api/" + p, { headers: localStorage.token ? { Authorization: "Bearer " + localStorage.token } : {} }).then((r) => r.json())
+const path = location.pathname
+if (path.startsWith("/titles/")) {
+  api("titles/" + path.split("/")[2]).then((m) => {
+    \$("#rows").innerHTML = \`<h2>\${esc(m.title)}</h2><p>\${esc(m.description)}</p>
+      <p class="muted">\${m.year} · \${m.genres.join(", ")} · \${m.age_rating} · \${m.duration_min ? m.duration_min + " min" : m.seasons.length + " seasons"}</p>
+      <p>Director: \${esc(m.director)}</p><p class="muted">Cast: \${m.cast.map(esc).join(", ")}</p>\`
+  })
+} else if (path === "/search") {
+  const q = new URLSearchParams(location.search).get("q") || ""
+  api("titles?q=" + encodeURIComponent(q)).then((d) => { \$("#rows").innerHTML = row("Results for " + q, d.titles) })
+} else if (path === "/watchlist") {
+  api("watchlist").then((d) => { \$("#rows").innerHTML = d.titles ? row("My list", d.titles) : "<h2>Sign in to see your list</h2>" })
+} else {
+  Promise.all([api("home"), get("movies"), get("genres")]).then(([home, movies, genres]) => {
+    \$("#rows").innerHTML = (home.continue_watching?.length ? row("Continue watching", home.continue_watching) : "")
+      + row("Top rated", home.top_rated) + row("New arrivals", home.new_arrivals)
+      + genres.slice(0, 4).map((g) => row(g.name, movies.filter((m) => m.genres.includes(g.id)))).join("")
+  })
+}
 </script></body></html>
 HTML
 
