@@ -76,7 +76,8 @@ Only the generation endpoints in `llmRoutes` pass (no batches/files: unmetered),
 refused, and a token has at most `maxParallel` (4) requests in flight, so parallel calls can't overrun the budget;
 `/npm/*`, `/pypi/*`, `/pyfiles/*` are read-only registry mirrors. Port 8091 serves live previews:
 `http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand, on its
-own network. 8091 listens only on the gateway's non-sandbox addresses (`sandbox.PublicIPs`): sandboxes must not open
+own network. At most `ARENA_PREVIEW_MAX` (6) run at once; one asked for in the last 2 minutes is never stopped for
+another: the newcomer gets a "busy" page with the run's screenshot. 8091 listens only on the gateway's non-sandbox addresses (`sandbox.PublicIPs`): sandboxes must not open
 other runs' apps. Rankings (`Leaderboard`, `Compare`) take only runs within the task's time limit and token budget.
 `ARENA_GATEWAY_FAKE=true` answers LLM calls locally to click through without keys.
 

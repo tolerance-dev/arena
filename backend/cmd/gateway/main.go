@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -25,6 +26,16 @@ func env(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// previewMax is how many previews run at once (ARENA_PREVIEW_MAX, default 6): each takes up to 512 MB, next to the
+// runs' agents (ARENA_RUN_CONCURRENCY × 6 GB) on the same host.
+func previewMax() int {
+	n, err := strconv.Atoi(os.Getenv("ARENA_PREVIEW_MAX"))
+	if err != nil || n < 1 {
+		return 6
+	}
+	return n
 }
 
 func main() {
@@ -56,7 +67,7 @@ func main() {
 	}
 	gw := gateway.New(pool, box, cfg, log)
 	previews := gateway.NewPreviews(pool, env("ARENA_PREVIEW_DOMAIN", "preview.localhost"), os.Getenv("ARENA_PREVIEW_PREFIX"),
-		os.Getenv("ARENA_PUBLIC_URL"), log)
+		os.Getenv("ARENA_PUBLIC_URL"), previewMax(), log)
 	go previews.Run(ctx)
 
 	servers := []*http.Server{
