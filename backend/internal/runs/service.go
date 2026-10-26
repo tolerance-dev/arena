@@ -24,10 +24,12 @@ type Service struct {
 	pool *db.Pool
 	// PreviewURL is the live preview address template with {id} for the run's preview host label ("" = off).
 	PreviewURL string
+	// Slots is how many runs the worker runs at once (ARENA_RUN_CONCURRENCY), for the queue's wait estimate.
+	Slots int
 }
 
-func NewService(pool *db.Pool, previewURL string) *Service {
-	return &Service{pool: pool, PreviewURL: previewURL}
+func NewService(pool *db.Pool, previewURL string, slots int) *Service {
+	return &Service{pool: pool, PreviewURL: previewURL, Slots: slots}
 }
 
 type AgentRef struct {
@@ -88,6 +90,9 @@ type Run struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	StartedAt  *time.Time `json:"started_at"`
 	FinishedAt *time.Time `json:"finished_at"`
+	// A queued run's place (1 = next) and estimated seconds until it starts (absent while the queue is paused).
+	QueuePosition *int `json:"queue_position,omitempty"`
+	QueueWaitS    *int `json:"queue_wait_s,omitempty"`
 }
 
 const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, u.handle, r.status, r.failure_reason, r.agent_exit,
@@ -154,6 +159,12 @@ func (s *Service) Get(ctx context.Context, id string) (Run, error) {
 		r, err = scanRun(tx.QueryRow(ctx, `SELECT `+runColumns+`, r.agent_log, r.check_log`+runFrom+` WHERE r.id = $1`, id),
 			&agentLog, &checkLog)
 		r.AgentLog, r.CheckLog = agentLog, checkLog
+		if err != nil {
+			return err
+		}
+		one := []Run{r}
+		err = s.placeQueued(ctx, tx, one)
+		r = one[0]
 		return err
 	})
 	s.decorate(&r)
@@ -176,7 +187,11 @@ func (s *Service) query(ctx context.Context, where string, args ...any) ([]Run, 
 			s.decorate(&r)
 			out = append(out, r)
 		}
-		return rows.Err()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		rows.Close()
+		return s.placeQueued(ctx, tx, out)
 	})
 	return out, err
 }

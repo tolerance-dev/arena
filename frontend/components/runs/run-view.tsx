@@ -19,7 +19,7 @@ import { runsMessages } from '@/lib/i18n/messages/runs'
 import type { Run } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, scoreTone, Stack, StatusPill, taskTitle, usePoll, type RT } from './bits'
+import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, providerLabel, queueLine, scoreTone, Stack, StatusPill, taskTitle, usePoll, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { agentElapsed, useNow } from './live-runs'
 
@@ -112,6 +112,7 @@ function Timeline({ run, t }: { run: Run; t: RT }) {
       <p className="mt-3 text-body">
         <span className="font-semibold">{t(`phase.${run.status}` as 'phase.agent')}</span>
         {run.status === 'agent' && <span className="text-muted-foreground tnum"> · {t('elapsedOf', { t: duration(agentElapsed(run, now)), limit: duration(run.time_limit_s) })}</span>}
+        {queueLine(run, t) && <span className="text-muted-foreground tnum"> · {queueLine(run, t)}</span>}
       </p>
     )}
     </div>

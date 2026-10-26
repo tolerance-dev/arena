@@ -150,9 +150,12 @@ func (w *Worker) collectImages(ctx context.Context) {
 func (w *Worker) claim(ctx context.Context) (string, error) {
 	var id string
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, queueLock); err != nil {
+			return err
+		}
 		return tx.QueryRow(ctx, `UPDATE runs SET status = 'agent', started_at = now(), updated_at = now()
-			WHERE id = (SELECT id FROM runs WHERE status = 'queued' AND NOT coalesce((SELECT runs_paused FROM settings), false)
-				ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED)
+			WHERE status = 'queued' AND NOT coalesce((SELECT runs_paused FROM settings), false)
+				AND id = (SELECT id FROM (`+queueOrder+`) head ORDER BY `+queueSort+` LIMIT 1)
 			RETURNING id`).Scan(&id)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

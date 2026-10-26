@@ -44,6 +44,8 @@ and checks the result, and people compare the apps in blind votes. **There is no
 verdict cost dollars and wasn't reproducible); don't bring one back without the user asking. Older features were deleted; they are in git history (before "Pivot to agent runs").
 
 Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking → done | infra_error`:
+0. **queued**: the worker takes runs round-robin between owners (`queueOrder` in `internal/runs/queue.go`); the same
+   order gives a queued run its `queue_position` and `queue_wait_s` in the API, so change them together.
 1. **agent**: container from `arena-runtime:1` on the run's own internal Docker network `arena-run-<hex>` (no route
    out; only the gateway, which the worker attaches as `gateway`; the app and the checker reuse it later).
    `/agent` = the bundle, `/work` = `TASK.md` + `data/`. LLM base URLs point at the gateway, `*_API_KEY` is a

@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { compact, duration, usedTokens } from '@/lib/format'
 import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, exitLabel, isActive, StatusPill, taskTitle, type RT } from './bits'
+import { AgentAvatar, Ago, exitLabel, isActive, queueLine, StatusPill, taskTitle, type RT } from './bits'
 import { TaskGlyph } from './task-glyph'
 
 // Ticks every second, so running timers move.
@@ -101,7 +101,7 @@ function LiveCard({ run, now, t }: { run: Run; now: number; t: RT }) {
           style={{ width: `${pct}%` }} />
       </div>
       <div className="mt-1.5 flex flex-wrap justify-between gap-x-4 text-meta text-muted-foreground tnum">
-        <span>{run.status === 'queued' ? '—' : t('elapsedOf', { t: duration(secs), limit: duration(run.time_limit_s) })}</span>
+        <span>{run.status === 'queued' ? (queueLine(run, t) ?? '—') : t('elapsedOf', { t: duration(secs), limit: duration(run.time_limit_s) })}</span>
         <span>{t('tokensReqs', { tokens: compact(used), n: run.tokens.requests })}</span>
       </div>
       {step && run.status !== 'queued' && (
