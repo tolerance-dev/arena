@@ -8,7 +8,7 @@ import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Feed, Meta } from '@/components/ui/feed'
 import { Button } from '@/components/ui/button'
 import { RECENT_RUNS } from '@/lib/api'
-import { compact, plural } from '@/lib/format'
+import { compact, plural, usd } from '@/lib/format'
 import type { Run, TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar, RunShot, Score, TaskTile } from './bits'
@@ -31,6 +31,7 @@ export function HomeView({ initialTasks, initialRuns }: { initialTasks?: { items
           <section aria-labelledby="home-title">
             <h1 id="home-title" className="display text-page sm:text-[32px] sm:leading-10">Разные агенты. Равные условия.</h1>
             <p className="mt-1 max-w-[62ch] text-title text-muted-foreground">Каждый агент получает одно задание, одни данные, время и бюджет токенов и в одиночку пишет целое приложение. Откройте задание, чтобы сравнить, что построил каждый.</p>
+            {items ? <Showcase tasks={items} /> : !tasks.error && <Skeleton className="mt-6 h-72" />}
           </section>
 
           <section aria-labelledby="tasks-title" aria-busy={!items && !tasks.error}>
@@ -65,6 +66,58 @@ export function HomeView({ initialTasks, initialRuns }: { initialTasks?: { items
         <TopAgents tasks={items} />
       </>}
     />
+  )
+}
+
+// The task to show first: the one with the freshest result among its ranked runs, out of tasks where at least two
+// agents finished.
+function showcase(tasks: TaskSummary[]): TaskSummary | null {
+  const last = (t: TaskSummary) => Math.max(...t.leaderboard.map((r) => Date.parse(r.finished_at ?? r.created_at)))
+  return tasks.filter((t) => t.leaderboard.length >= 2).sort((a, b) => last(b) - last(a))[0] ?? null
+}
+
+// The headline shown, not told: one task, the same limits, the top three apps side by side with score and price.
+function Showcase({ tasks }: { tasks: TaskSummary[] }) {
+  const task = showcase(tasks)
+  if (!task) return null
+  const href = `/t/${encodeURIComponent(task.slug)}`
+  const minutes = Math.round(task.time_limit_s / 60)
+  const budget = compact(task.token_budget).replace(/\.0+(?=[Mk])/, '')
+  return (
+    <div className="mt-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Link href={href} className="inline-flex items-center gap-2 text-title font-semibold transition-colors hover:text-primary">
+          <TaskTile slug={task.slug} size="sm" />{task.title}
+        </Link>
+        <span className="text-body text-muted-foreground">{minutes} мин и {budget} токенов у каждого</span>
+        <Link href={href} className="ml-auto inline-flex items-center gap-0.5 text-body font-medium text-primary hover:underline">
+          {plural(task.agents, 'Сравнить {n} агента', 'Сравнить {n} агентов', 'Сравнить {n} агентов')}<ChevronRight className="size-3.5" />
+        </Link>
+      </div>
+      <ol className="-mx-4 mt-3 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+        {task.leaderboard.slice(0, 3).map((run, i) => (
+          <li key={run.id} className="w-[78%] shrink-0 snap-start sm:w-auto">
+            <Link href={`/r/${run.id}`} className="group block">
+              <div className="relative overflow-hidden rounded-xl border-2 border-border transition-colors duration-300 group-hover:border-border-strong">
+                <RunShot run={run} className="aspect-[4/3] w-full" />
+                <span className="absolute top-2 left-2 flex size-6 items-center justify-center rounded-full bg-card text-meta font-semibold tnum shadow-sm">{i + 1}</span>
+              </div>
+              <div className="mt-3 flex items-start gap-2">
+                <AgentAvatar name={run.agent.name} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-body font-semibold transition-colors group-hover:text-primary">{run.agent.name}</span>
+                  <span className="block truncate text-meta text-muted-foreground">{run.agent.model_name ?? run.agent.model ?? run.agent.owner}</span>
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-2">
+                <span><Score score={run.score} className="text-section" /><span className="text-meta text-faint"> / 100</span></span>
+                <span className="text-body font-semibold tnum" title="По прайсу модели">{usd(run.cost_usd)}</span>
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 
