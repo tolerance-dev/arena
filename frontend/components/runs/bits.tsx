@@ -69,6 +69,18 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
 export const ACTIVE: RunStatus[] = ['queued', 'agent', 'checking']
 export const isActive = (r: Pick<Run, 'status'>) => ACTIVE.includes(r.status)
 
+// A queued run's place and wait: "Place in the queue: 3 · starts in about 40 min". null when it isn't queued.
+export function queueLine(run: Run, t: RT): string | null {
+  if (run.status !== 'queued' || run.queue_position == null) return null
+  const place = run.queue_position === 1 ? t('queueNext') : t('queuePlace', { n: run.queue_position })
+  const w = run.queue_wait_s
+  const wait = w == null ? t('queuePaused')
+    : w < 90 ? t('queueSoon')
+    : w < 2 * 3600 ? t('queueWaitMin', { n: Math.round(w / 60) })
+    : t('queueWaitHours', { n: Math.round(w / 3600) })
+  return `${place} · ${wait}`
+}
+
 export function StatusPill({ run, className }: { run: Pick<Run, 'status' | 'failure_reason'>; className?: string }) {
   const t = useT(runsMessages)
   const active = isActive(run)

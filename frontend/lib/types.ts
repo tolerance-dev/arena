@@ -30,6 +30,7 @@ export interface Run {
   has_shot: boolean; has_shot_mobile: boolean; has_source: boolean
   preview_url?: string; agent_log?: string; check_log?: string; log_tail?: string
   created_at: string; started_at: string | null; finished_at: string | null
+  queue_position?: number; queue_wait_s?: number // a queued run's place (1 = next) and estimated wait
 }
 
 export interface TaskSummary {

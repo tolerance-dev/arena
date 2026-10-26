@@ -60,7 +60,7 @@ func main() {
 
 	d := deps{
 		pool: pool, log: log, users: identity.NewService(pool, cfg.adminEmails), admin: admin.NewService(pool),
-		agents: agentService(pool, box, cfg.subscriptions), runs: runs.NewService(pool, cfg.previewURL),
+		agents: agentService(pool, box, cfg.subscriptions), runs: runs.NewService(pool, cfg.previewURL, cfg.runConcurrency),
 		limiter: ratelimit.New(nil), providers: providersFromConfig(cfg),
 	}
 
