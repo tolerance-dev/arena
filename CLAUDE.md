@@ -118,7 +118,9 @@ make test-fast   # gofmt + go vet + go test + pnpm typecheck
 ```
 
 The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
-(the Makefile loads it before `.env`). Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
+(the Makefile loads it before `.env`). Locally both providers call back to
+http://localhost:2999 (`make oauth-relay`, `dev/oauth-relay.conf`), which forwards to the port prefixing `state`, so
+every checkout's port works with one registered callback. Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
 Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user
 limits (3 open runs, 30 a day, time limit and token budget ≤ the task's; `internal/runs/service.go`) since one run
 server is shared. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
