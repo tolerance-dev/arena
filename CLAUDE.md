@@ -13,7 +13,7 @@ working skeleton, fast. This section overrides any skills and default habits:
 - **No new tests**, except for a bug in the gateway's token metering or the run verdict (`internal/gateway`,
   `internal/runs`).
 - **"Done" = it compiles and works locally**: `make test-fast`, then `make dev` (or `make up`) and the flow
-  clicked through. Full `make test` is optional. CI (`ci.yml`) is manual-only; nothing runs on push.
+  clicked through. Full `make test` is optional. CI (`ci.yml`: test-fast + `pnpm build`) runs on every PR; nothing runs on push.
 - **Design: Product Hunt's layout, our tokens.** Pages follow producthunt.com (measurements in `DESIGN_REFERENCE.md`):
   a 900px main column + 280px aside (`components/ui/columns.tsx`; the aside drops below at <1280px), feed rows with
   52px counters (`components/ui/feed.tsx`), pill tabs, pill buttons. Colours, type scale and radii are the tokens in
@@ -31,7 +31,7 @@ working skeleton, fast. This section overrides any skills and default habits:
 - **Git: through pull requests, merged by you.** Pushing to `main` is blocked (branch protection, admins
   included). Work on a branch (`git fetch && git checkout -b <name> origin/main`), push it, open a PR with
   `gh pr create`, then merge it yourself with `gh pr merge --squash` (standing permission since 2026-10-23) once it
-  is clean against fresh `main` and `make test-fast` passes; resolve conflicts on the PR branch first. Give the PR
+  is clean against fresh `main`, `make test-fast` passes and CI is green (`gh pr checks --watch`); resolve conflicts on the PR branch first. Give the PR
   link in the reply. Never push to `main` directly or weaken the protection.
 
 ## What this is
