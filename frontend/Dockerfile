@@ -11,6 +11,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # written into the routes manifest, so a runtime env var would not change it.
 ARG API_URL=http://api:8080
 ENV API_URL=$API_URL
+# Static pages (and the site's share card) are rendered here, at build time: metadataBase and the card's footer
+# take the site URL now, and the runtime ARENA_PUBLIC_URL from compose.yml reaches only dynamic pages.
+ARG ARENA_PUBLIC_URL=
+ENV ARENA_PUBLIC_URL=$ARENA_PUBLIC_URL
 RUN pnpm build
 
 FROM node:24-alpine

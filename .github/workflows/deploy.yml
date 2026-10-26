@@ -67,6 +67,7 @@ jobs:
           push: true
           build-args: |
             API_URL=http://api:8080
+            ARENA_PUBLIC_URL=https://tolerance.cc
           tags: ${{ env.REGISTRY }}/tolerance-web:${{ steps.sha.outputs.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha,scope=web
