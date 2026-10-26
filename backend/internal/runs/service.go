@@ -1,6 +1,6 @@
 // Package runs runs an agent at a task end to end: the agent builds the app in a sandbox with only the gateway
 // reachable, the platform snapshots the result, counts the code, starts the app, runs the task's API checks, takes
-// screenshots and lets the judge model score it.
+// screenshots and scores it by the share of checks passed (people rank the apps by voting, votes.go).
 package runs
 
 import (
@@ -52,27 +52,6 @@ type Check struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-type Criterion struct {
-	Title  string `json:"title"`
-	Max    int    `json:"max"`
-	Points int    `json:"points"`
-	Note   string `json:"note,omitempty"`
-}
-
-type Judge struct {
-	Status   string      `json:"status"` // ok | skipped | error | off (the task has no judge)
-	Score    int         `json:"score"`
-	Summary  string      `json:"summary,omitempty"`
-	Criteria []Criterion `json:"criteria,omitempty"`
-	Error    string      `json:"error,omitempty"`
-	// Manipulation: how the submission tried to influence the judge (the run then scores 0); "" = it didn't.
-	Manipulation string `json:"manipulation,omitempty"`
-	Steps        int    `json:"steps,omitempty"`
-	Model        string `json:"model,omitempty"`
-	// Weight: the judge's share of the score this run was scored with (the task's judge_weight at the time).
-	Weight float64 `json:"weight,omitempty"`
-}
-
 type Stats struct {
 	LOC           int            `json:"loc"`
 	Files         int            `json:"files"`
@@ -93,11 +72,9 @@ type Run struct {
 	TimeLimitS    int        `json:"time_limit_s"`
 	TokenBudget   int64      `json:"token_budget"`
 	Tokens        Tokens     `json:"tokens"`
-	JudgeTokens   Tokens     `json:"judge_tokens"`
 	AgentSeconds  *int       `json:"agent_seconds"`
 	Stats         Stats      `json:"stats"`
 	Checks        []Check    `json:"checks"`
-	Judge         *Judge     `json:"judge"`
 	Score         *int       `json:"score"`
 	AppStarted    bool       `json:"app_started"`
 	HasShot       bool       `json:"has_shot"`
@@ -115,7 +92,7 @@ type Run struct {
 
 const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, u.handle, r.status, r.failure_reason, r.agent_exit,
 	r.time_limit_s, r.token_budget, r.tokens_in, r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, r.llm_requests,
-	r.judge_tokens_in, r.judge_tokens_out, r.agent_seconds, r.stats, r.checks, r.judge, r.score, r.app_started,
+	r.agent_seconds, r.stats, r.checks, r.score, r.app_started,
 	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.created_at, r.started_at, r.finished_at,
 	right(r.agent_log, 800)`
 
@@ -123,11 +100,11 @@ const runFrom = ` FROM runs r JOIN agents a ON a.id = r.agent_id JOIN users u ON
 
 func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	var r Run
-	var stats, checks, judge []byte
+	var stats, checks []byte
 	dest := []any{&r.ID, &r.Task, &r.Agent.ID, &r.Agent.Name, &r.Agent.Description, &r.Agent.Provider, &r.Agent.Owner,
 		&r.Status, &r.FailureReason, &r.AgentExit, &r.TimeLimitS, &r.TokenBudget, &r.Tokens.In, &r.Tokens.Out,
-		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests, &r.JudgeTokens.In, &r.JudgeTokens.Out,
-		&r.AgentSeconds, &stats, &checks, &judge, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
+		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests,
+		&r.AgentSeconds, &stats, &checks, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
 		&r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -141,10 +118,6 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	}
 	r.Checks = []Check{}
 	_ = json.Unmarshal(checks, &r.Checks)
-	if len(judge) > 0 && string(judge) != "null" {
-		r.Judge = &Judge{}
-		_ = json.Unmarshal(judge, r.Judge)
-	}
 	r.CreatedAt = r.CreatedAt.UTC()
 	for _, t := range []**time.Time{&r.StartedAt, &r.FinishedAt} {
 		if *t != nil {
@@ -235,8 +208,7 @@ func taskLimits(task string) (int, int64) {
 	return 0, 0
 }
 
-// Compare is each agent's best finished run at the task, unscored ones included (a run the judge didn't score is
-// still worth looking at next to the others): best score first, then the newest.
+// Compare is each agent's best finished run at the task: best score first, then the newest.
 func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
 	limit, budget := taskLimits(task)
 	return s.query(ctx, `WHERE r.id IN (
@@ -300,7 +272,7 @@ func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_run", msg) }
 
-// Per-user limits for non-admins: one run server is shared by everyone, and every run spends the platform's judge key.
+// Per-user limits for non-admins: one run server is shared by everyone.
 const (
 	maxOpenRunsPerUser  = 3
 	maxDailyRunsPerUser = 30

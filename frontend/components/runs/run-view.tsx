@@ -51,7 +51,6 @@ export function RunView({ id }: { id: string }) {
             {platformFailed && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">{t('failure', { reason: run.failure_reason ?? '?' })}</p>
             )}
-            {done && run.judge && run.judge.status !== 'off' && <JudgeCard run={run} t={t} />}
             {run.checks.length > 0 && <Checks run={run} t={t} />}
             <Logs run={run} t={t} />
           </div>
@@ -169,16 +168,10 @@ function Preview({ run, t }: { run: Run; t: RT }) {
   )
 }
 
-// The split the run was scored with; runs scored before the weight was recorded used 70% judge.
-function formulaVars(weight = 0.7) {
-  return { checks: Math.round(100 * (1 - weight)), judge: Math.round(100 * weight) }
-}
-
 // The result in one place: the score and every check as a cell.
 function Verdict({ run, t }: { run: Run; t: RT }) {
   const done = run.status === 'done'
   const passed = run.checks.filter((c) => c.passed).length
-  const judged = run.judge?.status === 'ok'
   const failed = run.checks.length - passed
   return (
     <section aria-label={t('score')} className="rounded-xl border-2 border-border p-5">
@@ -187,8 +180,7 @@ function Verdict({ run, t }: { run: Run; t: RT }) {
         {done && run.score != null ? run.score : '—'}
       </div>
       <p className="mt-2 text-ui text-faint">
-        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : judged ? (run.judge?.manipulation ? t('scoreManipulation') : t('scoreFormula', formulaVars(run.judge?.weight)))
-          : run.score == null ? t('scoreNoVerdict') : t('scoreChecksOnly')}
+        {!done ? t('scorePending') : !run.app_started ? t('scoreNoStart') : t('scoreChecks')}
       </p>
       <div className="mt-5 border-t border-border pt-4">
         <div className="text-body font-semibold">
@@ -297,52 +289,6 @@ function Actions({ run, t, onChange }: { run: Run; t: RT; onChange: () => void }
       )}
       {err && <p role="alert" className="text-ui text-destructive">{err}</p>}
     </div>
-  )
-}
-
-function JudgeCard({ run, t }: { run: Run; t: RT }) {
-  const j = run.judge!
-  return (
-    <section>
-      <SectionTitle>{t('judgeTitle')}</SectionTitle>
-      {j.status !== 'ok' ? (
-        <p className="rounded-xl border-2 border-border px-4 py-3 text-body text-muted-foreground">
-          {j.status === 'skipped' ? t('judgeSkipped', { reason: j.error ?? '' }) : t('judgeError', { reason: j.error ?? '' })}
-        </p>
-      ) : (
-        <div className="rounded-xl border-2 border-border">
-          {j.manipulation && (
-            <p className="border-b border-destructive/30 bg-destructive/8 px-5 py-3 text-body text-destructive">{t('judgeManipulation', { what: j.manipulation })}</p>
-          )}
-          <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-start sm:gap-6">
-            <div className={cn('numeral text-[40px]', scoreTone(j.score))}>{j.score}</div>
-            <div className="min-w-0">
-              <p className="text-title leading-relaxed">{j.summary}</p>
-              <p className="mt-2 text-ui text-faint">
-                {t('judgeMeta', { model: j.model ?? '', steps: j.steps ?? 0, tokens: compact(run.judge_tokens.in + run.judge_tokens.out) })}
-              </p>
-            </div>
-          </div>
-          <ul className="divide-y divide-border">
-            {(j.criteria ?? []).map((c) => (
-              <li key={c.title} className="grid gap-x-6 gap-y-1 px-5 py-3 sm:grid-cols-[14rem_minmax(0,1fr)]">
-                <div>
-                  <div className="flex items-baseline justify-between gap-2 font-semibold">
-                    <span>{c.title}</span>
-                    <span className="text-body tnum">{c.points}/{c.max}</span>
-                  </div>
-                  <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-pending">
-                    <div className={cn('h-full', c.points >= c.max * 0.75 ? 'bg-success' : c.points >= c.max * 0.4 ? 'bg-warning' : 'bg-destructive')}
-                      style={{ width: `${(100 * c.points) / Math.max(1, c.max)}%` }} />
-                  </div>
-                </div>
-                <p className="text-body leading-relaxed text-muted-foreground">{c.note}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
   )
 }
 

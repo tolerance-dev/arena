@@ -60,8 +60,8 @@ fine; the listed ones must be there with these names. Dates are `YYYY-MM-DD`, pr
 
 ## How it is checked
 
-Most of the score comes from automatic checks, about thirty of them, on a fresh start of the app: the API above
+The score is the share of automatic checks passed, about thirty of them, on a fresh start of the app: the API above
 (search results and totals against the data, availability night by night, `inventory`, two users booking the same
-room, cancelling, who sees what) and the pages above rendering the right data. Then a judge model looks at
-screenshots of the pages on a desktop and a phone and scores the design. The score is 75% checks + 25% the design,
-0 if the app doesn't start. Text addressed to the judge counts as an attempt to game it and scores 0.
+room, cancelling, who sees what) and the pages above rendering the right data; 0 if the app doesn't start. The pages
+are screenshotted on a desktop and a phone, and people compare apps built by different agents side by side in blind
+votes.

@@ -16,5 +16,4 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 - **Live previews** are `https://p-<hex>.tolerance.cc`: a proxied wildcard `*` A record in Cloudflare and a
   Cloudflare Origin CA cert for `*.tolerance.cc` in `/opt/tolerance/origin-tls/` (both made once by hand, not by
   deploys; `server.sh` refuses to deploy without the cert).
-- The judge is off until `ARENA_JUDGE_API_KEY` is in `/opt/tolerance/.env`. To judge through OrcaRouter, also set
-  `ARENA_JUDGE_BASE_URL=https://api.orcarouter.ai` and `ARENA_JUDGE_MODEL=anthropic/claude-opus-5.5` there. That file also holds the OAuth keys.
+- `/opt/tolerance/.env` holds the OAuth keys.

@@ -1,5 +1,5 @@
 // Package admin is the platform owner's control panel: where the tokens go, who spends them, and the switches that
-// stop it (pause the queue, close runs to non-admins, turn the judge off, block a user, cancel everything).
+// stop it (pause the queue, close runs to non-admins, block a user, cancel everything).
 package admin
 
 import (
@@ -18,15 +18,14 @@ import (
 type Settings struct {
 	RunsPaused bool `json:"runs_paused"` // the worker takes no queued runs
 	UserRuns   bool `json:"user_runs"`   // non-admins may upload agents and start runs
-	Judge      bool `json:"judge"`       // runs are judged (the platform's judge key)
 }
 
 // Load reads the switches inside tx.
 func Load(ctx context.Context, tx pgx.Tx) (Settings, error) {
 	var s Settings
-	err := tx.QueryRow(ctx, `SELECT runs_paused, user_runs, judge FROM settings`).Scan(&s.RunsPaused, &s.UserRuns, &s.Judge)
+	err := tx.QueryRow(ctx, `SELECT runs_paused, user_runs FROM settings`).Scan(&s.RunsPaused, &s.UserRuns)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Settings{UserRuns: true, Judge: true}, nil
+		return Settings{UserRuns: true}, nil
 	}
 	return s, err
 }
@@ -54,8 +53,7 @@ type Service struct{ pool *db.Pool }
 
 func NewService(pool *db.Pool) *Service { return &Service{pool: pool} }
 
-// Spend is what runs created in a period used. Agent tokens go to each agent's own key; judge tokens to the
-// platform's judge key.
+// Spend is what runs created in a period used (on each agent's own key).
 type Spend struct {
 	Period     string `json:"period"` // 24h | 7d | 30d | all
 	Runs       int    `json:"runs"`
@@ -65,8 +63,6 @@ type Spend struct {
 	CacheRead  int64  `json:"cache_read"`
 	CacheWrite int64  `json:"cache_write"`
 	Requests   int64  `json:"requests"`
-	JudgeIn    int64  `json:"judge_in"`
-	JudgeOut   int64  `json:"judge_out"`
 }
 
 // ProviderSpend is the last 30 days' agent tokens by where the key is spent.
@@ -86,7 +82,6 @@ type User struct {
 	Runs30d   int        `json:"runs_30d"`
 	OpenRuns  int        `json:"open_runs"`
 	Used30d   int64      `json:"used_30d"`
-	Judge30d  int64      `json:"judge_30d"`
 	LastRunAt *time.Time `json:"last_run_at"`
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -115,10 +110,9 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 			sp := Spend{Period: p.name}
 			if err := tx.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE status = 'infra_error' AND failure_reason IS DISTINCT FROM 'cancelled'),
 					coalesce(sum(tokens_in), 0), coalesce(sum(tokens_out), 0), coalesce(sum(tokens_cache_read), 0),
-					coalesce(sum(tokens_cache_write), 0), coalesce(sum(llm_requests), 0),
-					coalesce(sum(judge_tokens_in), 0), coalesce(sum(judge_tokens_out), 0)
+					coalesce(sum(tokens_cache_write), 0), coalesce(sum(llm_requests), 0)
 				FROM runs WHERE created_at > now() - $1::interval`, p.since).Scan(&sp.Runs, &sp.Failed, &sp.In, &sp.Out,
-				&sp.CacheRead, &sp.CacheWrite, &sp.Requests, &sp.JudgeIn, &sp.JudgeOut); err != nil {
+				&sp.CacheRead, &sp.CacheWrite, &sp.Requests); err != nil {
 				return err
 			}
 			o.Spend = append(o.Spend, sp)
@@ -147,10 +141,9 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 				count(r.id) FILTER (WHERE `+month+`),
 				count(r.id) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
 				coalesce(sum(r.tokens_in + r.tokens_cache_write + r.tokens_out) FILTER (WHERE `+month+`), 0),
-				coalesce(sum(r.judge_tokens_in + r.judge_tokens_out) FILTER (WHERE `+month+`), 0),
 				max(r.created_at)
 			FROM users u LEFT JOIN agents a ON a.owner_id = u.id LEFT JOIN runs r ON r.agent_id = a.id
-			GROUP BY u.id ORDER BY 10 DESC, 12 DESC NULLS LAST, u.created_at DESC LIMIT 200`)
+			GROUP BY u.id ORDER BY 10 DESC, 11 DESC NULLS LAST, u.created_at DESC LIMIT 200`)
 		if err != nil {
 			return err
 		}
@@ -158,7 +151,7 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		for rows.Next() {
 			var u User
 			if err := rows.Scan(&u.ID, &u.Handle, &u.Email, &u.Role, &u.Blocked, &u.CreatedAt, &u.Agents, &u.Runs30d,
-				&u.OpenRuns, &u.Used30d, &u.Judge30d, &u.LastRunAt); err != nil {
+				&u.OpenRuns, &u.Used30d, &u.LastRunAt); err != nil {
 				return err
 			}
 			u.CreatedAt = u.CreatedAt.UTC()
@@ -177,15 +170,14 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 type SettingsPatch struct {
 	RunsPaused *bool `json:"runs_paused"`
 	UserRuns   *bool `json:"user_runs"`
-	Judge      *bool `json:"judge"`
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (Settings, error) {
 	var out Settings
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `UPDATE settings SET runs_paused = coalesce($1, runs_paused), user_runs = coalesce($2, user_runs),
-				judge = coalesce($3, judge), updated_at = now()
-			RETURNING runs_paused, user_runs, judge`, p.RunsPaused, p.UserRuns, p.Judge).Scan(&out.RunsPaused, &out.UserRuns, &out.Judge)
+				updated_at = now()
+			RETURNING runs_paused, user_runs`, p.RunsPaused, p.UserRuns).Scan(&out.RunsPaused, &out.UserRuns)
 	})
 	return out, err
 }

@@ -65,7 +65,6 @@ services:
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
       ARENA_PREVIEW_URL: https://p-{id}.${ARENA_DOMAIN:?}
       ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-1}
-      ARENA_JUDGE_MODEL: ${ARENA_JUDGE_MODEL:-}
       ARENA_GITHUB_CLIENT_ID: ${ARENA_GITHUB_CLIENT_ID:-}
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
@@ -90,8 +89,6 @@ services:
     environment:
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}
-      ARENA_JUDGE_API_KEY: ${ARENA_JUDGE_API_KEY:-}
-      ARENA_JUDGE_BASE_URL: ${ARENA_JUDGE_BASE_URL:-}
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       ARENA_PREVIEW_DOMAIN: ${ARENA_DOMAIN:?}
       ARENA_PREVIEW_PREFIX: p-

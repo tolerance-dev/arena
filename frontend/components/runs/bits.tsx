@@ -135,7 +135,6 @@ const td = 'px-3 py-2.5'
 export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boolean; showTask?: boolean }) {
   const t = useT(runsMessages)
   if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
-  const judged = runs.some((r) => r.judge?.status === 'ok')
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full min-w-[680px] text-body">
@@ -148,7 +147,6 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
             <th className={cn(th, 'text-right')}>{t('colLoc')}</th>
             <th className={cn(th, 'text-right')}>{t('colTime')}</th>
             <th className={cn(th, 'text-right')}>{t('colTokens')}</th>
-            {judged && <th className={cn(th, 'text-right')}>{t('colJudge')}</th>}
             <th className={cn(th, 'pr-4 text-right')}>{t('colWhen')}</th>
           </tr>
         </thead>
@@ -178,7 +176,6 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
                 <td className={cn(td, 'text-right tnum')}>{done ? compact(r.stats.loc) : '—'}</td>
                 <td className={cn(td, 'text-right tnum')}>{duration(r.agent_seconds)}</td>
                 <td className={cn(td, 'text-right tnum')}>{compact(usedTokens(r.tokens))}</td>
-                {judged && <td className={cn(td, 'text-right tnum')}>{r.judge?.status === 'ok' ? r.judge.score : '—'}</td>}
                 <td className={cn(td, 'pr-4 text-right text-meta whitespace-nowrap text-faint')}><Ago iso={r.created_at} /></td>
               </tr>
             )

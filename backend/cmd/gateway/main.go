@@ -50,8 +50,6 @@ func main() {
 	defer pool.Close()
 
 	cfg := gateway.Config{
-		JudgeKey:      os.Getenv("ARENA_JUDGE_API_KEY"),
-		JudgeURL:      os.Getenv("ARENA_JUDGE_BASE_URL"),
 		Subscriptions: os.Getenv("ARENA_SUBSCRIPTIONS") == "true",
 		FakeUpstream:  os.Getenv("ARENA_GATEWAY_FAKE") == "true",
 		SelfURL:       env("ARENA_GATEWAY_SELF_URL", "http://gateway:8090"),
@@ -93,7 +91,7 @@ func main() {
 			}
 		}()
 	}
-	log.Info("gateway up", "judge", cfg.JudgeKey != "", "fake_upstream", cfg.FakeUpstream)
+	log.Info("gateway up", "fake_upstream", cfg.FakeUpstream)
 	select {
 	case <-ctx.Done():
 	case err := <-errs:

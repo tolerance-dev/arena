@@ -25,12 +25,11 @@ type config struct {
 	publicURL        string
 	previewURL       string // ARENA_PREVIEW_URL: live preview address with {id}, e.g. http://{id}.preview.localhost:3023
 	runConcurrency   int
-	judgeModel       string
 	githubID         string
 	githubSecret     string
 	googleID         string
 	googleSecret     string
-	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/judge.md overrides (the private arena-tasks repo)
+	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/checks.json overrides (the private arena-tasks repo)
 	subscriptions    bool   // ARENA_SUBSCRIPTIONS: admins may run agents on their own Claude/ChatGPT subscription (local only)
 }
 
@@ -45,7 +44,6 @@ func loadConfig() (config, error) {
 		publicURL:        os.Getenv("ARENA_PUBLIC_URL"),
 		previewURL:       os.Getenv("ARENA_PREVIEW_URL"),
 		runConcurrency:   1,
-		judgeModel:       os.Getenv("ARENA_JUDGE_MODEL"),
 		githubID:         os.Getenv("ARENA_GITHUB_CLIENT_ID"),
 		githubSecret:     os.Getenv("ARENA_GITHUB_CLIENT_SECRET"),
 		googleID:         os.Getenv("ARENA_GOOGLE_CLIENT_ID"),

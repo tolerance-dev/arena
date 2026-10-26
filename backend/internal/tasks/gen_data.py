@@ -12,11 +12,11 @@ TIME_LIMIT_S = 1800
 TOKEN_BUDGET = 2_000_000
 
 
-def task_json(slug, order, title, tagline, ui_text, checks=(), **extra):
+def task_json(slug, order, title, tagline, ui_text, checks=()):
     # ui_text = strings the home page must show right after start. checks = HTTP and page checks run in order (see
-    # verify.py); extra = judge_mode / judge_weight / pages for tasks judged on screenshots.
+    # verify.py); the score is the share of them passed.
     obj = {"order": order, "title": title, "tagline": tagline, "time_limit_s": TIME_LIMIT_S,
-           "token_budget": TOKEN_BUDGET, "ui": True, "ui_text": ui_text, **extra, "checks": list(checks)}
+           "token_budget": TOKEN_BUDGET, "ui": True, "ui_text": ui_text, "checks": list(checks)}
     with open(os.path.join(out, slug, "task.json"), "w") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
         f.write("\n")
@@ -130,7 +130,7 @@ for i in range(1, 61):
     co = ci + datetime.timedelta(days=R.randint(1, 6))
     bookings.append({"id": f"b{i}", "room_id": r["id"], "hotel_id": r["hotel_id"], "user_id": f"u{R.randint(1, 8)}",
                      "check_in": ci.isoformat(), "check_out": co.isoformat(), "guests": R.randint(1, r["capacity"]), "status": "confirmed"})
-# A fully booked room for the whole first week of December (a known conflict the judge can probe).
+# A fully booked room for the whole first week of December (a known conflict the checks probe).
 full = next(r for r in rooms if r["inventory"] == 1)
 for k in range(1):
     bookings.append({"id": "b-full", "room_id": full["id"], "hotel_id": full["hotel_id"], "user_id": "u1",
@@ -312,8 +312,7 @@ task_json("marketplace", 1, {"en": "Marketplace", "ru": "Маркетплейс"
 task_json("hotels", 2, {"en": "Hotel booking", "ru": "Бронирование отелей"},
           {"en": "Booking.com in miniature: search by city and dates, hotel pages, rooms, bookings.",
            "ru": "Booking.com в миниатюре: поиск по городу и датам, страницы отелей, номера, брони."},
-          cities, hc, judge_mode="screens", judge_weight=0.25,
-          pages=["/", "/search" + q(**S), "/hotels/h2" + q(**H)])
+          cities, hc)
 top = max(movies, key=lambda m: (m["rating"], -int(m["id"][1:])))
 newest = max(movies, key=lambda m: (m["added_at"], -int(m["id"][1:])))
 assert sum(m["rating"] == top["rating"] for m in movies) == 1 and sum(m["added_at"] == newest["added_at"] for m in movies) == 1

@@ -19,13 +19,6 @@
     "Istanbul",
     "Tbilisi"
   ],
-  "judge_mode": "screens",
-  "judge_weight": 0.25,
-  "pages": [
-    "/",
-    "/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
-    "/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2"
-  ],
   "checks": [
     {
       "name": "search page lists the hotels with the price for the stay",

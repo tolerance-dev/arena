@@ -96,7 +96,6 @@ function Switches({ settings, open, t, act }: { settings: AdminSettings; open: n
   const rows: { key: keyof AdminSettings; label: string; on: boolean; hint: string }[] = [
     { key: 'runs_paused', label: t('runsPaused'), on: !settings.runs_paused, hint: settings.runs_paused ? t('runsPausedOff') : t('runsPausedOn') },
     { key: 'user_runs', label: t('userRuns'), on: settings.user_runs, hint: settings.user_runs ? t('userRunsOn') : t('userRunsOff') },
-    { key: 'judge', label: t('judge'), on: settings.judge, hint: settings.judge ? t('judgeOn') : t('judgeOff') },
   ]
   async function stopAll() {
     if (!confirm) { setConfirm(true); return }
@@ -158,11 +157,9 @@ function SpendBlock({ spend, t }: { spend: AdminSpend[]; t: AT }) {
           ))}
         </span>
       }>{t('spendTitle')}</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Stat label={t('agentTokens')} value={compact(s.in + s.cache_write + s.out)}
           note={t('breakdown', { in: compact(s.in), out: compact(s.out), cache: compact(s.cache_read + s.cache_write), req: compact(s.requests) })} />
-        <Stat label={t('judgeTokens')} value={compact(s.judge_in + s.judge_out)}
-          note={t('judgeBreakdown', { in: compact(s.judge_in), out: compact(s.judge_out) })} />
         <Stat label={t('runsCount')} value={String(s.runs)} note={s.failed ? t('failed', { n: s.failed }) : undefined} />
       </div>
       <p className="mt-2 text-meta text-faint">{t('spendHint')}</p>
@@ -219,7 +216,6 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                 </td>
                 <td className="px-3 py-2.5 text-right tnum">
                   {compact(u.used_30d)}
-                  {u.judge_30d > 0 && <span className="block text-meta text-faint">{t('judge')}: {compact(u.judge_30d)}</span>}
                 </td>
                 <td className="px-3 py-2.5 text-ui text-muted-foreground">{u.last_run_at ? <Ago iso={u.last_run_at} /> : t('never')}</td>
                 <td className="px-4 py-2.5 text-right">
