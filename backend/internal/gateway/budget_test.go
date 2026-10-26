@@ -25,6 +25,7 @@ type memStore struct {
 	budget     int64
 	spent      spent
 	closed     bool
+	rejected   bool
 	failWrites int // how many usage writes fail before they work again
 }
 
@@ -54,6 +55,19 @@ func (m *memStore) closeBudget(context.Context, string) error {
 	m.closed = true
 	m.mu.Unlock()
 	return nil
+}
+
+func (m *memStore) rejectKey(context.Context, string) error {
+	m.mu.Lock()
+	m.rejected = true
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *memStore) isRejected() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.rejected
 }
 
 func (m *memStore) used() spent {
@@ -342,5 +356,49 @@ func TestPlanCaps(t *testing.T) {
 	img := `{"messages":[{"content":[{"type":"image","source":{"data":"iVBORw0KGgo` + strings.Repeat("A", 400_000) + `"}}]}]}`
 	if est := inputEstimate([]byte(img)); est > imageTokens+promptOverhead+100 {
 		t.Errorf("an image estimated at %d tokens", est)
+	}
+}
+
+// A key the provider refuses marks the run (before the agent sees the answer, which still reaches it); other errors
+// don't.
+func TestRejectedKey(t *testing.T) {
+	answer := func(status int) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(status)
+			_, _ = io.WriteString(w, `{"type":"error","error":{"type":"authentication_error"}}`)
+		}
+	}
+	_, st, base := testGateway(t, 100_000, 0, answer(http.StatusUnauthorized))
+	code, body := post(t, base, message(1_000, "hi"))
+	if code != 401 || !strings.Contains(body, "authentication_error") {
+		t.Fatalf("got %d %s", code, body)
+	}
+	if !st.isRejected() {
+		t.Error("a 401 from the provider didn't mark the key")
+	}
+	_, st, base = testGateway(t, 100_000, 0, answer(http.StatusInternalServerError))
+	if code, _ := post(t, base, message(1_000, "hi")); code != 500 {
+		t.Fatalf("got %d", code)
+	}
+	if st.isRejected() {
+		t.Error("a 500 marked the key")
+	}
+
+	gemini := func(body string) *http.Response {
+		return &http.Response{StatusCode: http.StatusBadRequest, Body: io.NopCloser(strings.NewReader(body))}
+	}
+	invalid := `{"error":{"code":400,"status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}`
+	resp := gemini(invalid)
+	if !keyRejected("gemini", resp) {
+		t.Error("Gemini's API_KEY_INVALID wasn't taken as a rejected key")
+	}
+	if b, _ := io.ReadAll(resp.Body); string(b) != invalid {
+		t.Errorf("the body didn't reach the agent whole: %s", b)
+	}
+	if keyRejected("gemini", gemini(`{"error":{"code":400,"message":"bad request"}}`)) {
+		t.Error("another Gemini 400 was taken as a rejected key")
+	}
+	if keyRejected("anthropic", gemini(invalid)) {
+		t.Error("a 400 outside Gemini was taken as a rejected key")
 	}
 }

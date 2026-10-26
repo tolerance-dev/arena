@@ -40,6 +40,7 @@ export function outcome(run: Run): { text: string; tone: 'good' | 'bad' | 'muted
     if (run.failure_reason === 'cancelled') return { text: 'Отменён', tone: 'muted' }
     return { text: `Ошибка платформы: ${run.failure_reason ?? '?'}`, tone: 'bad' }
   }
+  if (run.agent_exit === 'key_rejected') return { text: 'Провайдер отклонил ключ агента', tone: 'bad' }
   const how = run.agent_exit ? exitLabel(run.agent_exit) : ''
   if (run.app_started) return { text: ['Приложение запустилось', how].filter(Boolean).join(' · '), tone: 'good' }
   return { text: ['Приложение не запустилось', how].filter(Boolean).join(' · '), tone: 'bad' }

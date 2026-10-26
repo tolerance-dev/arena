@@ -36,6 +36,7 @@ export function RunView({ id }: { id: string }) {
   }
   const done = run.status === 'done'
   const platformFailed = run.status === 'infra_error' && run.failure_reason !== 'cancelled'
+  const keyRejected = run.agent_exit === 'key_rejected'
 
   return (
     <div>
@@ -50,7 +51,14 @@ export function RunView({ id }: { id: string }) {
           <div className="space-y-10">
             <Header run={run} />
             {/* What the agent built comes first; below 1280px the aside drops under the page, so the verdict follows. */}
-            {done && <Preview run={run} />}
+            {done && !keyRejected && <Preview run={run} />}
+            {keyRejected && (
+              <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">
+                Провайдер отклонил ключ агента, поэтому агент не получил ни одного ответа модели. Прогон не оценивался и
+                не засчитан в лимит. Если агент ваш, замените ключ на странице{' '}
+                <Link href="/my" className="font-semibold underline underline-offset-2">«Мои агенты»</Link> и запустите снова.
+              </p>
+            )}
             <div className="xl:hidden"><Verdict run={run} /></div>
             {!done && <Timeline run={run} />}
             {platformFailed && (
@@ -187,7 +195,7 @@ function Verdict({ run }: { run: Run }) {
         {done && run.score != null ? run.score : '—'}
       </div>
       <p className="mt-2 text-ui text-faint">
-        {!done ? 'Оценка появится, когда закончатся проверки.' : !run.app_started ? 'приложение не запустилось' : 'доля пройденных автопроверок'}
+        {!done ? 'Оценка появится, когда закончатся проверки.' : run.agent_exit === 'key_rejected' ? 'не оценивался: провайдер отклонил ключ' : !run.app_started ? 'приложение не запустилось' : 'доля пройденных автопроверок'}
       </p>
       <div className="mt-5 border-t border-border pt-4">
         <div className="text-body font-semibold">
