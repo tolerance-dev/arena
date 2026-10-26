@@ -3,6 +3,7 @@ import { ApiError } from './api'
 // API errors: the server answers {code, message} in English; known codes get a Russian text, anything else falls
 // back to the server's text.
 const BY_CODE: Record<string, string> = {
+  network: 'Нет связи с сервером.',
   unauthenticated: 'Нужно войти.',
   forbidden: 'Нет доступа.',
   not_found: 'Не найдено.',
@@ -21,6 +22,7 @@ export function errorText(err: unknown): string {
   const { code, message, status } = err
   if (status === 429) return err.retryAfterSec ? `Слишком много запросов, повторите через ${err.retryAfterSec} с.` : 'Слишком много запросов, повторите чуть позже.'
   if (status === 413) return 'Файл слишком большой.'
+  if (status >= 500 && !BY_CODE[code]) return BY_CODE.internal_error
   if (code.startsWith('invalid_') && code !== 'invalid_body' && message) return message
   return BY_CODE[code] ?? (message || GENERIC)
 }

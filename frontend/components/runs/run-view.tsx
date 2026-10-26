@@ -24,9 +24,13 @@ import { agentElapsed, useNow } from './live-runs'
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
 // the run's numbers sit in the aside.
 export function RunView({ id }: { id: string }) {
-  const { data: run, error, reload } = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
+  const { data: run, error, loading, reload } = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
   if (error?.status === 404) return <EmptyState>Такого прогона нет. Возможно, его удалили.</EmptyState>
-  if (!run) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-[28rem]" /></div>
+  const retry = <Button variant="outline" size="sm" disabled={loading} onClick={reload}>Попробовать ещё раз</Button>
+  if (!run) {
+    if (error) return <EmptyState action={retry}>{`Не удалось загрузить прогон. ${errorText(error)}`}</EmptyState>
+    return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-[28rem]" /></div>
+  }
   const done = run.status === 'done'
   const platformFailed = run.status === 'infra_error' && run.failure_reason !== 'cancelled'
 
@@ -37,6 +41,12 @@ export function RunView({ id }: { id: string }) {
         { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run)}</>, href: `/t/${run.task}` },
         { label: run.agent.name },
       ]} />
+      {error && (
+        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-2.5 text-body">
+          <span>{`Не удалось обновить прогон, данные могут быть устаревшими. ${errorText(error)}`}</span>
+          {retry}
+        </div>
+      )}
       <Columns className="mt-6"
         main={
           <div className="space-y-10">

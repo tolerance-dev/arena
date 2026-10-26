@@ -33,43 +33,69 @@ export function ProviderOptions({ subscriptions, only }: { subscriptions?: boole
     .map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
 }
 
-// Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted).
+// A failed load worth retrying on its own: no network, a 5xx, a 429 or a timeout. Other 4xx (404, 403) won't
+// change by asking again.
+function transient(e: ApiError) {
+  return e.status === 0 || e.status >= 500 || e.status === 429 || e.status === 408
+}
+
+// Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted). A transient
+// failure is retried with backoff (3 s doubling up to 30 s, sooner when the browser comes back online) and keeps
+// the last data, so the page can show it as stale next to `error`. A 4xx stops polling until reload(). A response
+// for an old path (after navigation or unmount) is dropped.
 export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean) {
-  const [data, setData] = useState<T | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
+  const [state, setState] = useState<{ path: string | null; data: T | null; error: ApiError | null }>(
+    { path, data: null, error: null })
+  const [loading, setLoading] = useState(false)
+  const [nonce, setNonce] = useState(0)
   const activeRef = useRef(active)
   activeRef.current = active
-  const load = useCallback(async () => {
-    if (!path) return null
-    try {
-      const d = await api<T>(path)
-      setData(d)
-      setError(null)
-      return d
-    } catch (e) {
-      setError(e as ApiError)
-      return null
-    }
-  }, [path])
-  // Bumped when a reload finds the data active again (a run queued for a recheck): polling resumes.
-  const [restart, setRestart] = useState(0)
   useEffect(() => {
+    if (!path) return
     let live = true
-    let timer: ReturnType<typeof setTimeout>
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let busy = false
+    let failures = 0
+    const ctrl = new AbortController()
     const tick = async () => {
-      const d = await load()
-      if (!live) return
-      if (!activeRef.current || (d && activeRef.current(d))) timer = setTimeout(tick, ms)
+      if (busy) return
+      busy = true
+      clearTimeout(timer)
+      timer = undefined
+      setLoading(true)
+      try {
+        const d = await api<T>(path, { signal: ctrl.signal })
+        if (!live) return
+        failures = 0
+        setState({ path, data: d, error: null })
+        if (!activeRef.current || activeRef.current(d)) timer = setTimeout(tick, ms)
+      } catch (err) {
+        if (!live) return
+        const e = err instanceof ApiError ? err : new ApiError(0, 'network', String(err))
+        setState((s) => ({ path, data: s.path === path ? s.data : null, error: e }))
+        if (!transient(e)) return
+        failures++
+        const wait = Math.max(Math.min(30_000, Math.min(ms, 3_000) * 2 ** (failures - 1)), (e.retryAfterSec ?? 0) * 1000)
+        timer = setTimeout(tick, wait)
+      } finally {
+        busy = false
+        if (live) setLoading(false)
+      }
     }
+    const online = () => { if (failures > 0 && timer) void tick() }
+    window.addEventListener('online', online)
     void tick()
-    return () => { live = false; clearTimeout(timer) }
-  }, [load, ms, restart])
-  const reload = useCallback(async () => {
-    const d = await load()
-    if (d && activeRef.current?.(d)) setRestart((n) => n + 1)
-    return d
-  }, [load])
-  return { data, error, reload }
+    return () => {
+      live = false
+      ctrl.abort()
+      clearTimeout(timer)
+      window.removeEventListener('online', online)
+      setLoading(false)
+    }
+  }, [path, ms, nonce])
+  const reload = useCallback(() => setNonce((n) => n + 1), [])
+  const mine = path != null && state.path === path
+  return { data: mine ? state.data : null, error: mine ? state.error : null, loading, reload }
 }
 
 export const ACTIVE: RunStatus[] = ['queued', 'agent', 'checking']
