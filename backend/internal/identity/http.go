@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"slices"
 	"strings"
@@ -35,6 +36,7 @@ type AuthConfig struct {
 	// providers need one registered callback for every checkout's port. The relay (dev/oauth-relay.conf) sends
 	// the browser on to the port that prefixes state ("3100-<random>").
 	OAuthRelay string
+	DevLogin   bool // mounts POST /auth/dev: sign in as any email (local stacks only, see cmd/api config)
 	Secure     bool // Secure flag on cookies
 	// TrustProxy must only be true when a reverse proxy in front sets
 	// X-Real-IP itself (never trust it otherwise) — see clientip.FromRequest.
@@ -45,15 +47,18 @@ type AuthConfig struct {
 const OAuthCookie = "arena_oauth"
 
 // RegisterAuthRoutes mounts the unauthenticated auth routes: the provider
-// list, logout and OAuth start/callback.
+// list, logout, OAuth start/callback and, on local stacks, the dev sign-in.
 func RegisterAuthRoutes(mux *http.ServeMux, s *Service, limiter *ratelimit.Limiter, cfg AuthConfig) {
 	mux.HandleFunc("GET /api/v1/auth/providers", func(w http.ResponseWriter, r *http.Request) {
 		names := slices.Sorted(maps.Keys(cfg.Providers))
 		if names == nil {
 			names = []string{}
 		}
-		httpx.Respond(w, http.StatusOK, map[string]any{"providers": names})
+		httpx.Respond(w, http.StatusOK, map[string]any{"providers": names, "dev_login": cfg.DevLogin})
 	})
+	if cfg.DevLogin {
+		mux.HandleFunc("POST /api/v1/auth/dev", devSignIn(s, cfg.Secure))
+	}
 	mux.HandleFunc("GET /api/v1/auth/{provider}/start", oauthStart(limiter, cfg))
 	mux.HandleFunc("GET /api/v1/auth/{provider}/callback", oauthCallback(s, limiter, cfg))
 	mux.HandleFunc("POST /api/v1/auth/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -191,4 +196,34 @@ func RegisterMeRoute(mux *http.ServeMux, s *Service, extras func(ctx context.Con
 		}
 		httpx.Respond(w, http.StatusOK, out)
 	})
+}
+
+// devSignIn signs in as any email, no password: local stacks only, to click flows through without OAuth.
+func devSignIn(s *Service, secure bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		raw, err := httpx.ReadBody(w, r)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		var in struct {
+			Email string `json:"email"`
+		}
+		if err := httpx.Decode(raw, &in); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		email := NormalizeEmail(in.Email)
+		if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email || len(email) > 254 {
+			httpx.WriteError(w, r, httpx.InvalidBody("email must be a valid address"))
+			return
+		}
+		u, token, err := s.DevSignIn(r.Context(), email)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		SetSessionCookie(w, token, secure)
+		httpx.Respond(w, http.StatusOK, map[string]any{"user": u})
+	}
 }

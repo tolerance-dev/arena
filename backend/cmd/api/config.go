@@ -33,6 +33,7 @@ type config struct {
 	googleSecret     string
 	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/checks.json overrides (the private arena-tasks repo)
 	subscriptions    bool   // ARENA_SUBSCRIPTIONS: admins may run agents on their own Claude/ChatGPT subscription (local only)
+	devLogin         bool   // ARENA_DEV_LOGIN: sign in as any email with no password (local only)
 }
 
 func loadConfig() (config, error) {
@@ -53,6 +54,7 @@ func loadConfig() (config, error) {
 		googleSecret:     os.Getenv("ARENA_GOOGLE_CLIENT_SECRET"),
 		tasksHiddenDir:   os.Getenv("ARENA_TASKS_HIDDEN_DIR"),
 		subscriptions:    os.Getenv("ARENA_SUBSCRIPTIONS") == "true",
+		devLogin:         os.Getenv("ARENA_DEV_LOGIN") == "true",
 	}
 	if v := os.Getenv("ARENA_RUN_CONCURRENCY"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -86,12 +88,19 @@ func loadConfig() (config, error) {
 			return config{}, fmt.Errorf("set both ARENA_%s_CLIENT_ID and ARENA_%s_CLIENT_SECRET, or neither", p[0], p[0])
 		}
 	}
+	if cfg.devLogin {
+		// Dev login signs anyone in as any email, the owner included: never next to a public origin.
+		u, err := url.Parse(cfg.publicURL)
+		if err != nil || u.Scheme != "http" || !isLocalHost(u.Hostname()) || cfg.secureCookies {
+			return config{}, errors.New("ARENA_DEV_LOGIN is for local stacks only: ARENA_PUBLIC_URL must be http://localhost:<port> and cookies not secure")
+		}
+	}
 	// No sign-in provider means nobody can sign in on the real site: refuse to start rather than run half-broken.
-	if cfg.githubID == "" && cfg.googleID == "" {
+	if cfg.githubID == "" && cfg.googleID == "" && !cfg.devLogin {
 		return config{}, errors.New("no sign-in provider: set ARENA_GITHUB_CLIENT_ID/SECRET and/or ARENA_GOOGLE_CLIENT_ID/SECRET (locally: put them in ~/.config/tolerance/env, values from /opt/tolerance/.env on the server)")
 	}
 	if !strings.HasPrefix(cfg.publicURL, "http://") && !strings.HasPrefix(cfg.publicURL, "https://") {
-		return config{}, errors.New("ARENA_PUBLIC_URL (http:// or https://) is required when a sign-in provider is configured")
+		return config{}, errors.New("ARENA_PUBLIC_URL (http:// or https://) is required")
 	}
 	if cfg.oauthRelay != "" {
 		u, err := url.Parse(cfg.publicURL)
@@ -112,6 +121,10 @@ func providersFromConfig(cfg config) map[string]identity.Provider {
 		ps["google"] = &identity.Google{ClientID: cfg.googleID, ClientSecret: cfg.googleSecret}
 	}
 	return ps
+}
+
+func isLocalHost(h string) bool {
+	return h == "localhost" || strings.HasSuffix(h, ".localhost") || net.ParseIP(h).IsLoopback()
 }
 
 func env(name, fallback string) string {

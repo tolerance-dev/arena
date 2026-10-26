@@ -127,8 +127,10 @@ make gateway     # rebuild + restart the gateway container (after Go changes in 
 make test-fast   # gofmt + go vet + go test + pnpm typecheck
 ```
 
-The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
-(the Makefile loads it before `.env`). Locally both providers call back to
+Locally `make dev` signs in without OAuth: `ARENA_DEV_LOGIN` (on in the Makefile) adds an email field under the
+OAuth buttons (`POST /api/v1/auth/dev`, any email, no password; the owner's email is admin). The api refuses it
+unless `ARENA_PUBLIC_URL` is http://localhost, and refuses to start with neither it nor GitHub/Google keys. The
+OAuth keys live once in `~/.config/tolerance/env` (the Makefile loads it before `.env`). Locally both providers call back to
 http://localhost:2999 (`make oauth-relay`, `dev/oauth-relay.conf`), which forwards to the port prefixing `state`, so
 every checkout's port works with one registered callback. Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
 Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user

@@ -112,17 +112,51 @@ func (s *Service) SignIn(ctx context.Context, id Identity) (User, string, error)
 		if err != nil {
 			return err
 		}
-		if err := scanUser(tx.QueryRow(ctx, `UPDATE users SET role = CASE WHEN email = ANY($2) THEN 'admin' ELSE 'user' END
-			WHERE id = $1 RETURNING `+userColumns, userID, s.adminList()), &u); err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, `INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, now() + $3::interval)`, sid, u.ID, sessionTTL.String())
-		return err
+		return s.openSession(ctx, tx, userID, sid, &u)
 	})
 	if err != nil {
 		return User{}, "", err
 	}
 	return u, token, nil
+}
+
+// DevSignIn signs in as the user with this email, creating it if needed, with no identity row: the dev sign-in of
+// local stacks (ARENA_DEV_LOGIN).
+func (s *Service) DevSignIn(ctx context.Context, email string) (User, string, error) {
+	token, sid, err := newSessionToken()
+	if err != nil {
+		return User{}, "", err
+	}
+	var u User
+	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		handle, err := freeHandle(ctx, tx, "", email)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO users (id, email, handle, role) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING`,
+			idgen.New("user"), email, handle, s.roleFor(email)); err != nil {
+			return err
+		}
+		var userID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, email).Scan(&userID); err != nil {
+			return err
+		}
+		return s.openSession(ctx, tx, userID, sid, &u)
+	})
+	if err != nil {
+		return User{}, "", err
+	}
+	return u, token, nil
+}
+
+// openSession refreshes the user's role from the admin list and stores the session.
+func (s *Service) openSession(ctx context.Context, tx pgx.Tx, userID, sid string, u *User) error {
+	if err := scanUser(tx.QueryRow(ctx, `UPDATE users SET role = CASE WHEN email = ANY($2) THEN 'admin' ELSE 'user' END
+		WHERE id = $1 RETURNING `+userColumns, userID, s.adminList()), u); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, now() + $3::interval)`, sid, u.ID, sessionTTL.String())
+	return err
 }
 
 // attachIdentity records a first sign-in of id: to the user with its email,
