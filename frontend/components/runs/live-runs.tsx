@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { compact, duration, usd, usedTokens } from '@/lib/format'
@@ -10,6 +9,7 @@ import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, Ago, exitLabel, isActive, PHASE, queueLine, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
+import { FinishedRuns } from './finished-runs'
 
 // Ticks every second, so running timers move.
 export function useNow(ms = 1000) {
@@ -46,10 +46,11 @@ export function outcome(run: Run): { text: string; tone: 'good' | 'bad' | 'muted
 }
 
 // What is running right now (each run's stage, clock, tokens and last step) and what just finished, with why.
-export function LiveRuns({ runs, empty }: { runs: Run[]; empty?: string }) {
+// onChange (the owner's page) lets finished runs be picked, run again and deleted.
+export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: string; onChange?: () => void }) {
   const now = useNow()
   const active = runs.filter(isActive).sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const finished = runs.filter((r) => !isActive(r)).slice(0, 8)
+  const finished = runs.filter((r) => !isActive(r))
   return (
     <div className="space-y-10">
       <section>
@@ -60,14 +61,7 @@ export function LiveRuns({ runs, empty }: { runs: Run[]; empty?: string }) {
           </ul>
         )}
       </section>
-      {finished.length > 0 && (
-        <section>
-          <SectionTitle>Недавно закончились</SectionTitle>
-          <ul className="divide-y divide-border rounded-xl border-2 border-border">
-            {finished.map((r) => <li key={r.id}><FinishedRow run={r} /></li>)}
-          </ul>
-        </section>
-      )}
+      {finished.length > 0 && <FinishedRuns runs={finished} onChange={onChange} />}
     </div>
   )
 }
@@ -107,26 +101,6 @@ function LiveCard({ run, now }: { run: Run; now: number }) {
       {step && run.status !== 'queued' && (
         <p className="mt-3 truncate rounded-md bg-terminal px-2.5 py-1.5 font-mono text-meta text-terminal-foreground" title={step}>{step}</p>
       )}
-    </Link>
-  )
-}
-
-function FinishedRow({ run }: { run: Run }) {
-  const o = outcome(run)
-  const step = o.tone === 'bad' && run.status === 'done' ? lastStep(run) : ''
-  return (
-    <Link href={`/r/${run.id}`} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted">
-      <AgentAvatar name={run.agent.name} size="sm" />
-      <RunTitle run={run} />
-      <span className="ml-auto min-w-0 max-w-[55%] text-right">
-        <span className={cn('block truncate text-body font-medium', o.tone === 'good' && 'text-success', o.tone === 'bad' && 'text-destructive', o.tone === 'muted' && 'text-muted-foreground')}>
-          {o.text}
-        </span>
-        <span className="block truncate text-meta text-faint" title={step || undefined}>
-          {step || <>{duration(run.agent_seconds)} · {`${compact(usedTokens(run.tokens))} токенов`}{run.cost_usd != null && <> · {usd(run.cost_usd)}</>} · <Ago iso={run.created_at} /></>}
-        </span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-faint" />
     </Link>
   )
 }

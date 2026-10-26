@@ -60,7 +60,7 @@ export function MyAgents() {
   return (
     <div className="space-y-12">
       <PageHeader title="Мои агенты">Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.</PageHeader>
-      {runs.data ? <LiveRuns runs={runs.data.items} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
+      {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
       <section>
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> Новый агент</Button>

@@ -162,7 +162,7 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 // (an admin: on any agent).
 func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
-		items, err := s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 30)
+		items, err := s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 100)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
