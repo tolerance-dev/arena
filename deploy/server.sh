@@ -5,8 +5,8 @@
 #   server.sh deploy <sha> [reset]   pull images at <sha>, migrate, swap api/gateway/web,
 #                                    health-check; on a failed health check the previous tag is started again
 #                                    (migrations are not reverted). Once healthy, a new worker starts and the old
-#                                    one drains in the background (swap_worker). `reset` wipes the database first:
-#                                    the schema is edited in place, so a schema change needs it.
+#                                    one drains in the background (swap_worker). `reset` wipes the database first
+#                                    (only to start over: schema changes are migrations, backend/migrations).
 #   server.sh backup [label]         pg_dump into backups/ (keeps the newest 30); cron runs it daily, deploy before
 #                                    every swap (a failed dump stops a reset)
 #                                    and, when BACKUP_REMOTE is set in .env, an encrypted copy off the server

@@ -1,5 +1,4 @@
--- The whole schema, applied by cmd/migrate to an empty database. There is no data worth keeping yet: change this
--- file freely and recreate the database (make reset locally, reset_db=true on prod) instead of adding migrations.
+-- The schema as prod had it when migrations began (2026-10-26). Never edit an applied migration: add the next one.
 
 CREATE TABLE users (
     id         text PRIMARY KEY,
@@ -53,15 +52,6 @@ CREATE TABLE agents (
     updated_at   timestamptz NOT NULL DEFAULT now()
 );
 
--- A tournament (internal/runs/tournament.go): every ready agent of the site owner at every task, a few runs each,
--- queued at once. week is the ISO week ('2026-W44') of a scheduled one, unique so that only one worker queues it;
--- NULL when the owner started it by hand.
-CREATE TABLE tournaments (
-    id         text PRIMARY KEY,
-    week       text UNIQUE,
-    created_at timestamptz NOT NULL DEFAULT now()
-);
-
 -- One attempt of an agent at a task. status: queued → agent (building) → checking → done; infra_error when the
 -- platform failed. How the agent itself ended is agent_exit (ok | timeout | budget | error:N).
 CREATE TABLE runs (
@@ -103,12 +93,10 @@ CREATE TABLE runs (
     finished_at        timestamptz,
     updated_at         timestamptz NOT NULL DEFAULT now(),
     -- worker_id: the worker (workers.id) that claimed the run; it alone touches the run's containers.
-    worker_id          text,
-    tournament_id      text REFERENCES tournaments (id) ON DELETE SET NULL -- the tournament that queued it
+    worker_id          text
 );
 CREATE INDEX runs_open_idx ON runs (created_at) WHERE status IN ('queued', 'agent', 'checking');
 CREATE INDEX runs_task_idx ON runs (task, score DESC NULLS LAST);
-CREATE INDEX runs_tournament_idx ON runs (tournament_id) WHERE tournament_id IS NOT NULL;
 
 -- The daily run quota (runs.Create): one row per run a user started, kept when the run or its agent is deleted, so
 -- deleting doesn't give the quota back. run_id has no foreign key on purpose. refunded: the worker ended the run
@@ -164,8 +152,6 @@ CREATE TABLE settings (
     id          boolean PRIMARY KEY DEFAULT true CHECK (id),
     runs_paused boolean NOT NULL DEFAULT false, -- the worker takes no queued runs
     user_runs   boolean NOT NULL DEFAULT true,  -- non-admins may upload agents and start runs
-    -- the weekly tournament is on since then (NULL = off): a week counts only if its start falls after it
-    tournament_since timestamptz,
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO settings DEFAULT VALUES;
@@ -180,6 +166,6 @@ CREATE TABLE workers (
 );
 
 GRANT USAGE ON SCHEMA public TO arena_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, tournaments, runs, gateway_tokens, pair_votes, vote_pairs, settings, workers TO arena_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, vote_pairs, settings, workers TO arena_app;
 GRANT SELECT, INSERT, UPDATE ON run_quota TO arena_app;
 
