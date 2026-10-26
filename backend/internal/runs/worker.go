@@ -480,12 +480,14 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			}
 			var status string
 			var used, budget int64
+			var closed bool
 			err := w.pool.Tx(watchCtx, func(ctx context.Context, tx pgx.Tx) error {
 				if _, err := tx.Exec(ctx, `UPDATE runs SET agent_log = $2 WHERE id = $1 AND status = 'agent'`, c.id, sanitize.CleanLog(out.String(), maxLog)); err != nil {
 					return err
 				}
-				return tx.QueryRow(ctx, `SELECT status, tokens_in + tokens_out + tokens_cache_write, token_budget FROM runs WHERE id = $1`, c.id).
-					Scan(&status, &used, &budget)
+				// agent_exit = budget while building: the gateway closed the budget (a request didn't fit what was left).
+				return tx.QueryRow(ctx, `SELECT status, tokens_in + tokens_out + tokens_cache_write, token_budget, coalesce(agent_exit, '') = 'budget'
+					FROM runs WHERE id = $1`, c.id).Scan(&status, &used, &budget, &closed)
 			})
 			if err != nil {
 				continue
@@ -493,7 +495,7 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			reason := ""
 			if status != "agent" {
 				reason = "cancelled"
-			} else if used >= budget {
+			} else if used >= budget || closed {
 				reason = "budget"
 			}
 			if reason != "" {

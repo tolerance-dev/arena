@@ -221,6 +221,7 @@ function Numbers({ run }: { run: Run }) {
               <span className={cn('block h-full', pct >= 100 ? 'bg-destructive' : 'bg-primary')} style={{ width: `${Math.min(100, pct)}%` }} />
             </span>
             <span className="mt-1 block">{`${pct}% бюджета`}, {`запросов к LLM: ${run.tokens.requests}`}</span>
+            {used > run.token_budget && <span className="block text-destructive">Больше бюджета: прогон не идёт в рейтинг</span>}
             {used > 0 && <span className="block">{`${compact(run.tokens.in + run.tokens.cache_write)} вход · ${compact(run.tokens.out)} выход · ${compact(run.tokens.cache_read)} из кэша`}</span>}
           </>} />
         <Line label="Стоимость" value={run.cost_usd == null ? '—' : usd(run.cost_usd)}

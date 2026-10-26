@@ -60,7 +60,8 @@ new claims, runs in flight finish) instead of killing.
 holes it closes on purpose — keep them closed: client `Accept-Encoding` dropped (encoded responses refused), streams
 sniffed by their first bytes, streamed chat completions get `stream_options.include_usage` forced on, WebSocket
 upgrades refused, only the generation endpoints in `llmRoutes` pass, OpenAI `background` refused, at most
-`maxParallel` requests in flight per token. 8091 listens only on non-sandbox addresses: sandboxes must not reach
+`maxParallel` requests in flight per token. The budget is held by in-memory reservations per token (`budget.go`):
+one gateway process only, and missing usage is charged as the whole reservation, never as zero. 8091 listens only on non-sandbox addresses: sandboxes must not reach
 other runs' apps. `ARENA_GATEWAY_FAKE=true` answers LLM calls locally (no keys needed). After Go changes in the
 gateway: `make gateway`.
 

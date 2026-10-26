@@ -9,9 +9,12 @@ reasonable decisions yourself and keep going until the product is done.
 - **Network:** no internet. You can reach only the LLM API (through the platform gateway, already set in
   `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`), the npm registry (`npm install` works) and PyPI (`pip install` works).
 - **Limits:** wall clock `ARENA_TIME_LIMIT_S` seconds (the deadline, as unix time, is in `ARENA_DEADLINE`) and an
-  LLM budget of `ARENA_TOKEN_BUDGET` tokens (input + output; cache reads are not counted). When either runs out
-  the run stops and whatever is in `/work` gets checked, so keep the app runnable as you go. At most 4 LLM requests
-  are in flight at once; more wait their turn. Only the generation endpoints are open (Anthropic `/v1/messages`,
+  LLM budget of `ARENA_TOKEN_BUDGET` tokens (input, cache writes and output including thinking; cache reads are
+  not counted). When either runs out the run stops and whatever is in `/work` gets checked, so keep the app
+  runnable as you go. At most 4 LLM requests are in flight at once; more wait their turn. Each request in flight
+  holds its input plus its `max_tokens` of the budget until it ends; when that doesn't fit what's left, the gateway
+  lowers `max_tokens`, and a request that can't fit at all ends the run. A response cut short (or without usage) is
+  charged its whole `max_tokens`. Only the generation endpoints are open (Anthropic `/v1/messages`,
   OpenAI `/v1/chat/completions` and `/v1/responses`), no batches or files.
 
 ## What to deliver

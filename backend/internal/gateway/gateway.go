@@ -4,9 +4,9 @@
 //   - /anthropic/*, /openai/*, /gemini/*: LLM APIs by protocol, only the generation endpoints (allowedRoute). The
 //     agent's provider (providers) says where each protocol goes: Anthropic, OpenAI and Google directly, or OrcaRouter
 //     for all three. The run token the sandbox holds
-//     is swapped for the agent's real key, usage is counted into the run, the run's
-//     token budget is enforced, and a run has at most maxParallel requests in flight (more wait their turn), so the
-//     budget can't be overrun by firing many requests at once.
+//     is swapped for the agent's real key, usage is counted into the run, and the run's token budget is enforced
+//     with reservations for the requests in flight (budget.go); a run has at most maxParallel of them (more wait
+//     their turn).
 //   - /npm/*, /pypi/*, /pyfiles/*: read-only package registries, so agents can install dependencies.
 //
 // Nothing else is proxied.
@@ -14,7 +14,6 @@ package gateway
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -44,51 +43,19 @@ type Config struct {
 }
 
 type Gateway struct {
-	pool *db.Pool
-	box  *secretbox.Box
-	cfg  Config
-	log  *slog.Logger
+	store store
+	box   *secretbox.Box
+	cfg   Config
+	log   *slog.Logger
+	// upstream replaces every provider's address (tests).
+	upstream string
 
-	mu    sync.Mutex
-	slots map[string]*slot // by token hash
+	mu       sync.Mutex
+	accounts map[string]*account // by token hash
 }
 
 func New(pool *db.Pool, box *secretbox.Box, cfg Config, log *slog.Logger) *Gateway {
-	return &Gateway{pool: pool, box: box, cfg: cfg, log: log.With("component", "gateway"), slots: map[string]*slot{}}
-}
-
-// maxParallel is how many LLM requests one token (one run's agent) has in flight at once.
-const maxParallel = 4
-
-type slot struct {
-	ch    chan struct{}
-	users int
-}
-
-// acquire waits for one of the token's request slots; release frees it.
-func (g *Gateway) acquire(ctx context.Context, key string) (release func(), err error) {
-	g.mu.Lock()
-	s := g.slots[key]
-	if s == nil {
-		s = &slot{ch: make(chan struct{}, maxParallel)}
-		g.slots[key] = s
-	}
-	s.users++
-	g.mu.Unlock()
-	done := func() {
-		g.mu.Lock()
-		if s.users--; s.users == 0 {
-			delete(g.slots, key)
-		}
-		g.mu.Unlock()
-	}
-	select {
-	case s.ch <- struct{}{}:
-		return func() { <-s.ch; done() }, nil
-	case <-ctx.Done():
-		done()
-		return nil, ctx.Err()
-	}
+	return &Gateway{store: pgStore{pool}, box: box, cfg: cfg, log: log.With("component", "gateway"), accounts: map[string]*account{}}
 }
 
 // llmRoutes are the only LLM endpoints proxied, by protocol: generation (metered from its response), token counting
@@ -254,6 +221,7 @@ type grant struct {
 	sealed          []byte
 	budget, used    int64
 	status          string
+	closed          bool // the gateway closed the budget (agent_exit = budget)
 }
 
 func tokenFrom(r *http.Request) string {
@@ -267,18 +235,6 @@ func tokenFrom(r *http.Request) string {
 		return k
 	}
 	return strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-}
-
-func (g *Gateway) lookup(ctx context.Context, token string) (grant, error) {
-	var gr grant
-	err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT t.run_id, r.manifest->>'provider', a.provider, a.api_key, r.token_budget,
-				r.tokens_in + r.tokens_out + r.tokens_cache_write, r.status
-			FROM gateway_tokens t JOIN runs r ON r.id = t.run_id JOIN agents a ON a.id = r.agent_id
-			WHERE t.token_hash = $1 AND t.purpose = 'agent' AND t.expires_at > now()`, runs.TokenHash(token)).
-			Scan(&gr.runID, &gr.provider, &gr.keyProvider, &gr.sealed, &gr.budget, &gr.used, &gr.status)
-	})
-	return gr, err
 }
 
 func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
@@ -310,56 +266,65 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		return
 	}
 	body = chatgptBody(provider, withStreamUsage(provider, path, body))
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	r.ContentLength = int64(len(body))
-	// Wait for a slot before reading the budget, so each request sees what the ones before it spent.
-	release, err := g.acquire(r.Context(), runs.TokenHash(token))
-	if err != nil {
+	p := planFor(provider, r.Method, path, body)
+
+	acc, leave := g.join(runs.TokenHash(token))
+	defer leave()
+	// Wait for a slot first: at most maxParallel requests of a run hold reservations at once.
+	select {
+	case acc.slots <- struct{}{}:
+	case <-r.Context().Done():
 		return // the client went away while waiting
 	}
-	defer release()
-	gr, err := g.lookup(r.Context(), token)
-	if errors.Is(err, pgx.ErrNoRows) {
+	defer func() { <-acc.slots }()
+	var realKey, base string
+	vet := func(gr grant) *refusal {
+		switch {
+		case gr.status != "agent":
+			return &refusal{http.StatusForbidden, "permission_error", "the run is no longer building"}
+		case gr.keyProvider != gr.provider:
+			return &refusal{http.StatusForbidden, "permission_error", "the agent's key was switched to " + gr.keyProvider + " after this run started on " + gr.provider}
+		case subscription(gr.provider) && !g.cfg.Subscriptions:
+			return &refusal{http.StatusForbidden, "permission_error", "subscriptions are off on this gateway"}
+		}
+		if base = providers[gr.provider][provider]; base == "" {
+			return &refusal{http.StatusForbidden, "permission_error", "this agent's key is for " + gr.provider + ", which doesn't speak the " + provider + " protocol"}
+		}
+		var err error
+		if realKey, err = g.box.Open(gr.sealed); err != nil {
+			g.log.Error("open agent key", "run_id", gr.runID, "err", err)
+			return &refusal{http.StatusBadGateway, "api_error", "cannot open the agent's key"}
+		}
+		return nil
+	}
+	gr, res, err := g.admit(r.Context(), acc, token, p, vet)
+	var no *refusal
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
 		apiError(w, provider, http.StatusUnauthorized, "authentication_error", "unknown or expired run token")
 		return
-	}
-	if err != nil {
+	case errors.As(err, &no):
+		apiError(w, provider, no.status, no.kind, no.msg)
+		return
+	case r.Context().Err() != nil:
+		return // the client went away while waiting
+	case err != nil:
 		g.log.Error("token lookup", "err", err)
 		apiError(w, provider, http.StatusBadGateway, "api_error", "gateway database error")
 		return
 	}
-	var realKey, base string
-	if gr.status != "agent" {
-		apiError(w, provider, http.StatusForbidden, "permission_error", "the run is no longer building")
-		return
-	}
-	if gr.used >= gr.budget {
-		apiError(w, provider, http.StatusTooManyRequests, "rate_limit_error", "token budget exhausted for this run")
-		return
-	}
-	if gr.keyProvider != gr.provider {
-		apiError(w, provider, http.StatusForbidden, "permission_error", "the agent's key was switched to "+gr.keyProvider+" after this run started on "+gr.provider)
-		return
-	}
-	if subscription(gr.provider) && !g.cfg.Subscriptions {
-		apiError(w, provider, http.StatusForbidden, "permission_error", "subscriptions are off on this gateway")
-		return
-	}
-	if base = providers[gr.provider][provider]; base == "" {
-		apiError(w, provider, http.StatusForbidden, "permission_error", "this agent's key is for "+gr.provider+", which doesn't speak the "+provider+" protocol")
-		return
-	}
-	if realKey, err = g.box.Open(gr.sealed); err != nil {
-		g.log.Error("open agent key", "run_id", gr.runID, "err", err)
-		apiError(w, provider, http.StatusBadGateway, "api_error", "cannot open the agent's key")
-		return
-	}
 	meter := &usage{model: requestedModel(provider, path, body)}
-	defer func() { g.record(gr, meter) }()
+	defer func() { g.settle(acc, gr, res, meter) }()
+	body = p.body
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	r.ContentLength = int64(len(body))
 
 	if g.cfg.FakeUpstream {
 		fake(w, r, body, provider, path, meter)
 		return
+	}
+	if g.upstream != "" {
+		base = g.upstream
 	}
 	target, _ := url.Parse(base)
 	proxy := &httputil.ReverseProxy{
@@ -404,6 +369,11 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		FlushInterval:  -1,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			g.log.Warn("upstream", "provider", provider, "err", err)
+			if unsent(err) {
+				meter.mu.Lock()
+				meter.unsent = true
+				meter.mu.Unlock()
+			}
 			apiError(w, provider, http.StatusBadGateway, "api_error", "upstream unreachable")
 		},
 	}
@@ -418,6 +388,9 @@ func plainResponses(h http.Header) { h.Del("Accept-Encoding") }
 // back encoded (nothing could be counted from it).
 func meterResponse(meter *usage) func(*http.Response) error {
 	return func(resp *http.Response) error {
+		meter.mu.Lock()
+		meter.status = resp.StatusCode
+		meter.mu.Unlock()
 		if resp.StatusCode >= 300 {
 			return nil
 		}
@@ -437,6 +410,43 @@ type usage struct {
 	in, out, cacheRead, cacheWrite int64
 	seen                           bool
 	model                          string // the model the request asked for (requestedModel), "" = unknown
+	status                         int    // the upstream's answer, 0 = none
+	complete                       bool   // the response body was read to its end
+	unsent                         bool   // the request never reached the provider
+}
+
+// charge is what a finished request costs the run, and the input it reported. Missing usage is not zero: a
+// successful response cut short, or one that never said what it used, is charged its reservation for what it didn't
+// report.
+func (u *usage) charge(res reservation) (c spent, seenIn int64, model string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	c = spent{in: u.in, out: u.out, cacheRead: u.cacheRead, cacheWrite: u.cacheWrite}
+	switch {
+	case u.unsent:
+		c = spent{}
+	case u.status >= 300:
+		// An error answer: providers bill what it reports, usually nothing.
+	case u.seen && u.complete:
+	default:
+		if !u.seen {
+			c.in = res.in
+		}
+		c.out = max(c.out, res.out)
+	}
+	if u.seen || c.budgeted() > 0 {
+		c.requests = 1
+	}
+	if u.seen {
+		model = u.model // only metered requests count: an upstream error or a token count is no use of a model
+	}
+	return c, u.in + u.cacheRead + u.cacheWrite, model
+}
+
+func (u *usage) finished(status int) {
+	u.mu.Lock()
+	u.status, u.complete = status, true
+	u.mu.Unlock()
 }
 
 // modelName is what a model id may look like to be recorded: it comes from the agent and shows on the site.
@@ -545,6 +555,11 @@ const maxMeteredJSON = 16 << 20
 
 func (b *meteredBody) Read(p []byte) (int, error) {
 	n, err := b.ReadCloser.Read(p)
+	if err == io.EOF {
+		b.meter.mu.Lock()
+		b.meter.complete = true
+		b.meter.mu.Unlock()
+	}
 	chunk := p[:n]
 	if !b.sniffed && n > 0 {
 		// chatgpt.com's Codex backend streams events with no Content-Type: read as JSON, they'd go unmetered.
@@ -579,36 +594,6 @@ func (b *meteredBody) Close() error {
 		b.meter.observe(b.buf.Bytes())
 	}
 	return b.ReadCloser.Close()
-}
-
-// maxModels caps the distinct model ids recorded per run.
-const maxModels = 20
-
-func (g *Gateway) record(gr grant, u *usage) {
-	u.mu.Lock()
-	in, out, cr, cw, seen, model := u.in, u.out, u.cacheRead, u.cacheWrite, u.seen, u.model
-	u.mu.Unlock()
-	if !seen {
-		model = "" // only metered requests count: an upstream error or a token count is no use of a model
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	reqs := 0
-	if seen {
-		reqs = 1
-	}
-	if err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		// models gets the request under its model, up to maxModels distinct ids (an agent can name any model).
-		_, err := tx.Exec(ctx, `UPDATE runs SET tokens_in = tokens_in + $2, tokens_out = tokens_out + $3, tokens_cache_read = tokens_cache_read + $4,
-			tokens_cache_write = tokens_cache_write + $5, llm_requests = llm_requests + $6,
-			models = CASE WHEN $7 = '' OR (NOT models ? $7 AND (SELECT count(*) FROM jsonb_object_keys(models)) >= $8) THEN models
-				ELSE models || jsonb_build_object($7::text, coalesce((models->>$7)::int, 0) + 1) END,
-			updated_at = now() WHERE id = $1`,
-			gr.runID, in, out, cr, cw, reqs, model, maxModels)
-		return err
-	}); err != nil {
-		g.log.Error("record usage", "run_id", gr.runID, "err", err)
-	}
 }
 
 // registry proxies read-only package registry traffic. PyPI's pages link to files.pythonhosted.org, which the
@@ -662,6 +647,7 @@ func fake(w http.ResponseWriter, r *http.Request, body []byte, provider, path st
 		Stream bool   `json:"stream"`
 	}
 	_ = json.Unmarshal(body, &req)
+	defer meter.finished(http.StatusOK)
 	in := len(body) / 4
 	meter.observe([]byte(`{"usage":{"input_tokens":` + strconv.Itoa(in) + `,"output_tokens":40}}`))
 	const text = "fake upstream: no real model was called"
