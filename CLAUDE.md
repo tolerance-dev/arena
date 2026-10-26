@@ -93,6 +93,9 @@ make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) +
 
 - Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Checkouts share the Docker host:
   `ARENA_STACK` (`arena-<checkout dir>`) scopes sandbox labels and cleanup per checkout.
+- Stopping your dev servers: kill by your own ports (`lsof -ti tcp:$API_PORT | xargs kill`) or PIDs, never
+  `pkill -f "make dev"` or a similar pattern. Other checkouts' agents run on the same machine with prompts in their
+  command line, and `pkill -f` matched and killed six of them at once.
 - Sign-in: `make dev` turns on `ARENA_DEV_LOGIN`, an email field under the OAuth buttons (any email, no password;
   the owner's email `ownerEmail` in `cmd/api/config.go` is admin). OAuth keys, when wanted, live in
   `~/.config/tolerance/env`; callbacks go through the shared relay on :2999 (`dev/oauth-relay.conf`).
