@@ -103,9 +103,10 @@ loses the site. Relay down → change the script to return `81.27.103.131` for e
 again until it's back). A new relay IP → change it in the script, `bunny-geo.js` and the Caddyfile's `allow`.
 
 **Cloudflare** — what's left:
-- The zone **nualimov.dev** (NS `bob`/`emma.ns.cloudflare.com`) for mentor.nualimov.dev, the other site on this
-  host. It should be a CNAME to `edge.tolerance.cc`, DNS only (grey cloud), so it gets the same RU split; Caddy gets
-  its certificate by HTTP-01. With the orange cloud (proxied) it still works, but Russia needs a VPN again.
+- Nothing for **nualimov.dev** either: its NS moved to Bunny too (zone 969837, registrar Namecheap). There
+  mentor.nualimov.dev, the other site on this host, is a script record on the same `tolerance-geo` script, so it
+  gets the same RU split; Caddy gets its certificate by HTTP-01. nualimov.dev and www are plain A records to this
+  host, which serves no site for them. The Cloudflare zone is left over and answers nothing.
 - **R2** for the off-site backups, if `BACKUP_REMOTE` points there (see Off-site copies above).
 - The GitHub `production` secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` are leftovers from the proxy days:
   nothing uses them now.
