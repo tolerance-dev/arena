@@ -29,7 +29,10 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   Cloudflare DNS module) gets Let's Encrypt certificates for tolerance.cc, www and the `*.tolerance.cc` wildcard
   through DNS-01 with `CLOUDFLARE_API_TOKEN` in `/opt/tolerance/.env` (Zone.DNS edit + Zone read on tolerance.cc;
   `server.sh` refuses to deploy without it). No CDN, no Cloudflare DDoS shield. mentor.nualimov.dev is still proxied
-  (Authenticated Origin Pulls in the Caddyfile). The old Cloudflare-only lock (`tolerance-cf-lock.service`) is off.
+  (Authenticated Origin Pulls in the Caddyfile). Ports 80/443 take only the relay
+  and Cloudflare (`edge-lock.sh`, shipped by deploys; applied at boot by `tolerance-edge-lock.service`, installed by
+  hand from `deploy/`): the bare IP doesn't answer anyone else. `bash /opt/tolerance/edge-lock.sh off` opens them;
+  a new relay IP goes into the script (and the Caddyfile), then `systemctl restart tolerance-edge-lock`.
 - Stack: api + worker + gateway + web + postgres + caddy.
 - **Runs worker** (`cmd/worker`, service `worker`): its own container, so an api deploy leaves runs going. A deploy
   starts the new worker next to the old one, which drains in the background (no new runs; the ones in flight finish,

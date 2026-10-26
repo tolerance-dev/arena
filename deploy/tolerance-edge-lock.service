@@ -1,0 +1,14 @@
+# Installed by hand once (deploy/README.md): cp to /etc/systemd/system/ and `systemctl enable --now`.
+[Unit]
+Description=tolerance: ports 80/443 only for the relay and Cloudflare (edge-lock.sh)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /opt/tolerance/edge-lock.sh on
+ExecStop=/bin/sh /opt/tolerance/edge-lock.sh off
+
+[Install]
+WantedBy=multi-user.target

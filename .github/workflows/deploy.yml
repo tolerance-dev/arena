@@ -109,7 +109,7 @@ jobs:
       - name: ship config
         # --inplace: compose.yml and Caddyfile are single-file bind mounts, a new inode would leave containers on
         # the old content.
-        run: rsync -c --inplace deploy/compose.yml deploy/Caddyfile deploy/config.alloy deploy/server.sh prod:/opt/tolerance/
+        run: rsync -c --inplace deploy/compose.yml deploy/Caddyfile deploy/config.alloy deploy/server.sh deploy/edge-lock.sh prod:/opt/tolerance/
 
       # The packages may be private; this job's token lets the server pull them (it expires with the job).
       - name: registry login on the server
