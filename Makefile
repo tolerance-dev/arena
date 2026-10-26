@@ -78,7 +78,7 @@ run-api:
 		go run ./cmd/api
 
 run-web:
-	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) pnpm dev -p $(WEB_PORT)
+	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) pnpm dev -p $(WEB_PORT)
 
 # One container for all checkouts, outside any compose project, so stopping a stack leaves it up for the others.
 # Recreated when dev/oauth-relay.conf changes.
