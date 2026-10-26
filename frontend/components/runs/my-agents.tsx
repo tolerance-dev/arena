@@ -22,6 +22,10 @@ import { AgentAvatar, ProviderOptions } from './bits'
 import { LiveRuns } from './live-runs'
 
 const field = fieldClass
+// Key fields are password inputs, so browsers took the agent form for a sign-in form and filled a saved site
+// password into the key (and its username into the field before it). "new-password" stops Chrome and Safari from
+// filling saved passwords; the data-* attributes tell 1Password, LastPass and Bitwarden to keep out.
+const noAutofill = { autoComplete: 'new-password', 'data-1p-ignore': true, 'data-lpignore': 'true', 'data-bwignore': true } as const
 
 // Any signed-in user uploads agents here and runs them; each user sees only their own agents and runs. What is
 // running right now comes first, then the agents, each with its launch controls in one row.
@@ -187,7 +191,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="description">Описание (необязательно)</Label>
-          <Input id="description" name="description" maxLength={500} placeholder="Claude Code + Opus, промпт по умолчанию" />
+          <Input id="description" name="description" autoComplete="off" maxLength={500} placeholder="Claude Code + Opus, промпт по умолчанию" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="provider">Провайдер LLM</Label>
@@ -201,7 +205,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
             <textarea id="api_key" name="api_key" required rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
               className={cn(field, 'h-auto py-2 font-mono text-xs')} />
           ) : (
-            <Input id="api_key" name="api_key" type="password" required autoComplete="off" placeholder="sk-…" />
+            <Input id="api_key" name="api_key" type="password" required {...noAutofill} placeholder="sk-…" />
           )}
           <p className="text-xs text-muted-foreground">
             {providerValue === 'claude-sub' ? 'Ваша подписка Claude, только на этом локальном стенде: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.' : providerValue === 'chatgpt-sub' ? 'Ваша подписка ChatGPT, только на этом локальном стенде: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).' : 'Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.'}{' '}
@@ -324,7 +328,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
               <select className={cn(field, 'w-48')} value={provider} onChange={(e) => setProvider(e.target.value)}>
                 <ProviderOptions subscriptions={subscriptions} />
               </select>
-              <Input type="password" className="min-w-0 flex-1" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-…" autoComplete="off" />
+              <Input type="password" {...noAutofill} className="min-w-0 flex-1" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-…" />
               <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20}>Сохранить</Button>
             </div>
           </div>
