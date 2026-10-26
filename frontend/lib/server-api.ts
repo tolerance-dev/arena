@@ -5,12 +5,13 @@
 // the default card, a share preview must never break a page.
 const API = process.env.API_URL ?? 'http://127.0.0.1:8080'
 
-export async function serverApi<T>(path: string): Promise<T | null> {
+// fresh skips Next's cache: for a page rendered with live numbers that the browser then keeps polling.
+export async function serverApi<T>(path: string, { fresh = false } = {}): Promise<T | null> {
   try {
     const res = await fetch(`${API}/api/v1${path}`, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(3000),
-      next: { revalidate: 60 },
+      ...(fresh ? { cache: 'no-store' as const } : { next: { revalidate: 60 } }),
     })
     if (!res.ok) return null
     return (await res.json()) as T

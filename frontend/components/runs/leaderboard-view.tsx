@@ -9,9 +9,10 @@ import { AgentAvatar } from './bits'
 import { rankAgents, StandingsTable } from './standings'
 
 // Every agent against every challenge, ranked by the average best score; agents with no score yet follow as links.
-export function LeaderboardView() {
-  const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000)
-  const agents = usePoll<{ items: Agent[] }>('/agents', 30_000)
+// initialTasks and initialAgents come from the server render, so the table is in the HTML.
+export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?: { items: TaskSummary[] } | null; initialAgents?: { items: Agent[] } | null }) {
+  const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000, undefined, initialTasks)
+  const agents = usePoll<{ items: Agent[] }>('/agents', 30_000, undefined, initialAgents)
   const rows = tasks.data ? rankAgents(tasks.data.items) : null
   const ranked = new Set(rows?.map((r) => r.id))
   const unranked = rows && agents.data ? agents.data.items.filter((a) => !ranked.has(a.id)) : []

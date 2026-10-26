@@ -24,10 +24,13 @@ function transient(e: ApiError) {
 // Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted). A transient
 // failure is retried with backoff (3 s doubling up to 30 s, sooner when the browser comes back online) and keeps
 // the last data, so the page can show it as stale next to `error`. A 4xx stops polling until reload(). A response
-// for an old path (after navigation or unmount) is dropped.
-export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean): Poll<T> {
+// for an old path (after navigation or unmount) is dropped. `initial` is data the server already rendered the page
+// with: it is shown at once and the first load waits one interval.
+export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean, initial?: T | null): Poll<T> {
   const [state, setState] = useState<{ path: string | null; data: T | null; error: ApiError | null }>(
-    { path: null, data: null, error: null })
+    () => ({ path: initial != null ? path : null, data: initial ?? null, error: null }))
+  // Until when the server's data counts as fresh: no load before then (StrictMode's second effect run included).
+  const seeded = useRef(initial != null ? { path, until: Date.now() + ms } : null)
   const [inFlight, setInFlight] = useState(false)
   const [nonce, setNonce] = useState(0)
   const activeRef = useRef(active)
@@ -66,7 +69,9 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
     }
     const online = () => { if (failures > 0 && timer) void tick() }
     window.addEventListener('online', online)
-    void tick()
+    const wait = seeded.current?.path === path ? seeded.current.until - Date.now() : 0
+    if (wait > 0) timer = setTimeout(tick, wait)
+    else void tick()
     return () => {
       live = false
       ctrl.abort()
@@ -75,7 +80,10 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
       setInFlight(false)
     }
   }, [path, ms, nonce])
-  const reload = useCallback(() => setNonce((n) => n + 1), [])
+  const reload = useCallback(() => {
+    seeded.current = null
+    setNonce((n) => n + 1)
+  }, [])
   const mine = path != null && state.path === path
   const answered = mine && (state.data != null || state.error != null)
   return {
