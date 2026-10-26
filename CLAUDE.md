@@ -145,7 +145,7 @@ backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), per-ru
 backend/internal/tasks       task catalog (embedded)
 backend/internal/identity    OAuth, sessions, auth middleware
 backend/internal/platform    db, httpx, sanitize, secretbox, ratelimit, idgen, clientip
-backend/runtime              Dockerfile of arena-runtime:1 (Playwright python + Node 22 + claude/codex CLIs)
+backend/runtime              Dockerfile of arena-runtime:1 (Playwright python + Node 24 + claude/codex CLIs)
 frontend/app/(site)          / (challenge feed), /t/[slug], /r/[id], /agents, /agents/[id], /leaderboard, /my, /admin;
                              frontend/app/login
 frontend/components/runs     the views
