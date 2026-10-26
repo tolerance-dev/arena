@@ -9,12 +9,15 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 //go:embed *.sql
@@ -61,17 +64,7 @@ func Apply(ctx context.Context, dsn, appPassword string) (applied []string, err 
 		return nil, fmt.Errorf("connect: %w", err)
 	}
 	defer conn.Close(ctx)
-	// The password can't be a bind parameter in DDL; it is quoted as a literal instead and never written to a file.
-	verb := "CREATE"
-	var exists bool
-	if err := conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'arena_app')`).Scan(&exists); err != nil {
-		return nil, err
-	}
-	if exists {
-		verb = "ALTER"
-	}
-	if _, err := conn.Exec(ctx, verb+` ROLE arena_app WITH LOGIN PASSWORD `+quoteLiteral(appPassword)+
-		` NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`); err != nil {
+	if err := appRole(ctx, conn, appPassword); err != nil {
 		return nil, fmt.Errorf("arena_app role: %w", err)
 	}
 
@@ -141,6 +134,38 @@ func Apply(ctx context.Context, dsn, appPassword string) (applied []string, err 
 		applied = append(applied, m.name)
 	}
 	return applied, nil
+}
+
+// appRole creates the arena_app role with password, or updates it. The role is cluster-wide, so other databases'
+// migrators (the tests of every package run in parallel) may be at it right now: a CREATE that loses the race
+// becomes an update, and a clash between updates ("tuple concurrently updated") is tried again.
+func appRole(ctx context.Context, conn *pgx.Conn, password string) error {
+	var err error
+	for i := range 5 {
+		if err = setAppRole(ctx, conn, password); err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(50*(i+1)) * time.Millisecond)
+	}
+	return err
+}
+
+func setAppRole(ctx context.Context, conn *pgx.Conn, password string) error {
+	// The password can't be a bind parameter in DDL; it is quoted as a literal instead and never written to a file.
+	opts := ` WITH LOGIN PASSWORD ` + quoteLiteral(password) + ` NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`
+	var exists bool
+	if err := conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'arena_app')`).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		_, err := conn.Exec(ctx, `CREATE ROLE arena_app`+opts)
+		var pe *pgconn.PgError
+		if err == nil || !errors.As(err, &pe) || (pe.Code != "42710" && pe.Code != "23505") { // duplicate_object, unique_violation
+			return err
+		}
+	}
+	_, err := conn.Exec(ctx, `ALTER ROLE arena_app`+opts)
+	return err
 }
 
 // quoteLiteral makes s a standard-conforming SQL string literal (Postgres defaults to
