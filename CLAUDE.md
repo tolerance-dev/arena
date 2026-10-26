@@ -166,7 +166,9 @@ session.
 - `infra_error` is the platform's fault, never a score.
 - **Database: no data worth keeping yet** (prod included): edit `backend/migrations/schema.sql` in place and
   recreate the DB (`make reset` locally, `reset_db=true` on prod) instead of adding migrations or writing
-  compatibility/cleanup code.
+  compatibility/cleanup code. Prod has users with their own agents now: every deploy dumps the DB first, and a
+  `reset_db` deploy loads users, identities, sessions and agents back from that dump (`deploy/README.md`,
+  Backups). Changing those tables' columns breaks that: check the deploy log for the WARNING.
 - Agent-written logs are sanitized server-side (`internal/platform/sanitize`).
 - Run snapshots (`arena-run:*` images) older than a day are removed hourly by the worker, except each agent's
   best run per task.

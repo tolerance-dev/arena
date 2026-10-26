@@ -8,7 +8,12 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   (secrets in the `production` environment).
 - **Host**: UpCloud `STARTER-2xCPU-4GB` (pl-waw1, 30 GB disk, 3 GB swap, ~$21/month since 2026-10-20),
   81.27.103.131, `/opt/tolerance`, user `deploy`. Enough for one run at a time (`ARENA_RUN_CONCURRENCY=1`); more
-  parallel runs need a bigger plan first. Nothing else lives there. No backups (no data to keep).
+  parallel runs need a bigger plan first. Nothing else lives there.
+- **Backups**: `server.sh backup` dumps the DB to `/opt/tolerance/backups/` (newest 30 kept, same disk, not
+  off-site): daily at 03:17 UTC from the `deploy` crontab (installed by every deploy) and before every deploy, so a
+  `reset_db` deploy leaves `arena-<time>-pre-<sha>.dump` behind. After migrating, a reset loads users,
+  user_identities, sessions and agents back from that dump (all or nothing; if the columns changed it warns in the
+  deploy log and leaves them in the dump). By hand: `bash server.sh restore backups/<dump> [table...]`.
 - `compose.yml` and `Caddyfile` are the server's source of truth. The Caddyfile also serves `mentor.nualimov.dev`
   (its stack is `/root/nualimov.dev`): keep that block.
 - Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
