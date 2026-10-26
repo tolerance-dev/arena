@@ -1,0 +1,47 @@
+// Grafana Alloy (the `alloy` service in compose.yml, profile "logs"): ships the stack's own container logs to
+// Grafana Cloud Loki. Only compose project `tolerance` (api, gateway, web, postgres, caddy): not the sandbox
+// containers (agents, apps; their logs are in the database) and not the other site on this host.
+discovery.docker "stack" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=tolerance"]
+  }
+}
+
+discovery.relabel "stack" {
+  targets = []
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "stack" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.stack.targets
+  labels        = {"env" = "prod"}
+  relabel_rules = discovery.relabel.stack.rules
+  forward_to    = [loki.process.json.receiver]
+}
+
+// api and gateway log JSON (slog): lift the level into a label; everything else stays queryable with `| json`.
+loki.process "json" {
+  stage.json {
+    expressions = {level = "level"}
+  }
+  stage.labels {
+    values = {level = ""}
+  }
+  forward_to = [loki.write.cloud.receiver]
+}
+
+loki.write "cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_LOKI_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_LOKI_USER")
+      password = sys.env("GRAFANA_LOKI_TOKEN")
+    }
+  }
+}

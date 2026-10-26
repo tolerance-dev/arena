@@ -45,3 +45,11 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   logged (`"msg":"alert"`); also sent to Telegram when `ARENA_ALERT_TELEGRAM_TOKEN` (a bot from @BotFather) and
   `ARENA_ALERT_TELEGRAM_CHAT` (your chat id) are in `/opt/tolerance/.env`. Each kind repeats at most hourly. Uptime
   of the site itself needs an outside checker (#74).
+- **Logs in Grafana Cloud** (off until set): the `alloy` service (profile `logs`, `config.alloy`) ships the stack's
+  container logs (compose project `tolerance` only: not sandboxes, not the other site) to Grafana Cloud Loki. To turn
+  on, add to `/opt/tolerance/.env`: `COMPOSE_PROFILES=logs`, `GRAFANA_LOKI_URL` (Grafana Cloud → Loki → Details:
+  `https://logs-prod-…grafana.net/loki/api/v1/push`), `GRAFANA_LOKI_USER` (the numeric user there), `GRAFANA_LOKI_TOKEN`
+  (an access policy token with `logs:write`), then deploy. Labels: `service`, `level`, `env`. Queries in Explore:
+  `{service="api"} | json | status >= 500`, `{service=~"api|gateway", level="ERROR"}`,
+  `{service="api"} | json | msg="alert"`, `sum by (status) (count_over_time({service="api"} | json [5m]))`.
+  Uptime: UptimeRobot watches https://tolerance.cc.
