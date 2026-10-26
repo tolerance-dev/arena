@@ -37,6 +37,7 @@ type Previews struct {
 	log       *slog.Logger
 
 	mu       sync.Mutex
+	aliases  map[string]string // blind-vote alias → run hex, as looked up (aliases never change)
 	running  map[string]*preview
 	stopping map[string]chan struct{} // label → closed once its old container and network are gone
 }
@@ -71,7 +72,7 @@ func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, limit int, log *
 		anc = site
 	}
 	return &Previews{pool: pool, domain: strings.ToLower(domain), prefix: strings.ToLower(prefix), ancestors: anc, site: site,
-		max: max(1, limit), log: log.With("component", "preview"), running: map[string]*preview{}, stopping: map[string]chan struct{}{}}
+		max: max(1, limit), log: log.With("component", "preview"), aliases: map[string]string{}, running: map[string]*preview{}, stopping: map[string]chan struct{}{}}
 }
 
 // containerName is the preview's container and its network.
@@ -146,16 +147,44 @@ func (p *Previews) label(host string) string {
 	return label
 }
 
+// runOf maps a host label to the run hex it shows: a blind vote's alias (runs.Contender) stands for its run, so the
+// voter can't read the run id off the address. blind says it was an alias.
+func (p *Previews) runOf(ctx context.Context, label string) (hex string, blind bool) {
+	p.mu.Lock()
+	hex, ok := p.aliases[label]
+	p.mu.Unlock()
+	if ok {
+		return hex, true
+	}
+	var run string
+	err := p.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT CASE WHEN alias_a = $1 THEN run_a ELSE run_b END FROM vote_pairs
+			WHERE alias_a = $1 OR alias_b = $1`, label).Scan(&run)
+	})
+	if err != nil {
+		return label, false
+	}
+	hex = strings.TrimPrefix(run, "run_")
+	p.mu.Lock()
+	if len(p.aliases) > 10000 {
+		clear(p.aliases)
+	}
+	p.aliases[label] = hex
+	p.mu.Unlock()
+	return hex, true
+}
+
 func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	label := p.label(r.Host)
 	if label == "" {
 		http.Error(w, "unknown preview", http.StatusNotFound)
 		return
 	}
+	label, blind := p.runOf(r.Context(), label)
 	pv, st, err := p.ensure(r.Context(), label)
 	if errors.Is(err, errBusy) {
 		page(w, http.StatusServiceUnavailable, "All previews are busy", "Other people are watching the apps that run right now. "+
-			"This page tries again by itself; meanwhile, here is how this app looked when it was checked.", 15, p.busyExtra(label))
+			"This page tries again by itself; meanwhile, here is how this app looked when it was checked.", 15, p.busyExtra(label, blind))
 		return
 	}
 	if err != nil {
@@ -278,9 +307,10 @@ func (p *Previews) makeRoom() string {
 	return victim.label
 }
 
-// busyExtra is the busy page's screenshot of the run and a link to its page (HTML; label is checked hex).
-func (p *Previews) busyExtra(label string) string {
-	if p.site == "" {
+// busyExtra is the busy page's screenshot of the run and a link to its page (HTML; label is checked hex); none for a
+// blind-vote alias, since it would name the run.
+func (p *Previews) busyExtra(label string, blind bool) string {
+	if p.site == "" || blind {
 		return ""
 	}
 	run := p.site + "/r/run_" + label

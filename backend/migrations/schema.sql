@@ -109,6 +109,20 @@ CREATE TABLE pair_votes (
     PRIMARY KEY (user_id, run_a, run_b),
     CHECK (run_a < run_b)
 );
+
+-- A pair handed to a voter (runs.NextPair). The page only gets the pair's id and an alias per side: the shots and the
+-- live previews are served by alias, so the run ids (and through them the agents) stay hidden until the vote.
+CREATE TABLE vote_pairs (
+    id         text PRIMARY KEY,
+    user_id    text NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    task       text NOT NULL,
+    run_a      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
+    run_b      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
+    alias_a    text NOT NULL UNIQUE,
+    alias_b    text NOT NULL UNIQUE,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX vote_pairs_created ON vote_pairs (created_at);
 CREATE INDEX pair_votes_task_idx ON pair_votes (task, created_at);
 
 -- Platform switches the admin page flips (internal/admin): exactly one row.
@@ -121,5 +135,5 @@ CREATE TABLE settings (
 INSERT INTO settings DEFAULT VALUES;
 
 GRANT USAGE ON SCHEMA public TO arena_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, settings TO arena_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, vote_pairs, settings TO arena_app;
 

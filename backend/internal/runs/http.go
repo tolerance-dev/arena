@@ -161,6 +161,20 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		}
 		httpx.Respond(w, http.StatusOK, map[string]any{"pair": p})
 	})
+	voteShot := func(column string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			b, err := s.VoteShot(r.Context(), identity.MustFromContext(r.Context()).UserID, r.PathValue("alias"), column)
+			if err != nil {
+				httpx.WriteError(w, r, err)
+				return
+			}
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Header().Set("Cache-Control", "private, max-age=3600")
+			_, _ = w.Write(b)
+		}
+	}
+	mux.HandleFunc("GET /api/v1/my/vote/{alias}/shot.jpg", voteShot("shot"))
+	mux.HandleFunc("GET /api/v1/my/vote/{alias}/shot-mobile.jpg", voteShot("shot_mobile"))
 	mux.HandleFunc("POST /api/v1/my/votes", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)
 		if err != nil {
@@ -168,15 +182,19 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 			return
 		}
 		var in struct {
-			A      string `json:"a"`
-			B      string `json:"b"`
+			Pair   string `json:"pair"`
 			Winner string `json:"winner"`
 		}
 		if err := httpx.Decode(raw, &in); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		rev, err := s.Vote(r.Context(), identity.MustFromContext(r.Context()).UserID, in.A, in.B, in.Winner)
+		userID := identity.MustFromContext(r.Context()).UserID
+		if s.VoteAllowed != nil && !s.VoteAllowed(r, userID) {
+			httpx.WriteError(w, r, httpx.New(http.StatusTooManyRequests, "rate_limited", "Too many votes: take a break and come back later"))
+			return
+		}
+		rev, err := s.Vote(r.Context(), userID, in.Pair, in.Winner)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return

@@ -9,7 +9,7 @@ import { LiveRuns } from '@/components/runs/live-runs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/empty-state'
-import { api, post, put } from '@/lib/api'
+import { api, del, post, put } from '@/lib/api'
 import { compact, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
 import { adminMessages } from '@/lib/i18n/messages/admin'
@@ -191,6 +191,7 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
               <th className="px-3 py-2 text-right font-medium">{t('colRuns')}</th>
               <th className="px-3 py-2 text-right font-medium">{t('colTokens')}</th>
               <th className="px-3 py-2 text-right font-medium">{t('colCost')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('colVotes')}</th>
               <th className="px-3 py-2 font-medium">{t('colLast')}</th>
               <th className="px-4 py-2 text-right font-medium">{t('colAccess')}</th>
             </tr>
@@ -220,6 +221,13 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                   {compact(u.used_30d)}
                 </td>
                 <td className="px-3 py-2.5 text-right tnum">{u.cost_30d ? usd(u.cost_30d) : '—'}</td>
+                <td className="px-3 py-2.5 text-right tnum">
+                  {u.votes}
+                  {u.votes > 0 && (
+                    <button type="button" className="block w-full text-right text-meta text-destructive hover:underline"
+                      onClick={() => void act(() => del(`/admin/users/${u.id}/votes`))}>{t('dropVotes')}</button>
+                  )}
+                </td>
                 <td className="px-3 py-2.5 text-ui text-muted-foreground">{u.last_run_at ? <Ago iso={u.last_run_at} /> : t('never')}</td>
                 <td className="px-4 py-2.5 text-right">
                   {u.role !== 'admin' && (

@@ -2,28 +2,33 @@ package runs
 
 import (
 	"context"
+	"errors"
 	"math"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
 	"tolerance/internal/platform/httpx"
+	"tolerance/internal/platform/idgen"
 	"tolerance/internal/tasks"
 )
 
 // People compare two agents' apps at one task without seeing whose they are and pick the better one (or call it a
 // tie). Each pick moves the two agents' Elo at that task: a human ranking next to the checks' score.
 
-// Contender is one side of a blind pair: only what shows the app, nothing that names the agent.
+// Contender is one side of a blind pair: only what shows the app, nothing that names the agent or the run. Alias
+// serves its shots (/api/v1/my/vote/{alias}/shot.jpg) and its live preview (the preview host takes it like a run hex).
 type Contender struct {
-	ID            string `json:"id"`
+	Alias         string `json:"alias"`
 	HasShot       bool   `json:"has_shot"`
 	HasShotMobile bool   `json:"has_shot_mobile"`
 	PreviewURL    string `json:"preview_url,omitempty"`
 }
 
 type Pair struct {
+	ID        string     `json:"id"` // what the vote names (POST /api/v1/my/votes)
 	Task      string     `json:"task"`
 	TaskTitle tasks.Text `json:"task_title"`
 	A         Contender  `json:"a"`
@@ -44,7 +49,15 @@ type Rating struct {
 const (
 	eloStart = 1000.0
 	eloK     = 32.0
+	// Votes cast in an account's first day are kept but left out of Elo: a fresh account is the cheap way to stuff votes.
+	voteAccountAge = "1 day"
+	// Pairs handed out and never voted on are dropped after this.
+	votePairTTL = "1 day"
 )
+
+// alias is a random 32-hex label: the same shape as a run's preview host, so the preview gateway tells them apart
+// only by looking it up.
+func alias() string { return strings.TrimPrefix(idgen.New("x"), "x_") }
 
 type pairKey struct{ a, b string }
 
@@ -155,10 +168,43 @@ func (s *Service) nextPairAt(ctx context.Context, userID, task string) (*Pair, e
 	if rand.IntN(2) == 0 {
 		o.a, o.b = o.b, o.a
 	}
+	pair := &Pair{ID: idgen.New("vp"), Task: task, TaskTitle: o.a.TaskTitle, Left: len(open)}
 	side := func(r Run) Contender {
-		return Contender{ID: r.ID, HasShot: r.HasShot, HasShotMobile: r.HasShotMobile, PreviewURL: r.PreviewURL}
+		c := Contender{Alias: alias(), HasShot: r.HasShot, HasShotMobile: r.HasShotMobile}
+		if r.PreviewURL != "" {
+			c.PreviewURL = strings.ReplaceAll(s.PreviewURL, "{id}", c.Alias)
+		}
+		return c
 	}
-	return &Pair{Task: task, TaskTitle: o.a.TaskTitle, A: side(o.a), B: side(o.b), Left: len(open)}, nil
+	pair.A, pair.B = side(o.a), side(o.b)
+	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM vote_pairs WHERE created_at < now() - $1::interval`, votePairTTL); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO vote_pairs (id, user_id, task, run_a, run_b, alias_a, alias_b) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			pair.ID, userID, task, o.a.ID, o.b.ID, pair.A.Alias, pair.B.Alias)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pair, nil
+}
+
+// VoteShot is a shot (column shot or shot_mobile) of one side of a pair handed to userID, by the side's alias.
+func (s *Service) VoteShot(ctx context.Context, userID, side, column string) ([]byte, error) {
+	var run string
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT CASE WHEN alias_a = $2 THEN run_a ELSE run_b END FROM vote_pairs
+			WHERE user_id = $1 AND (alias_a = $2 OR alias_b = $2)`, userID, side).Scan(&run)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, httpx.NotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.Blob(ctx, run, column)
 }
 
 // Reveal names the agents behind a pair once the vote is in.
@@ -167,11 +213,21 @@ type Reveal struct {
 	B AgentRef `json:"b"`
 }
 
-// Vote records userID's pick between runs a and b: winner is "a", "b" or "tie". Both must be finished runs of
-// different agents at one task, neither of them the voter's.
-func (s *Service) Vote(ctx context.Context, userID, a, b, winner string) (Reveal, error) {
+// Vote records userID's pick in the pair they were handed: winner is "a", "b" or "tie". Both must be finished runs
+// of different agents at one task, neither of them the voter's.
+func (s *Service) Vote(ctx context.Context, userID, pairID, winner string) (Reveal, error) {
 	if winner != "a" && winner != "b" && winner != "tie" {
 		return Reveal{}, invalid(`winner must be "a", "b" or "tie"`)
+	}
+	var a, b string
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT run_a, run_b FROM vote_pairs WHERE id = $1 AND user_id = $2`, pairID, userID).Scan(&a, &b)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Reveal{}, httpx.StateConflict("This pair has expired: load the next one")
+	}
+	if err != nil {
+		return Reveal{}, err
 	}
 	if a == b {
 		return Reveal{}, invalid("Pick two different runs")
@@ -218,6 +274,10 @@ func (s *Service) Vote(ctx context.Context, userID, a, b, winner string) (Reveal
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.StateConflict("You have already voted on this pair")
 		}
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM vote_pairs WHERE id = $1`, pairID)
 		return err
 	})
 	if err != nil {
@@ -227,14 +287,16 @@ func (s *Service) Vote(ctx context.Context, userID, a, b, winner string) (Reveal
 }
 
 // Ratings replays the task's votes in order into each agent's Elo (keyed by agent id). A vote counts for the agent
-// even after a newer run became its best: it is the agent being ranked.
+// even after a newer run became its best: it is the agent being ranked. Votes of blocked users, and those cast in an
+// account's first day (voteAccountAge), are left out.
 func (s *Service) Ratings(ctx context.Context, task string) (map[string]Rating, error) {
 	elo := map[string]float64{}
 	out := map[string]Rating{}
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT ra.agent_id, rb.agent_id, v.winner FROM pair_votes v
-			JOIN runs ra ON ra.id = v.run_a JOIN runs rb ON rb.id = v.run_b
-			WHERE v.task = $1 ORDER BY v.created_at`, task)
+			JOIN runs ra ON ra.id = v.run_a JOIN runs rb ON rb.id = v.run_b JOIN users u ON u.id = v.user_id
+			WHERE v.task = $1 AND NOT u.blocked AND v.created_at >= u.created_at + $2::interval
+			ORDER BY v.created_at`, task, voteAccountAge)
 		if err != nil {
 			return err
 		}

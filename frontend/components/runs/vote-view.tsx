@@ -53,7 +53,7 @@ export function VoteView() {
     if (!pair || picked || busy) return
     setBusy(true); setErr('')
     try {
-      setPicked({ winner, reveal: await post<Reveal>('/my/votes', { a: pair.a.id, b: pair.b.id, winner }) })
+      setPicked({ winner, reveal: await post<Reveal>('/my/votes', { pair: pair.id, winner }) })
     } catch (e) {
       setErr(errorText(e, t.locale))
     } finally {
@@ -145,7 +145,8 @@ export function VoteView() {
 
 // One app of the pair: the desktop screenshot leads, the phone one beside it; after the vote, whose it was.
 function Side({ c, side, t, agent, won }: { c: Contender; side: 'A' | 'B'; t: VT; agent?: Reveal['a']; won?: boolean }) {
-  const shot = `/api/v1/runs/${c.id}/shot.jpg`
+  const shot = `/api/v1/my/vote/${c.alias}/shot.jpg`
+  const mobile = `/api/v1/my/vote/${c.alias}/shot-mobile.jpg`
   return (
     <article className={cn('rounded-xl border-2 p-3 transition-colors duration-300', won ? 'border-primary' : 'border-border')}>
       <div className="flex items-center justify-between gap-3">
@@ -160,9 +161,9 @@ function Side({ c, side, t, agent, won }: { c: Contender; side: 'A' | 'B'; t: VT
           </a>
         ) : <div className="flex aspect-[16/10] flex-1 items-center justify-center rounded-lg bg-muted text-ui text-faint">{t('noShot')}</div>}
         {c.has_shot_mobile && (
-          <a href={`/api/v1/runs/${c.id}/shot-mobile.jpg`} target="_blank" rel="noreferrer" className="block shrink-0 overflow-hidden rounded-lg border border-border max-sm:hidden">
+          <a href={mobile} target="_blank" rel="noreferrer" className="block shrink-0 overflow-hidden rounded-lg border border-border max-sm:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/v1/runs/${c.id}/shot-mobile.jpg`} alt={t('mobileAlt', { side })} className="aspect-[9/19] h-full max-h-56 w-auto bg-muted object-cover object-top" />
+            <img src={mobile} alt={t('mobileAlt', { side })} className="aspect-[9/19] h-full max-h-56 w-auto bg-muted object-cover object-top" />
           </a>
         )}
       </div>
