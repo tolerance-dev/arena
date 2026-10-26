@@ -19,6 +19,7 @@ import (
 	"tolerance/internal/platform/idgen"
 	"tolerance/internal/platform/ratelimit"
 	"tolerance/internal/runs"
+	"tolerance/internal/sandbox"
 )
 
 type deps struct {
@@ -39,6 +40,19 @@ func newHandler(cfg config, d deps) http.Handler {
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
 		admin := identity.MustFromContext(ctx).Role == "admin"
 		return map[string]any{"can_admin": admin, "subscriptions": admin && cfg.subscriptions}, nil
+	})
+
+	owner.HandleFunc("DELETE /api/v1/me", func(w http.ResponseWriter, r *http.Request) {
+		ids, err := d.users.DeleteAccount(r.Context(), identity.MustFromContext(r.Context()).UserID)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		for _, id := range ids {
+			go sandbox.RemoveImage(runs.ImageFor(id))
+		}
+		identity.ClearSessionCookie(w, cfg.secureCookies)
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	mine := http.NewServeMux()

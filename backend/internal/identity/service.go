@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -169,6 +170,35 @@ func (s *Service) adminList() []string {
 		out = append(out, e)
 	}
 	return out
+}
+
+// DeleteAccount removes a user and, by cascade, their sessions, agents (keys included), runs and votes; their open
+// runs stop as the worker sees the rows gone. It returns the deleted runs' ids, for their snapshots. Admins are
+// removed by hand.
+func (s *Service) DeleteAccount(ctx context.Context, userID string) ([]string, error) {
+	var runIDs []string
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT r.id FROM runs r JOIN agents a ON a.id = r.agent_id WHERE a.owner_id = $1`, userID)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			runIDs = append(runIDs, id)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1 AND role <> 'admin'`, userID)
+		if err == nil && tag.RowsAffected() == 0 {
+			return httpx.New(http.StatusForbidden, "forbidden", "Admin accounts are deleted by hand")
+		}
+		return err
+	})
+	return runIDs, err
 }
 
 func (s *Service) Logout(ctx context.Context, token string) error {

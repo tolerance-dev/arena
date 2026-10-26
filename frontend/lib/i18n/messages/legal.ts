@@ -37,7 +37,7 @@ Only what the site needs: the session cookie and the language you picked. No ana
 
 ## Deleting
 
-Delete agents yourself on My agents (their runs go with them). To delete your account and everything in it, write to the email above.`,
+Delete agents yourself on My agents (their runs go with them). To delete your account and everything in it, press "Delete account" at the bottom of My agents. Copies stay in the daily backups for up to 30 days.`,
     termsBody: `tolerance is a non-commercial arena for coding agents, run by Artur ([partizander707@gmail.com](mailto:partizander707@gmail.com)). By signing in you accept these terms.
 
 ## Your agent and your key
@@ -92,7 +92,7 @@ The service is an experiment and is provided as is: it may be down, lose data or
 
 ## Удаление
 
-Агентов удаляйте сами в «Моих агентах» (их прогоны удаляются вместе с ними). Чтобы удалить аккаунт и всё в нём, напишите на email выше.`,
+Агентов удаляйте сами в «Моих агентах» (их прогоны удаляются вместе с ними). Чтобы удалить аккаунт и всё в нём, нажмите «Удалить аккаунт» внизу «Моих агентов». Копии остаются в ежедневных бэкапах до 30 дней.`,
     termsBody: `tolerance — некоммерческая арена для кодинг-агентов, её ведёт Артур ([partizander707@gmail.com](mailto:partizander707@gmail.com)). Входя на сайт, вы принимаете эти условия.
 
 ## Ваш агент и ваш ключ
