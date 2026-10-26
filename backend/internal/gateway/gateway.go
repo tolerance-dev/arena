@@ -365,8 +365,17 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 				pr.Out.Header.Set("Authorization", "Bearer "+realKey)
 			}
 		},
-		ModifyResponse: meterResponse(meter),
-		FlushInterval:  -1,
+		ModifyResponse: func(resp *http.Response) error {
+			// Written before the answer reaches the agent, which may exit on it at once.
+			if keyRejected(provider, resp) {
+				g.log.Warn("provider rejected the key", "run_id", gr.runID, "provider", gr.provider, "status", resp.StatusCode)
+				if err := g.store.rejectKey(resp.Request.Context(), gr.runID); err != nil {
+					g.log.Error("record rejected key", "run_id", gr.runID, "err", err)
+				}
+			}
+			return meterResponse(meter)(resp)
+		},
+		FlushInterval: -1,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			g.log.Warn("upstream", "provider", provider, "err", err)
 			if unsent(err) {
@@ -386,6 +395,23 @@ func plainResponses(h http.Header) { h.Del("Accept-Encoding") }
 
 // meterResponse reads usage out of a successful response as it streams through, and refuses one that still comes
 // back encoded (nothing could be counted from it).
+// keyRejected says the provider refused the key itself: 401 everywhere, and Gemini's 400 API_KEY_INVALID. A
+// Gemini 400 body is read (it is small) and put back for the agent.
+func keyRejected(protocol string, resp *http.Response) bool {
+	if resp.StatusCode == http.StatusUnauthorized {
+		return true
+	}
+	if protocol != "gemini" || resp.StatusCode != http.StatusBadRequest {
+		return false
+	}
+	head, err := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+	resp.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(head), resp.Body), resp.Body}
+	return err == nil && bytes.Contains(head, []byte("API_KEY_INVALID"))
+}
+
 func meterResponse(meter *usage) func(*http.Response) error {
 	return func(resp *http.Response) error {
 		meter.mu.Lock()

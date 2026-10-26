@@ -63,6 +63,9 @@ type store interface {
 	record(ctx context.Context, runID string, s spent, model string) error
 	// closeBudget marks the run as out of budget: the worker stops its agent.
 	closeBudget(ctx context.Context, runID string) error
+	// rejectKey marks the run's key as refused by the provider, unless a request already got through (a key revoked
+	// or a subscription expired mid-run leaves work to check): the worker stops the agent and doesn't score it.
+	rejectKey(ctx context.Context, runID string) error
 }
 
 type pgStore struct{ pool *db.Pool }
@@ -98,6 +101,14 @@ func (s pgStore) record(ctx context.Context, runID string, u spent, model string
 func (s pgStore) closeBudget(ctx context.Context, runID string) error {
 	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `UPDATE runs SET agent_exit = 'budget', updated_at = now() WHERE id = $1 AND status = 'agent'`, runID)
+		return err
+	})
+}
+
+func (s pgStore) rejectKey(ctx context.Context, runID string) error {
+	return s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `UPDATE runs SET agent_exit = 'key_rejected', updated_at = now()
+			WHERE id = $1 AND status = 'agent' AND agent_exit IS NULL AND llm_requests = 0`, runID)
 		return err
 	})
 }

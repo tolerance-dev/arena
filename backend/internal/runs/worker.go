@@ -478,24 +478,27 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 				return
 			case <-t.C:
 			}
-			var status string
+			var status, mark string
 			var used, budget int64
-			var closed bool
 			err := w.pool.Tx(watchCtx, func(ctx context.Context, tx pgx.Tx) error {
 				if _, err := tx.Exec(ctx, `UPDATE runs SET agent_log = $2 WHERE id = $1 AND status = 'agent'`, c.id, sanitize.CleanLog(out.String(), maxLog)); err != nil {
 					return err
 				}
-				// agent_exit = budget while building: the gateway closed the budget (a request didn't fit what was left).
-				return tx.QueryRow(ctx, `SELECT status, tokens_in + tokens_out + tokens_cache_write, token_budget, coalesce(agent_exit, '') = 'budget'
-					FROM runs WHERE id = $1`, c.id).Scan(&status, &used, &budget, &closed)
+				// agent_exit while building is the gateway's mark: budget (a request didn't fit what was left) or
+				// key_rejected (the provider refused the agent's key).
+				return tx.QueryRow(ctx, `SELECT status, tokens_in + tokens_out + tokens_cache_write, token_budget, coalesce(agent_exit, '')
+					FROM runs WHERE id = $1`, c.id).Scan(&status, &used, &budget, &mark)
 			})
 			if err != nil {
 				continue
 			}
 			reason := ""
-			if status != "agent" {
+			switch {
+			case status != "agent":
 				reason = "cancelled"
-			} else if used >= budget || closed {
+			case mark == "key_rejected":
+				reason = mark
+			case used >= budget || mark == "budget":
 				reason = "budget"
 			}
 			if reason != "" {
@@ -519,6 +522,25 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 	if reason == "cancelled" {
 		return nil
 	}
+	secs := int(math.Round(time.Since(started).Seconds()))
+	if reason == "" {
+		// The agent may have exited on the provider's refusal before the watch saw the mark.
+		var mark string
+		_ = w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `SELECT coalesce(agent_exit, '') FROM runs WHERE id = $1`, c.id).Scan(&mark)
+		})
+		if mark == "key_rejected" {
+			reason = mark
+		}
+	}
+	if reason == "key_rejected" {
+		// Nothing to check: the agent never got a model. Done without a score, and the run doesn't count against
+		// the owner's limits.
+		_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE run_id = $1 AND purpose = 'agent'`, c.id)
+		log.Info("agent finished", "exit", reason, "seconds", secs)
+		return w.exec(ctx, refundQuota(`UPDATE runs SET status = 'done', agent_exit = 'key_rejected', agent_seconds = $2, agent_log = $3,
+			finished_at = now(), updated_at = now() WHERE id = $1 AND status = 'agent' RETURNING id`), c.id, secs, sanitize.CleanLog(res.Output, maxLog))
+	}
 	exit := "ok"
 	switch {
 	case reason == "budget":
@@ -528,7 +550,6 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 	case res.ExitCode != 0:
 		exit = fmt.Sprintf("error:%d", res.ExitCode)
 	}
-	secs := int(math.Round(time.Since(started).Seconds()))
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE run_id = $1 AND purpose = 'agent'`, c.id)
 	log.Info("agent finished", "exit", exit, "seconds", secs)
 
