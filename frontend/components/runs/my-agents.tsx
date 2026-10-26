@@ -16,7 +16,9 @@ import type { Agent, ExampleAgent, ExampleModel, Run, TaskSummary } from '@/lib/
 import { plural, runEstimate, usd } from '@/lib/format'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, ProviderOptions, providerLabel, usePoll } from './bits'
+import { providerLabel } from '@/lib/providers'
+import { usePoll } from '@/lib/use-poll'
+import { AgentAvatar, ProviderOptions } from './bits'
 import { LiveRuns } from './live-runs'
 
 const field = fieldClass

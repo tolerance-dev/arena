@@ -9,26 +9,29 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
+import { LoadError, StaleNote } from '@/components/ui/load-state'
 import { Meta } from '@/components/ui/feed'
 import { Segmented } from '@/components/ui/segmented'
 import { del, post } from '@/lib/api'
 import { compact, duration, grouped, plural, usd, usedTokens } from '@/lib/format'
 import { errorText } from '@/lib/errors'
 import type { Run } from '@/lib/types'
+import { providerLabel } from '@/lib/providers'
 import { useMe } from '@/lib/use-me'
+import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, PHASE, providerLabel, queueLine, scoreTone, Stack, StatusPill, taskTitle, usePoll } from './bits'
+import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, PHASE, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { agentElapsed, useNow } from './live-runs'
 
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
 // the run's numbers sit in the aside.
 export function RunView({ id }: { id: string }) {
-  const { data: run, error, loading, reload } = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
-  if (error?.status === 404) return <EmptyState>Такого прогона нет. Возможно, его удалили.</EmptyState>
-  const retry = <Button variant="outline" size="sm" disabled={loading} onClick={reload}>Попробовать ещё раз</Button>
+  const poll = usePoll<Run>(`/runs/${encodeURIComponent(id)}`, 3_000, isActive)
+  const run = poll.data
+  if (poll.error?.status === 404) return <EmptyState>Такого прогона нет. Возможно, его удалили.</EmptyState>
   if (!run) {
-    if (error) return <EmptyState action={retry}>{`Не удалось загрузить прогон. ${errorText(error)}`}</EmptyState>
+    if (poll.error) return <LoadError poll={poll} what="прогон" />
     return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-[28rem]" /></div>
   }
   const done = run.status === 'done'
@@ -41,12 +44,7 @@ export function RunView({ id }: { id: string }) {
         { label: <><TaskGlyph slug={run.task} className="size-3.5" />{taskTitle(run)}</>, href: `/t/${run.task}` },
         { label: run.agent.name },
       ]} />
-      {error && (
-        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-2.5 text-body">
-          <span>{`Не удалось обновить прогон, данные могут быть устаревшими. ${errorText(error)}`}</span>
-          {retry}
-        </div>
-      )}
+      <StaleNote poll={poll} what="прогон" className="mt-4" />
       <Columns className="mt-6"
         main={
           <div className="space-y-10">
@@ -67,7 +65,7 @@ export function RunView({ id }: { id: string }) {
             <div className="max-xl:hidden"><Verdict run={run} /></div>
             <Numbers run={run} />
             <Conditions run={run} />
-            <Actions run={run} onChange={() => void reload()} />
+            <Actions run={run} onChange={poll.reload} />
           </>
         }
       />
