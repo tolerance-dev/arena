@@ -21,10 +21,10 @@ default habits:
   colours, type and radii from `globals.css`. Only real data: no upvotes, categories or search until the backend
   has them, an empty state instead of placeholders, no blocks that repeat another page.
 - **Throw code away** when the concept changes (code, routes, pages, tests) rather than keeping it compatible.
-- **No deploys or prod work by you**: never run `gh workflow run deploy` or touch the server or Cloudflare. When a
-  change needs a deploy, give the user the command (`gh workflow run deploy`; `-f ref=<sha>` rolls back,
-  `-f reset_db=true` after a schema change). A hand change on the server that must survive goes into `deploy/`
-  (`deploy/README.md`).
+- **No deploys or prod work by you**: never run `gh workflow run deploy` or touch the server or DNS (Bunny,
+  Cloudflare; how they fit: `deploy/README.md` → Domains). When a change needs a deploy, give the user the command
+  (`gh workflow run deploy`; `-f ref=<sha>` rolls back, `-f reset_db=true` after a schema change). A hand change on
+  the server that must survive goes into `deploy/` (`deploy/README.md`).
 - **Git: PRs merged by you.** `main` is protected. Branch from fresh `origin/main`, push, `gh pr create`, and once
   it is clean against `main`, test-fast passes and CI is green (`gh pr checks --watch`), `gh pr merge --squash`.
   Give the PR link. Never push to `main` or weaken the protection. Other sessions merge into `main` all the time:
