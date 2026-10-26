@@ -32,7 +32,7 @@ type config struct {
 	googleID         string
 	googleSecret     string
 	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/checks.json overrides (the private arena-tasks repo)
-	subscriptions    bool   // ARENA_SUBSCRIPTIONS: admins may run agents on their own Claude/ChatGPT subscription
+	subscriptions    bool   // ARENA_SUBSCRIPTIONS: the owner (ownerEmail, nobody else) may run agents on their Claude/ChatGPT subscription
 	devLogin         bool   // ARENA_DEV_LOGIN: sign in as any email with no password (local only)
 }
 

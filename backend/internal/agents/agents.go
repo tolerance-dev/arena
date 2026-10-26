@@ -36,9 +36,10 @@ const (
 type Service struct {
 	pool *db.Pool
 	box  *secretbox.Box
-	// Subscriptions lets admins use their personal Claude / ChatGPT subscriptions as an agent's key
-	// (ARENA_SUBSCRIPTIONS=true). Admins only: a subscription is for its owner's own use, never other users' runs.
-	Subscriptions bool
+	// SubscriptionEmail is the one account whose agents may be keyed with a personal Claude / ChatGPT
+	// subscription ("" = nobody; ARENA_SUBSCRIPTIONS=true sets the site owner). A subscription is its owner's own:
+	// no other user, admins included, may key or run an agent on it (runs.Create checks the second half).
+	SubscriptionEmail string
 }
 
 func NewService(pool *db.Pool, box *secretbox.Box) *Service { return &Service{pool: pool, box: box} }
@@ -83,17 +84,17 @@ func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invali
 
 // Providers: where the agent's key is spent. The gateway maps each one to the protocols it speaks
 // (gateway.providers): orcarouter takes the Anthropic, OpenAI and Gemini protocols with one key. claude-sub and
-// chatgpt-sub are personal subscriptions (admins only, with Service.Subscriptions on).
+// chatgpt-sub are personal subscriptions (Service.SubscriptionEmail's agents only).
 
 // sealKey checks the key for the provider and returns what to seal and a short hint. For chatgpt-sub the key is
 // Codex's ~/.codex/auth.json: only the access token and the account id are kept. The refresh token is dropped on
 // purpose: refreshing it here would log the owner's own Codex out (refresh tokens rotate).
-func (s *Service) sealKey(provider, key string, admin bool) (sealed []byte, hint string, err error) {
+func (s *Service) sealKey(provider, key string, subscriptionOK bool) (sealed []byte, hint string, err error) {
 	key = strings.TrimSpace(key)
 	switch provider {
 	case "anthropic", "openai", "google", "orcarouter":
 	case "claude-sub", "chatgpt-sub":
-		if !s.Subscriptions || !admin {
+		if !subscriptionOK {
 			return nil, "", invalid("Subscriptions are off here: use an API key")
 		}
 	default:
@@ -200,7 +201,7 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	if len([]rune(in.Description)) > 500 {
 		return Agent{}, invalid("The description is longer than 500 characters")
 	}
-	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, !limited)
+	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
 	if err != nil {
 		return Agent{}, err
 	}
@@ -340,7 +341,22 @@ func (s *Service) List(ctx context.Context, ownerID string, withKey bool) ([]Age
 
 // UpdateKey replaces the agent's key (and provider). ownerID "" (an admin) may change any agent.
 func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key string) (Agent, error) {
-	sealed, hint, err := s.sealKey(provider, key, ownerID == "")
+	ok := false
+	if pricing.Subscription(provider) {
+		// The agent's owner decides, not the caller: an admin can't put their subscription on someone else's agent.
+		var agentOwner string
+		err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `SELECT owner_id FROM agents WHERE id = $1 AND ($2 = '' OR owner_id = $2)`, id, ownerID).Scan(&agentOwner)
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Agent{}, httpx.NotFound()
+		}
+		if err != nil {
+			return Agent{}, err
+		}
+		ok = s.subscriber(ctx, agentOwner) && (ownerID == "" || ownerID == agentOwner)
+	}
+	sealed, hint, err := s.sealKey(provider, key, ok)
 	if err != nil {
 		return Agent{}, err
 	}
@@ -380,4 +396,16 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 		}
 		return err
 	})
+}
+
+// subscriber reports whether userID is the account allowed to key agents with a personal subscription.
+func (s *Service) subscriber(ctx context.Context, userID string) bool {
+	if s.SubscriptionEmail == "" || userID == "" {
+		return false
+	}
+	var email string
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT email FROM users WHERE id = $1`, userID).Scan(&email)
+	})
+	return err == nil && strings.EqualFold(email, s.SubscriptionEmail)
 }

@@ -62,7 +62,7 @@ services:
       ARENA_SECURE_COOKIES: "true"
       ARENA_TRUST_PROXY: "true"
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
-      # Admins (only) may key agents with their own Claude / ChatGPT subscription.
+      # The owner (ownerEmail in cmd/api/config.go), nobody else, may key agents with their Claude / ChatGPT subscription.
       ARENA_SUBSCRIPTIONS: "true"
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
