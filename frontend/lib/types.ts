@@ -36,7 +36,7 @@ export interface Run {
   agent_exit: string | null // ok | timeout | budget | error:N
   time_limit_s: number; token_budget: number
   tokens: Tokens
-  cost_usd: number | null // at list price; null when the model is unknown (on a subscription: no money spent)
+  cost_usd: number | null // at list price; null when the model is unknown, 0 on a subscription
   agent_seconds: number | null
   stats: { loc: number; files: number; languages: Record<string, number>; start_seconds?: number; console_errors: number }
   checks: Check[]; score: number | null; app_started: boolean

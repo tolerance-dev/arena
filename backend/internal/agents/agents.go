@@ -58,8 +58,7 @@ type Agent struct {
 	// (every agent's, any task): the site multiplies it by a time limit and the price for an estimate. With no run on
 	// this model yet it is every model's (AllModels). nil when nothing has run.
 	Rate *Rate `json:"rate,omitempty"`
-	// SpentUSD is this agent's runs so far at list price (nil when the model is unknown; on a subscription it is the
-	// list-price equivalent, not money).
+	// SpentUSD is this agent's runs so far at list price (nil when the model is unknown, 0 on a subscription).
 	SpentUSD  *float64  `json:"spent_usd,omitempty"`
 	KeyHint   string    `json:"key_hint,omitempty"`
 	Files     int       `json:"files"`
@@ -294,7 +293,7 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 		a.ModelName = m.Name
 		p := m.Price
 		a.Price = &p
-		a.SpentUSD = pricing.Cost(a.Model, oi, oo, ocr, ocw)
+		a.SpentUSD = pricing.Spent(a.Model, a.Provider, oi, oo, ocr, ocw)
 		if a.Rate = rate(mn, ms, mi, mo, mr, mw); a.Rate == nil {
 			if a.Rate = rate(gn, gs, gi, gout, gr, gw); a.Rate != nil {
 				a.Rate.AllModels = true

@@ -254,7 +254,7 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
             <div className="truncate font-semibold">{agent.name}</div>
             <div className="truncate text-meta text-muted-foreground">
               {providerLabel(agent.provider)}{agent.key_hint && <> · <span className="font-mono">{agent.key_hint}</span></>} · {t.plural('runs', agent.runs)}
-              {agent.spent_usd != null && agent.runs > 0 && <> · {t(agent.provider.endsWith('-sub') ? 'spentSub' : 'spent', { usd: usd(agent.spent_usd) })}</>}
+              {agent.spent_usd != null && agent.runs > 0 && <> · {t('spent', { usd: usd(agent.spent_usd) })}</>}
             </div>
           </div>
         </div>
@@ -311,26 +311,17 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
 // What a run of this agent should cost for the picked time: the model's spending rate × minutes at its price.
 function CostEstimate({ agent, minutes, budget, t }: { agent: Agent; minutes: number; budget: number; t: RT }) {
   const note = (text: string) => <span className="text-meta text-muted-foreground">{text}</span>
+  if (agent.provider.endsWith('-sub')) return <span className="cursor-help text-body font-semibold tnum" title={t('costSub')}>≈ $0</span>
   if (!agent.price) return agent.model ? null : note(t('costUnknownAgent'))
   const p = agent.price
-  if (p.in + p.out + p.cache_read + p.cache_write === 0) return note(t('costFree'))
+  if (p.in + p.out + p.cache_read + p.cache_write === 0) return <span className="cursor-help text-body font-semibold tnum" title={t('costFree')}>≈ $0</span>
   if (!agent.rate) return note(t('costNoRuns'))
+  // One number: the picked time at the model's spending rate (cut where the budget runs out); details in the tooltip.
   const e = runEstimate(p, agent.rate, minutes, budget)
-  // Agents often finish before the limit: the usual run, and the most it can cost; the details hide in the tooltip.
-  const usual = runEstimate(p, agent.rate, Math.min(minutes, agent.rate.avg_minutes), budget).total
   const detail = [
     t('costPerMin', { usd: usd(e.perMin) }),
     agent.rate.all_models ? t('costBasisAll', { n: agent.rate.runs }) : t('costBasisModel', { n: agent.rate.runs }),
-    t('costUsualMin', { m: Math.max(1, Math.round(agent.rate.avg_minutes)) }),
     e.budgetMin != null && t('costBudgetEnds', { m: Math.max(1, Math.round(e.budgetMin)) }),
-    agent.provider.endsWith('-sub') && t('costSubNote'),
   ].filter(Boolean).join(' · ')
-  const tail = [usd(e.total) !== usd(usual) && t('costMax', { usd: usd(e.total) }), agent.rate.all_models && t('costRough'),
-    agent.provider.endsWith('-sub') && t('costSub')].filter(Boolean)
-  return (
-    <span className="cursor-help text-body" title={detail}>
-      <span className="font-semibold tnum">≈ {usd(usual)}</span>
-      {tail.length > 0 && <span className="text-muted-foreground"> · {tail.join(' · ')}</span>}
-    </span>
-  )
+  return <span className="cursor-help text-body font-semibold tnum" title={detail}>≈ {usd(e.total)}</span>
 }
