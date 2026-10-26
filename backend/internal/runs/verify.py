@@ -6,7 +6,7 @@ it, so the checks and the browser see the app on localhost. Nothing the agent wr
 1. waits for the app to answer;
 2. tasks with "ui": checks that / serves HTML, screenshots it on desktop and mobile and checks it shows the seed
    data, all before the API checks change the state; 3. runs the task's checks in order (HTTP calls against the API
-   contract, and pages opened in the browser).
+   contract, and pages opened in the browser), the hidden ones last and without details.
 
 Writes /verify/out/result.json (+ shot.jpg, shot-mobile.jpg). Logs go to stdout.
 """
@@ -244,6 +244,8 @@ def run_checks():
     saved = {}
     for c in SPEC["checks"]:
         name = c["name"]
+        if c.get("hidden") and not result.get("hidden_from"):
+            result["hidden_from"] = time.time()  # the worker cuts the app's output here
         try:
             if c.get("page"):
                 ok, detail = page_check(c)
@@ -282,6 +284,9 @@ def run_checks():
             checks.append({"name": name, "passed": ok, "detail": detail})
         except Exception as ex:  # a hung or broken app fails the check, not the run
             checks.append({"name": name, "passed": False, "detail": f"{type(ex).__name__}: {ex}"[:200]})
+    for c, got in zip(SPEC["checks"], checks):
+        if c.get("hidden"):
+            got["detail"] = ""  # a hidden check's request and expected answer stay hidden
     passed = sum(1 for c in checks if c["passed"])
     log(f"checks: {passed}/{len(checks)} passed")
     return checks

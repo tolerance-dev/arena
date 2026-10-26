@@ -93,6 +93,11 @@ export function TaskView({ slug }: { slug: string }) {
                     ))}
                   </ol>
                 ) : <p className="text-body text-muted-foreground">Проверяются только запуск, главная страница и скриншоты.</p>}
+                {data.hidden_count > 0 && (
+                  <p className="mt-3 text-body text-muted-foreground">
+                    {plural(data.hidden_count, 'И ещё {n} скрытая проверка', 'И ещё {n} скрытые проверки', 'И ещё {n} скрытых проверок')} того же API на других записях из тех же данных: их запросы и ответы не показываем.
+                  </p>
+                )}
                 <p className="mt-3 text-body text-muted-foreground">Балл — доля пройденных проверок; приложения сравнивают люди в слепом голосовании. <Link href="/how" className="font-medium text-primary hover:underline">Как считаем</Link></p>
               </AsideBlock>
               {data.data_files.length > 0 && (

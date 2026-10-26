@@ -74,10 +74,13 @@ services:
       ARENA_GITHUB_CLIENT_SECRET: ${ARENA_GITHUB_CLIENT_SECRET:-}
       ARENA_GOOGLE_CLIENT_ID: ${ARENA_GOOGLE_CLIENT_ID:-}
       ARENA_GOOGLE_CLIENT_SECRET: ${ARENA_GOOGLE_CLIENT_SECRET:-}
+      # The hidden checks (worker below) only for their count on the task page.
+      ARENA_TASKS_HIDDEN_DIR: /tasks-hidden
     # Group that owns docker.sock on the host.
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./tasks-hidden:/tasks-hidden:ro
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
@@ -100,10 +103,13 @@ services:
       # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
       ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
       ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
+      # Hidden checks, <task>/checks.json (deploy/README.md); an empty directory = the public checks only.
+      ARENA_TASKS_HIDDEN_DIR: /tasks-hidden
     # Group that owns docker.sock on the host.
     group_add: ["${DOCKER_GID:?}"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./tasks-hidden:/tasks-hidden:ro
     depends_on:
       postgres:
         condition: service_healthy

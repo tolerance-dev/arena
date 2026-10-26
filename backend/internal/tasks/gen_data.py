@@ -2,8 +2,12 @@
 
 task.json is generated: change titles, limits and the home-page strings (ui_text) here, not in the JSON.
 The data has no image URLs on purpose: the sandbox has no internet, so the agents draw their own visuals.
+
+python3 gen_data.py --hidden DIR [--seed N] also writes DIR/<slug>/checks.json, the hidden checks for
+ARENA_TASKS_HIDDEN_DIR: the same kinds of checks on other records (categories, products, users, cities, dates,
+titles), picked at random. This repo is public, so the secret is which records: keep DIR out of git (deploy/README.md).
 """
-import json, random, os, datetime
+import argparse, json, random, os, datetime
 
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog")
 R = random.Random(20261019)
@@ -518,3 +522,248 @@ task_json("cinema", 3, "Онлайн-кинотеатр",
           "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум.",
           [top["title"], newest["title"]], cc)
 print("ok", len(products), len(hotels), len(rooms), len(movies), "top", top["title"], "newest", newest["title"])
+
+
+# ---------- hidden checks ----------
+# Run after the public checks on the state they leave (verify.py, in one go). They use other users and records than
+# the public ones where they change state, and replay the state they change themselves. HR picks the records: a
+# fresh seed each time unless --seed is given; R (the data) is not touched.
+
+def hidden_market(HR):
+    hc = []
+    def add(name, method, path, **kw):
+        hc.append({"name": name, "method": method, "path": path, **kw})
+    stock = {p["id"]: p["stock"] for p in products}
+    stock[m_a["id"]] -= 1
+    stock[m_last["id"]] = stock[m_b["id"]] = 0
+    touched = {m_a["id"], m_b["id"], m_last["id"], m_sold["id"], "p40"}
+    free = [p for p in products if p["id"] not in touched]
+
+    cat = HR.choice([c for c, _, _ in cats if c != "books"])
+    add("catalog: filter by category", "GET", f"/api/products?category={cat}",
+        expect=[{"path": "products", "ids": sorted(p["id"] for p in products if p["category"] == cat)}])
+    words = sorted({w for p in products for w in p["title"].split() if len(w) >= 4})
+    word = HR.choice([w for w in words if 2 <= len(m_titled(w)) <= 10])
+    add("catalog: search the titles, any case", "GET", f"/api/products?q={word.swapcase()}",
+        expect=[{"path": "products", "ids": m_titled(word)}])
+    brand = HR.choice([b for b in brands if len({m_prod[i]["category"] for i in m_titled(b)}) >= 2])
+    bcat = HR.choice(sorted({m_prod[i]["category"] for i in m_titled(brand)}))
+    add("catalog: search within a category", "GET", f"/api/products?q={brand.lower()}&category={bcat}",
+        expect=[{"path": "products", "ids": m_titled(brand, bcat)}])
+    scat, (skey, sfield) = HR.choice([c for c, _, _ in cats]), HR.choice([("price", "price"), ("price_desc", "-price"), ("rating", "-rating")])
+    add("catalog: sort within a category", "GET", f"/api/products?category={scat}&sort={skey}",
+        expect=[{"path": "products", "len": sum(p["category"] == scat for p in products)}, {"path": "products", "sorted_by": sfield}])
+    p = HR.choice([p for p in free if any(r["product_id"] == p["id"] for r in reviews)])
+    add("product: price, stock and seller", "GET", f"/api/products/{p['id']}",
+        expect=[{"path": "price", "equals": p["price"]}, {"path": "stock", "equals": stock[p["id"]]},
+                {"path": "seller.name", "equals": m_seller[p["seller_id"]]["name"]},
+                {"path": "reviews", "ids": sorted(r["id"] for r in reviews if r["product_id"] == p["id"])}])
+    add("product: an unknown product is 404", "GET", f"/api/products/p{HR.randint(100, 9999)}", status=404)
+    hc.append({"name": "product page shows the product and its seller", "page": f"/products/{p['id']}",
+               "text": [p["title"], str(p["price"]), m_seller[p["seller_id"]]["name"]]})
+    hc.append({"name": "search page lists the matching products", "page": f"/search?q={word.lower()}",
+               "text": [m_prod[i]["title"] for i in m_titled(word)]})
+
+    x, y = HR.sample(market_users[2:], 2)
+    add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": x["email"], "password": x["password"] + "x"}, status_in=[401, 403])
+    for k, u in (("h_x", x), ("h_y", y)):
+        add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},
+            expect=[{"path": "token", "exists": True}], save={k: "token"})
+    a = HR.choice([p for p in free if stock[p["id"]] >= 3])
+    b = HR.choice([p for p in free if 1 <= stock[p["id"]] <= 8 and p["id"] != a["id"]])
+    na = HR.randint(2, 3)
+    add("cart: add a product", "POST", "/api/cart", auth="h_x", body={"product_id": a["id"], "quantity": na},
+        expect=[{"path": f"items[product_id={a['id']}].subtotal", "equals": m_money(na * a["price"])},
+                {"path": "total", "equals": m_money(na * a["price"])}])
+    add("cart: no more than the stock", "POST", "/api/cart", auth="h_x", body={"product_id": b["id"], "quantity": stock[b["id"]] + 1}, status=409)
+    nb = stock[b["id"]]
+    add("cart: all that is left", "POST", "/api/cart", auth="h_x", body={"product_id": b["id"], "quantity": nb},
+        expect=[{"path": "items", "len": 2}, {"path": "total", "equals": m_money(na * a["price"] + nb * b["price"])}])
+    add("cart: a fractional quantity is refused", "POST", "/api/cart", auth="h_x", body={"product_id": a["id"], "quantity": 1.5}, status_in=[400, 422])
+    add("cart: every user has their own", "GET", "/api/cart", auth="h_y", expect=[{"path": "items", "len": 0}])
+    add("checkout: the order", "POST", "/api/orders", auth="h_x", status_in=[200, 201],
+        expect=[{"path": "total", "equals": m_money(na * a["price"] + nb * b["price"])}, {"path": "items", "len": 2}], save={"h_order": "id"})
+    stock[a["id"]] -= na
+    stock[b["id"]] = 0
+    add("checkout: the stock goes down", "GET", f"/api/products/{a['id']}", expect=[{"path": "stock", "equals": stock[a["id"]]}])
+    add("checkout: the catalog shows the bought-out product sold out", "GET", f"/api/products?category={b['category']}",
+        expect=[{"path": f"products[id={b['id']}].stock", "equals": 0}])
+    add("cart: a bought-out product can't be added", "POST", "/api/cart", auth="h_y", body={"product_id": b["id"], "quantity": 1}, status=409)
+    sold = HR.choice([p for p in free if stock[p["id"]] == 0 and p["id"] != b["id"]])
+    add("cart: a sold-out product can't be added", "POST", "/api/cart", auth="h_y", body={"product_id": sold["id"], "quantity": 1}, status=409)
+    add("orders: the buyer sees the order", "GET", "/api/orders", auth="h_x",
+        expect=[{"path": "orders", "len": 1}, {"path": "orders[id={h_order}].total", "equals": m_money(na * a["price"] + nb * b["price"])}])
+    add("orders: another user doesn't", "GET", "/api/orders", auth="h_y", expect=[{"path": "orders", "len": 0}])
+    return hc
+
+
+def hidden_hotels(HR):
+    hc = []
+    def add(name, method, path, **kw):
+        hc.append({"name": name, "method": method, "path": path, **kw})
+    st = list(state)  # after the public checks (all in Lisbon, so other cities are as in the data)
+    day0 = datetime.date(2026, 11, 1)
+    def stay():
+        ci = day0 + datetime.timedelta(days=HR.randint(0, 55))
+        return ci.isoformat(), (ci + datetime.timedelta(days=HR.randint(2, 5))).isoformat()
+
+    for _ in range(1000):
+        city = HR.choice(cities[1:])
+        ci, co = stay()
+        g = HR.randint(1, 3)
+        found = search_ids(city, ci, co, g, st)
+        more = search_ids(city, ci, co, g + 2, st)
+        ams = [am for am in amen if search_ids(city, ci, co, g, st, [am]) and set(search_ids(city, ci, co, g, st, [am])) != set(found)]
+        if len(found) >= 2 and ams:
+            break
+    S = dict(city=city, check_in=ci, check_out=co, guests=g)
+    add("search: hotels with a free room for the whole stay", "GET", "/api/search" + q(**S), expect=[{"path": "hotels", "ids": sorted(found)}])
+    h = HR.choice(sorted(found))
+    add("search: the price is the cheapest free room for the whole stay", "GET", "/api/search" + q(**S),
+        expect=[{"path": f"hotels[id={h}].price_total", "equals": found[h]}])
+    add("search: rooms must fit the guests", "GET", "/api/search" + q(**{**S, "guests": g + 2}), expect=[{"path": "hotels", "ids": sorted(more)}])
+    am = HR.choice(ams)
+    add("search: filter by amenities", "GET", "/api/search" + q(**S, amenities=am),
+        expect=[{"path": "hotels", "ids": sorted(search_ids(city, ci, co, g, st, [am]))}])
+    key, field = HR.choice([("price", "price_total"), ("rating", "-rating"), ("stars", "-stars"), ("distance", "distance_to_center_km")])
+    add("search: sort", "GET", "/api/search" + q(**S, sort=key), expect=[{"path": "hotels", "len": len(found)}, {"path": "hotels", "sorted_by": field}])
+    hotel = next(x for x in hotels if x["id"] == h)
+    hc.append({"name": "search page lists the hotels with the price for the stay", "page": "/search" + q(**S), "text": [hotel["name"], str(found[h])]})
+
+    # A seed booking that fills a room: the room is taken on its nights and free from its check-out day.
+    nights = lambda ci, co: (D(co) - D(ci)).days
+    plus2 = lambda d: (D(d) + datetime.timedelta(days=2)).isoformat()
+    sb = HR.choice([b for b in bookings if b["hotel_id"] not in ("h1", "h2", "h3", "h4") and by_id[b["room_id"]]["inventory"] == 1
+                    and not room_free(by_id[b["room_id"]], b["check_in"], b["check_out"], st)
+                    and room_free(by_id[b["room_id"]], b["check_out"], plus2(b["check_out"]), st)])
+    room = by_id[sb["room_id"]]
+    H = dict(check_in=sb["check_in"], check_out=sb["check_out"], guests=1)
+    add("hotel: a booked room is not available", "GET", f"/api/hotels/{room['hotel_id']}" + q(**H),
+        expect=[{"path": f"rooms[id={room['id']}].available", "equals": False},
+                {"path": f"rooms[id={room['id']}].price_total", "equals": room["price_per_night"] * nights(sb["check_in"], sb["check_out"])}])
+    add("hotel: the check-out day is free", "GET", f"/api/hotels/{room['hotel_id']}" + q(check_in=sb["check_out"], check_out=plus2(sb["check_out"]), guests=1),
+        expect=[{"path": f"rooms[id={room['id']}].available", "equals": True}])
+    add("hotel: an unknown hotel is 404", "GET", f"/api/hotels/h{HR.randint(100, 9999)}", status=404)
+
+    x, y = HR.sample(hotel_users[2:], 2)
+    add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": x["email"], "password": x["password"] + "x"}, status_in=[401, 403])
+    for k, u in (("h_x", x), ("h_y", y)):
+        add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},
+            expect=[{"path": "token", "exists": True}], save={k: "token"})
+    # x books a single-inventory room in another city; y can't overlap it but can start on its check-out day.
+    for _ in range(1000):
+        r = HR.choice([r for r in rooms if r["inventory"] == 1 and r["hotel_id"] not in ("h1", "h2", "h3", "h4")])
+        bci, bco = stay()
+        nxt = plus2(bco)
+        if room_free(r, bci, nxt, st):
+            break
+    rh = next(x for x in hotels if x["id"] == r["hotel_id"])
+    total = r["price_per_night"] * nights(bci, bco)
+    add("booking: a free room", "POST", "/api/bookings", auth="h_x",
+        body={"room_id": r["id"], "check_in": bci, "check_out": bco, "guests": r["capacity"]}, status_in=[200, 201],
+        expect=[{"path": "total", "equals": total}, {"path": "hotel_id", "equals": r["hotel_id"]}], save={"h_b": "id"})
+    st.append({"id": "h_b", "room_id": r["id"], "check_in": bci, "check_out": bco, "user_id": x["id"]})
+    mid = (D(bci) + datetime.timedelta(days=1)).isoformat()
+    add("availability: an overlapping stay is refused", "POST", "/api/bookings", auth="h_y",
+        body={"room_id": r["id"], "check_in": mid, "check_out": nxt, "guests": 1}, status=409)
+    add("availability: more guests than the room takes are refused", "POST", "/api/bookings", auth="h_y",
+        body={"room_id": r["id"], "check_in": bco, "check_out": nxt, "guests": r["capacity"] + 1}, status_in=[400, 422])
+    add("availability: check-out before check-in is refused", "POST", "/api/bookings", auth="h_y",
+        body={"room_id": r["id"], "check_in": nxt, "check_out": bco, "guests": 1}, status_in=[400, 422])
+    add("availability: booking from the check-out day works", "POST", "/api/bookings", auth="h_y",
+        body={"room_id": r["id"], "check_in": bco, "check_out": nxt, "guests": 1}, status_in=[200, 201],
+        expect=[{"path": "total", "equals": r["price_per_night"] * 2}])
+    add("hotel: the booked room is not available", "GET", f"/api/hotels/{r['hotel_id']}" + q(check_in=bci, check_out=bco, guests=1),
+        expect=[{"path": f"rooms[id={r['id']}].available", "equals": False}])
+    hc.append({"name": "hotel page shows its rooms with the total", "page": f"/hotels/{r['hotel_id']}" + q(check_in=bci, check_out=bco, guests=1),
+               "text": [rh["name"], r["type"], str(total)]})
+    seed_x = [b["id"] for b in bookings if b["user_id"] == x["id"]]
+    add("bookings: the user sees theirs, old and new", "GET", "/api/bookings", auth="h_x",
+        expect=[{"path": "bookings", "len": len(seed_x) + 1}, {"path": "bookings[id={h_b}].total", "equals": total}]
+        + ([{"path": f"bookings[id={seed_x[0]}]", "exists": True}] if seed_x else []))
+    add("bookings: another user doesn't see them", "GET", "/api/bookings", auth="h_y", expect=[{"path": "bookings[id={h_b}]", "absent": True}])
+    add("cancel: not someone else's booking", "DELETE", "/api/bookings/{h_b}", auth="h_y", status_in=[403, 404])
+    add("cancel: the owner cancels", "DELETE", "/api/bookings/{h_b}", auth="h_x", status_in=[200, 204])
+    add("cancel: the nights are free again", "GET", f"/api/hotels/{r['hotel_id']}" + q(check_in=bci, check_out=bco, guests=1),
+        expect=[{"path": f"rooms[id={r['id']}].available", "equals": True}])
+    add("cancel: the booking leaves the list", "GET", "/api/bookings", auth="h_x",
+        expect=[{"path": "bookings[id={h_b}]", "absent": True}, {"path": "bookings", "len": len(seed_x)}])
+    return hc
+
+
+def hidden_cinema(HR):
+    hc = []
+    def add(name, method, path, **kw):
+        hc.append({"name": name, "method": method, "path": path, **kw})
+    w = HR.choice([w for w in words1 + words2 if w != word and 2 <= len(title_ids(lambda m: w.lower() in m["title"].lower())) <= 6])
+    hits = title_ids(lambda m: w.lower() in m["title"].lower())
+    add("catalog: search by title, any case", "GET", f"/api/titles?q={w.swapcase()}", expect=[{"path": "titles", "ids": hits}])
+    g = HR.choice([x for x in genres if x != genre])
+    add("catalog: filter by genre", "GET", f"/api/titles?genre={g}", expect=[{"path": "titles", "ids": title_ids(lambda m: g in m["genres"])}])
+    add("catalog: genre and movies only", "GET", f"/api/titles?genre={g}&type=movie",
+        expect=[{"path": "titles", "ids": title_ids(lambda m: g in m["genres"] and m["type"] == "movie")}])
+    key, field = HR.choice([("rating", "-rating"), ("year", "-year")])
+    add("catalog: filter and sort", "GET", f"/api/titles?genre={g}&sort={key}",
+        expect=[{"path": "titles", "len": len(title_ids(lambda m: g in m["genres"]))}, {"path": "titles", "sorted_by": field}])
+    m = HR.choice([m for m in movies if m["type"] == "movie" and m["id"] != fm1["id"]])
+    add("title: a movie with its details", "GET", f"/api/titles/{m['id']}",
+        expect=[{"path": "director", "equals": m["director"]}, {"path": "cast", "equals": m["cast"]},
+                {"path": "duration_min", "equals": m["duration_min"]}, {"path": "year", "equals": m["year"]}])
+    s = HR.choice([m for m in movies if m["type"] == "series"])
+    add("title: a series with seasons and episodes", "GET", f"/api/titles/{s['id']}",
+        expect=[{"path": "seasons", "len": len(s["seasons"])}, {"path": f"seasons.{len(s['seasons']) - 1}.episodes", "len": len(s["seasons"][-1]["episodes"])}])
+    add("title: an unknown title is 404", "GET", f"/api/titles/m{HR.randint(100, 9999)}", status=404)
+    hc.append({"name": "title page shows the title with its director and year", "page": f"/titles/{m['id']}", "text": [m["title"], m["director"], str(m["year"])]})
+    hc.append({"name": "search page lists the matching titles", "page": f"/search?q={w}", "text": [mv[i]["title"] for i in hits]})
+
+    x = HR.choice([u for u in cinema_users[2:] if u["plan"] == "free"])
+    y = HR.choice([u for u in cinema_users[2:] if u["plan"] == "premium"])
+    add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": y["email"], "password": y["password"] + "x"}, status_in=[401, 403])
+    for k, u in (("h_x", x), ("h_y", y)):
+        add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},
+            expect=[{"path": "token", "exists": True}], save={k: "token"})
+    add("me: the signed-in user", "GET", "/api/me", auth="h_y", expect=[{"path": "plan", "equals": "premium"}, {"path": "email", "equals": y["email"]}])
+    pm = HR.choice([m for m in movies if m["type"] == "movie" and m["premium"] and m["id"] != prem_movie["id"]])
+    add("premium: a free plan can't play a premium title", "GET", f"/api/titles/{pm['id']}/play", auth="h_x", status=403)
+    add("premium: the premium plan plays it", "GET", f"/api/titles/{pm['id']}/play", auth="h_y",
+        expect=[{"path": "duration_s", "equals": pm["duration_min"] * 60}, {"path": "position_s", "equals": 0}])
+    sn = HR.randint(1, len(s["seasons"]))
+    ep = HR.choice(s["seasons"][sn - 1]["episodes"])
+    add("play: a series episode", "GET", f"/api/titles/{s['id']}/play?season={sn}&episode={ep['number']}", auth="h_y",
+        expect=[{"path": "duration_s", "equals": ep["duration_min"] * 60}])
+    a, b = HR.sample([m for m in free_movies if m["id"] not in (fm1["id"], fm2["id"])], 2)
+    pa = HR.randint(1, a["duration_min"] * 60 - 1)
+    add("progress: saving where the user stopped", "PUT", f"/api/progress/{a['id']}", auth="h_x", body={"position_s": pa}, status_in=[200, 201, 204])
+    add("progress: play resumes from it", "GET", f"/api/titles/{a['id']}/play", auth="h_x", expect=[{"path": "position_s", "equals": pa}])
+    add("progress: a negative position is refused", "PUT", f"/api/progress/{b['id']}", auth="h_x", body={"position_s": -5}, status_in=[400, 422])
+    add("progress: past the end is refused", "PUT", f"/api/progress/{b['id']}", auth="h_x", body={"position_s": b["duration_min"] * 60 + 30}, status_in=[400, 422])
+    add("premium: a free plan can't save progress on a premium title", "PUT", f"/api/progress/{pm['id']}", auth="h_x", body={"position_s": 10}, status=403)
+    add("progress: a second title", "PUT", f"/api/progress/{b['id']}", auth="h_x", body={"position_s": 90}, status_in=[200, 201, 204])
+    add("continue watching: the latest first, with the position", "GET", "/api/home", auth="h_x",
+        expect=[{"path": "continue_watching", "ids": sorted([a["id"], b["id"]])}, {"path": "continue_watching.0.id", "equals": b["id"]},
+                {"path": f"continue_watching[id={a['id']}].position_s", "equals": pa}])
+    add("continue watching: someone else's is not shown", "GET", "/api/home", auth="h_y", expect=[{"path": f"continue_watching[id={a['id']}]", "absent": True}])
+    wl = HR.sample([m["id"] for m in movies], 3)
+    for t in wl:
+        add("watchlist: add a title", "PUT", f"/api/watchlist/{t}", auth="h_y", status_in=[200, 201, 204])
+    add("watchlist: adding twice keeps one", "PUT", f"/api/watchlist/{wl[0]}", auth="h_y", status_in=[200, 201, 204])
+    add("watchlist: lists what was added", "GET", "/api/watchlist", auth="h_y", expect=[{"path": "titles", "ids": sorted(wl)}])
+    add("watchlist: another user's is separate", "GET", "/api/watchlist", auth="h_x", expect=[{"path": "titles", "len": 0}])
+    add("watchlist: remove a title", "DELETE", f"/api/watchlist/{wl[1]}", auth="h_y", status_in=[200, 204])
+    add("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="h_y", expect=[{"path": "titles", "ids": sorted([wl[0], wl[2]])}])
+    return hc
+
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--hidden", metavar="DIR", help="also write DIR/<slug>/checks.json, the hidden checks (keep DIR out of git)")
+ap.add_argument("--seed", type=int, help="the hidden checks' seed (default: a fresh one)")
+args = ap.parse_args()
+if args.hidden:
+    HR = random.Random(args.seed if args.seed is not None else random.SystemRandom().getrandbits(64))
+    for slug, gen in (("marketplace", hidden_market), ("hotels", hidden_hotels), ("cinema", hidden_cinema)):
+        hcs = gen(HR)
+        os.makedirs(os.path.join(args.hidden, slug), exist_ok=True)
+        with open(os.path.join(args.hidden, slug, "checks.json"), "w") as f:
+            json.dump(hcs, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print("hidden", slug, len(hcs), "checks")
