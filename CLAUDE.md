@@ -147,6 +147,7 @@ backend/cmd/migrate          creates the arena_app role, applies schema.sql to a
 backend/migrations           schema.sql (the whole schema), migrations.go (Apply)
 backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
 backend/internal/admin       /admin: spending, switches (settings row: queue pause, user runs), user blocks
+backend/internal/alerts      disk / infra_error / stuck-queue checks in the api, to the log and optionally Telegram
 backend/internal/runs        runs service/routes, worker, verify.py (checks + screenshots), votes (Elo), LOC stats
 backend/internal/gateway     gateway.go (proxy, metering, budget, fake upstream), preview.go
 backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), per-run networks; ARENA_STACK (locally

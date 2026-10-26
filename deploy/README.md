@@ -33,3 +33,8 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   - Disk cap per container (`ARENA_SANDBOX_DISK=20G` → `--storage-opt size=`): only works when Docker's data dir is
     overlay2 on XFS mounted with `pquota`; on ext4 Docker refuses to create the containers, so every run would fail.
     Without it a single file is capped at 500 MB (`--ulimit fsize`).
+- **Alerts** (`internal/alerts`, in the api): every 5 minutes, disk under 15% free, a spike of `infra_error` (3+ in an
+  hour and half of the hour's runs), or a queued run waiting 30+ minutes with a slot free (queue not paused). Always
+  logged (`"msg":"alert"`); also sent to Telegram when `ARENA_ALERT_TELEGRAM_TOKEN` (a bot from @BotFather) and
+  `ARENA_ALERT_TELEGRAM_CHAT` (your chat id) are in `/opt/tolerance/.env`. Each kind repeats at most hourly. Uptime
+  of the site itself needs an outside checker (#74).
