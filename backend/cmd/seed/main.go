@@ -34,6 +34,7 @@ const fakeKey = "sk-ant-seed-fake-key-not-real-000000"
 var seeds = []struct {
 	owner, name, description string
 	before, after            string // shell run before and after the demo's script
+	noRuns                   bool   // only the agent: started by hand, to watch it on the run page
 }{
 	{owner: "ada@example.com", name: "Demo · эталон", description: "Эталонное приложение, проходит все проверки"},
 	{owner: "ada@example.com", name: "Demo · без API",
@@ -42,7 +43,32 @@ var seeds = []struct {
 	{owner: "linus@example.com", name: "Demo · без кинотеатра",
 		description: "Эталон, который сдаётся на кинотеатре",
 		before:      `[ "$ARENA_TASK" = cinema ] && { echo "giving up on cinema"; exit 1; }`},
+	// The reference typed out over a couple of minutes, with a model call per step: something to watch build live.
+	{owner: "ada@example.com", name: "Demo · пишет по шагам", description: "Эталон, который пишет код постепенно: чтобы смотреть, как агент строит",
+		after: slowly, noRuns: true},
 }
+
+// slowly retypes the demo's files a few lines at a time, asking the (fake) model each step with the workspace so far
+// as the prompt, so files, lines and tokens grow the way a real agent's do.
+const slowly = `mkdir -p /tmp/typed && mv server.py start.sh TASK ui /tmp/typed/
+llm() {
+  python3 -c 'import json, pathlib, sys; print(json.dumps({"model": "claude-haiku-5-5", "max_tokens": 256, "messages": [{"role": "user",
+    "content": "\n".join(p.read_text() for p in pathlib.Path(".").rglob("*") if p.is_file() and "data" not in p.parts)}]}))' > /tmp/req.json
+  curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
+    -H "content-type: application/json" --data-binary @/tmp/req.json > /dev/null || true
+}
+typeout() {
+  n=$(wc -l < "/tmp/typed/$1"); i=0; mkdir -p "$(dirname "$1")"; : > "$1"
+  while [ "$i" -lt "$n" ]; do
+    sed -n "$((i + 1)),$((i + $2))p" "/tmp/typed/$1" >> "$1"; i=$((i + $2))
+    echo "writing $1: $i/$n lines"; llm; sleep "$3"
+  done
+}
+cp /tmp/typed/TASK /tmp/typed/start.sh .
+typeout server.py 24 1
+typeout "ui/$ARENA_TASK.html" 4 3
+cp -n /tmp/typed/ui/* ui/
+echo "all written; looking it over"; llm; sleep 20`
 
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
@@ -103,6 +129,9 @@ func run(log *slog.Logger) error {
 				return fmt.Errorf("agent %s: %w", s.name, err)
 			}
 			id = a.ID
+		}
+		if s.noRuns {
+			continue
 		}
 		for _, t := range tasks.All() {
 			var have bool

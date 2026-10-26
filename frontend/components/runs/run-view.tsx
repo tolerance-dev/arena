@@ -23,6 +23,7 @@ import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, phase, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
+import { LiveBuild } from './live-build'
 import { agentElapsed, useNow } from './live-runs'
 
 // One submission, laid out like a Product Hunt product page: what the agent built is the centrepiece, the verdict and
@@ -63,10 +64,12 @@ export function RunView({ id }: { id: string }) {
             )}
             <div className="xl:hidden"><Verdict run={run} /></div>
             {!done && <Timeline run={run} />}
+            {run.status === 'agent' && <LiveBuild run={run} />}
             {platformFailed && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">{t(`Прогон сорвался по вине платформы: ${run.failure_reason ?? '?'}`, `The run failed through the platform’s fault: ${run.failure_reason ?? '?'}`)}</p>
             )}
             {run.checks.length > 0 && <Checks run={run} />}
+            {run.status !== 'queued' && run.status !== 'agent' && <LiveBuild run={run} mode="code" />}
             <Logs run={run} />
           </div>
         }

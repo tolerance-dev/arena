@@ -297,8 +297,23 @@ func (w *Worker) collectImages(ctx context.Context) {
 			}
 			return rows.Err()
 		})
+		var liveKept map[string]bool
 		if err == nil {
-			images, _ := sandbox.Images(ctx, "arena-run")
+			err = w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+				var err error
+				liveKept, err = liveKeep(ctx, tx)
+				return err
+			})
+		}
+		if err == nil {
+			// Apps started from a workspace while its agent worked (live.go) that the run's worker didn't remove.
+			images, _ := sandbox.Images(ctx, "arena-live")
+			for _, img := range images {
+				if !liveKept[img] {
+					sandbox.RemoveImage(img)
+				}
+			}
+			images, _ = sandbox.Images(ctx, "arena-run")
 			for _, img := range images {
 				if keep[img] {
 					continue
@@ -531,9 +546,17 @@ func (w *Worker) build(ctx context.Context, c claimed, log *slog.Logger) error {
 			}
 		}
 	}()
+	// Meanwhile the workspace is sampled for the run page (live.go).
+	live := w.newLiveSampler(c, id, log)
+	liveCtx, endLive := context.WithCancel(ctx)
+	liveDone := make(chan struct{})
+	go func() { defer close(liveDone); live.run(liveCtx) }()
 	started := time.Now()
 	res, err := sandbox.Start(ctx, id, c.timeLimit, stop, out)
 	endWatch()
+	endLive()
+	<-liveDone
+	live.finish(ctx)
 	if err != nil {
 		return err
 	}

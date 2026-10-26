@@ -90,6 +90,23 @@ func readSources(r io.Reader) (workspace, error) {
 	}
 }
 
+// codeLines is a source file's language and its non-blank lines; "" for what isn't code (data, minified, binary).
+func codeLines(name string, body []byte) (string, int) {
+	lang := languages[strings.ToLower(path.Ext(name))]
+	if lang == "" || strings.Contains(path.Base(name), ".min.") || binary(body) {
+		return "", 0
+	}
+	n := 0
+	for _, line := range bytes.Split(body, []byte("\n")) {
+		if len(bytes.TrimSpace(line)) > 0 {
+			n++
+		}
+	}
+	return lang, n
+}
+
+func binary(body []byte) bool { return bytes.Contains(body[:min(len(body), 8000)], []byte{0}) }
+
 // sourceStats counts lines of code per language and zips the sources.
 func sourceStats(files map[string][]byte) (Stats, []byte, error) {
 	st := Stats{Languages: map[string]int{}}
@@ -102,15 +119,7 @@ func sourceStats(files map[string][]byte) (Stats, []byte, error) {
 	zw := zip.NewWriter(&zbuf)
 	for _, name := range names {
 		body := files[name]
-		base := path.Base(name)
-		lang := languages[strings.ToLower(path.Ext(name))]
-		if lang != "" && !strings.Contains(base, ".min.") && !bytes.Contains(body[:min(len(body), 8000)], []byte{0}) {
-			n := 0
-			for _, line := range bytes.Split(body, []byte("\n")) {
-				if len(bytes.TrimSpace(line)) > 0 {
-					n++
-				}
-			}
+		if lang, n := codeLines(name, body); lang != "" {
 			st.LOC += n
 			st.Files++
 			st.Languages[lang] += n

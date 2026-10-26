@@ -254,3 +254,23 @@
     animation: none;
   }
 }
+
+/* A line or file the agent just wrote, in the live build view (components/runs/live-build.tsx). */
+@keyframes live-flash {
+  from {
+    background-color: color-mix(in srgb, var(--terminal-success) 28%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.animate-live-flash {
+  animation: live-flash 3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-live-flash {
+    animation: none;
+  }
+}
