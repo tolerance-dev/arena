@@ -62,8 +62,17 @@ func BySlug(slug string) *Model {
 // Subscription is true for a personal subscription key: runs spend its limits, not money.
 func Subscription(provider string) bool { return strings.HasSuffix(provider, "-sub") }
 
+// Spent is what these tokens cost the owner: 0 on a subscription (it spends limits, not money), else Cost.
+func Spent(model, provider string, in, out, cacheRead, cacheWrite int64) *float64 {
+	c := Cost(model, in, out, cacheRead, cacheWrite)
+	if c != nil && Subscription(provider) {
+		*c = 0
+	}
+	return c
+}
+
 // Cost is what these tokens cost in USD at the model's list price: nil when the model is unknown (an uploaded
-// agent). On a subscription (Subscription) that is what the run would have cost, not money spent.
+// agent).
 func Cost(model string, in, out, cacheRead, cacheWrite int64) *float64 {
 	m := BySlug(model)
 	if m == nil {

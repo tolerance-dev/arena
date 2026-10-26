@@ -79,8 +79,7 @@ type Run struct {
 	TimeLimitS    int        `json:"time_limit_s"`
 	TokenBudget   int64      `json:"token_budget"`
 	Tokens        Tokens     `json:"tokens"`
-	// CostUSD is the tokens at the model's list price: nil when the model is unknown. On a subscription no money is
-	// spent; it is what the run would have cost.
+	// CostUSD is the tokens at the model's list price: nil when the model is unknown, 0 on a subscription.
 	CostUSD       *float64 `json:"cost_usd"`
 	AgentSeconds  *int     `json:"agent_seconds"`
 	Stats         Stats    `json:"stats"`
@@ -128,7 +127,7 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	if m := pricing.BySlug(r.Agent.Model); m != nil {
 		r.Agent.ModelName = m.Name
 	}
-	r.CostUSD = pricing.Cost(r.Agent.Model, r.Tokens.In, r.Tokens.Out, r.Tokens.CacheRead, r.Tokens.CacheWrite)
+	r.CostUSD = pricing.Spent(r.Agent.Model, r.Agent.Provider, r.Tokens.In, r.Tokens.Out, r.Tokens.CacheRead, r.Tokens.CacheWrite)
 	_ = json.Unmarshal(stats, &r.Stats)
 	if r.Stats.Languages == nil {
 		r.Stats.Languages = map[string]int{}
