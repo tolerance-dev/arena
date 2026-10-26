@@ -11,6 +11,16 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # For the tests that need a database (internal/runs quota): each makes its own from ARENA_TEST_DATABASE_URL.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 2s --health-retries 30
+    env:
+      ARENA_TEST_DATABASE_URL: postgres://postgres:ci@127.0.0.1:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
