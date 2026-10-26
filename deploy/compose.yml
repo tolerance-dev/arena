@@ -124,6 +124,24 @@ services:
     depends_on:
       - api
 
+  # Ships the stack's logs to Grafana Cloud (config.alloy). Off unless .env has COMPOSE_PROFILES=logs and the
+  # GRAFANA_LOKI_* values (deploy/README.md).
+  alloy:
+    image: grafana/alloy:v1.20.1
+    profiles: [logs]
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 256m
+    command: run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    environment:
+      GRAFANA_LOKI_URL: ${GRAFANA_LOKI_URL:-}
+      GRAFANA_LOKI_USER: ${GRAFANA_LOKI_USER:-}
+      GRAFANA_LOKI_TOKEN: ${GRAFANA_LOKI_TOKEN:-}
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -145,3 +163,4 @@ services:
 volumes:
   arena-postgres-data:
   arena-caddy-data:
+  alloy-data:
