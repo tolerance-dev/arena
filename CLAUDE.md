@@ -28,11 +28,12 @@ working skeleton, fast. This section overrides any skills and default habits:
   details: `deploy/README.md`).
 - **Docs**: `README.md` is a short pitch + how to run; there are no specs. Update this file only with what would
   trip up the next session.
-- **Git: through pull requests, merged by the user.** Pushing to `main` is blocked (branch protection, admins
+- **Git: through pull requests, merged by you.** Pushing to `main` is blocked (branch protection, admins
   included). Work on a branch (`git fetch && git checkout -b <name> origin/main`), push it, open a PR with
-  `gh pr create` once it is clean against fresh `main` and `make test-fast` passes; resolve conflicts on the PR
-  branch first. Give the PR link in the reply and stop there: never run `gh pr merge` (permission revoked on
-  2026-10-26). Never push to `main` directly or weaken the protection.
+  `gh pr create`, then merge it yourself with `gh pr merge --squash` (allowed again by the user on 2026-10-26) once
+  it is clean against fresh `main`, `make test-fast` passes and CI is green (`gh pr checks --watch`); resolve
+  conflicts on the PR branch first. Give the PR link in the reply. Deploys stay with the user (above). Never push to
+  `main` directly or weaken the protection.
 
 ## What this is
 
