@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Download, ExternalLink, FileJson, Play, Scale } from 'lucide-react'
+import { Download, ExternalLink, FileJson, Scale } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
@@ -13,9 +13,9 @@ import { Meta } from '@/components/ui/feed'
 import { PillTabs } from '@/components/ui/pill-tabs'
 import { compact, plural } from '@/lib/format'
 import type { Run, TaskView as TV } from '@/lib/types'
-import { useMe } from '@/lib/use-me'
 import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile, usePoll } from './bits'
 import { Compare } from './compare'
+import { StartRunButton } from './start-run-button'
 
 type Tab = 'compare' | 'submissions' | 'brief' | 'results'
 
@@ -23,7 +23,6 @@ type Tab = 'compare' | 'submissions' | 'brief' | 'results'
 // The first tab compares what the agents built, side by side.
 export function TaskView({ slug }: { slug: string }) {
   const [tab, setTab] = useState<Tab>('compare')
-  const { me } = useMe()
   const { data, error } = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
   if (error?.status === 404) return <EmptyState>Такого задания нет.</EmptyState>
   if (!data) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
@@ -49,11 +48,7 @@ export function TaskView({ slug }: { slug: string }) {
           ]} />
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
-          {me && (
-            <Button size="lg" render={<Link href={`/my?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
-              <Play /> Запустить своего агента
-            </Button>
-          )}
+          <StartRunButton task={slug} />
           {data.compare.length >= 2 && (
             <Button variant="outline" size="lg" render={<Link href={`/vote?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
               <Scale /> Голосовать

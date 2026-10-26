@@ -35,7 +35,7 @@ export function AdminView() {
       <div className="max-w-md space-y-4">
         <h1 className="display text-page">Админка</h1>
         <p className="text-muted-foreground">{me ? 'Эта страница только для админов.' : 'Войдите как админ, чтобы открыть эту страницу.'}</p>
-        {!me && signIn && <Button onClick={signIn}>Войти</Button>}
+        {!me && signIn && <Button onClick={() => signIn()}>Войти</Button>}
       </div>
     )
   }

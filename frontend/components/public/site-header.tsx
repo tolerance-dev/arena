@@ -69,7 +69,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
             </>
           ) : (
             signIn
-              ? <Button onClick={signIn}>Войти</Button>
+              ? <Button onClick={() => signIn()}>Войти</Button>
               : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>Войти</Button>
           )}
           <Button variant="outline" size="icon" className="md:hidden" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
