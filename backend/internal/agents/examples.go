@@ -3,6 +3,8 @@ package agents
 import (
 	"embed"
 	"slices"
+
+	"tolerance/internal/pricing"
 )
 
 // The example agents (examples/README.md), built into the binary so a user can start from one without a file.
@@ -10,32 +12,44 @@ import (
 //go:embed examples/*/run.sh
 var exampleFiles embed.FS
 
-// Example is a ready agent a user may pick instead of uploading a bundle.
+// Example is a ready agent (a CLI) a user may pick instead of uploading a bundle, with any model it can reach.
 type Example struct {
 	Slug      string   `json:"slug"`
-	Name      string   `json:"name"`      // the default agent name
-	Model     string   `json:"model"`     // what it runs, for the picker
-	Providers []string `json:"providers"` // keys it works with; the first is its vendor's own
+	Name      string   `json:"name"`      // the CLI, the first half of the default agent name
+	Model     string   `json:"model"`     // the model it runs unless the user picks another (a pricing.Models slug)
+	Providers []string `json:"providers"` // keys its protocol works with; the first is its vendor's own
 }
 
 // Examples is the picker's list. demo is left out: it writes the reference app by hand, so it would top every
-// ranking without an agent behind it.
+// ranking without an agent behind it. A CLI works with a key when it speaks that key's protocol: OrcaRouter takes
+// all three (Anthropic, OpenAI, Gemini) with one key, a vendor key only its own.
 var Examples = []Example{
-	{Slug: "claude-code", Name: "Claude Code · Opus 5.5", Model: "Claude Opus 5.5", Providers: []string{"anthropic", "orcarouter", "claude-sub"}},
-	{Slug: "codex", Name: "Codex · GPT-6.1 Sol", Model: "GPT-6.1 Sol", Providers: []string{"openai", "orcarouter", "chatgpt-sub"}},
-	{Slug: "gemini-cli", Name: "Gemini CLI · Gemini 3.8 Flash", Model: "Gemini 3.8 Flash", Providers: []string{"google", "orcarouter"}},
-	{Slug: "kimi-code", Name: "Kimi Code · Kimi K3", Model: "Kimi K3", Providers: []string{"orcarouter"}},
-	{Slug: "opencode", Name: "OpenCode · DeepSeek V4.1 Flash", Model: "DeepSeek V4.1 Flash (free)", Providers: []string{"orcarouter"}},
+	{Slug: "claude-code", Name: "Claude Code", Model: "claude-opus-5.5", Providers: []string{"anthropic", "orcarouter", "claude-sub"}},
+	{Slug: "codex", Name: "Codex", Model: "gpt-6.1-sol", Providers: []string{"openai", "orcarouter", "chatgpt-sub"}},
+	{Slug: "gemini-cli", Name: "Gemini CLI", Model: "gemini-3.8-flash", Providers: []string{"google", "orcarouter"}},
+	{Slug: "kimi-code", Name: "Kimi Code", Model: "kimi-k3", Providers: []string{"orcarouter", "openai"}},
+	{Slug: "opencode", Name: "OpenCode", Model: "deepseek-v4.1-flash-free", Providers: []string{"orcarouter", "openai"}},
 }
 
-// exampleBundle returns the example's run.sh, or invalid input when the slug is unknown or the key is the wrong kind.
-func exampleBundle(slug, provider string) ([]byte, error) {
+// exampleBundle returns the example's run.sh and the model it will run (the worker sets MODEL to that model's id
+// at the agent's key kind, which every example honours), or invalid input when the slug or model is unknown or the
+// key can't reach that model through that CLI.
+func exampleBundle(slug, model, provider string) ([]byte, string, error) {
 	i := slices.IndexFunc(Examples, func(e Example) bool { return e.Slug == slug })
 	if i < 0 {
-		return nil, invalid("Unknown example agent")
+		return nil, "", invalid("Unknown example agent")
 	}
-	if !slices.Contains(Examples[i].Providers, provider) {
-		return nil, invalid("This agent doesn't work with that kind of key")
+	e := Examples[i]
+	if model == "" {
+		model = e.Model
 	}
-	return exampleFiles.ReadFile("examples/" + slug + "/run.sh")
+	m := pricing.BySlug(model)
+	if m == nil {
+		return nil, "", invalid("Unknown model")
+	}
+	if _, ok := m.IDs[provider]; !ok || !slices.Contains(e.Providers, provider) {
+		return nil, "", invalid("This agent can't run that model with that kind of key")
+	}
+	script, err := exampleFiles.ReadFile("examples/" + slug + "/run.sh")
+	return script, model, err
 }

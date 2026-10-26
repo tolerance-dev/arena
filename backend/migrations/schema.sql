@@ -47,6 +47,8 @@ CREATE TABLE agents (
     provider     text NOT NULL CHECK (provider IN ('anthropic', 'openai', 'google', 'orcarouter', 'claude-sub', 'chatgpt-sub')),
     api_key      bytea NOT NULL,
     key_hint     text NOT NULL DEFAULT '',
+    -- model: a ready agent's model (internal/pricing slug), '' for an uploaded one. The worker sets MODEL by it.
+    model        text NOT NULL DEFAULT '',
     created_at   timestamptz NOT NULL DEFAULT now(),
     updated_at   timestamptz NOT NULL DEFAULT now()
 );

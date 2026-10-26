@@ -12,6 +12,7 @@ import (
 
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
+	"tolerance/internal/pricing"
 )
 
 // Settings are the platform switches (the one row of the settings table).
@@ -63,6 +64,10 @@ type Spend struct {
 	CacheRead  int64  `json:"cache_read"`
 	CacheWrite int64  `json:"cache_write"`
 	Requests   int64  `json:"requests"`
+	// CostUSD is those tokens at list prices (internal/pricing), on the owners' keys; Unpriced counts the runs it
+	// leaves out: uploaded agents, whose model is unknown.
+	CostUSD  float64 `json:"cost_usd"`
+	Unpriced int     `json:"unpriced"`
 }
 
 // ProviderSpend is the last 30 days' agent tokens by where the key is spent.
@@ -115,6 +120,9 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 				&sp.CacheRead, &sp.CacheWrite, &sp.Requests); err != nil {
 				return err
 			}
+			if err := priceSpend(ctx, tx, p.since, &sp); err != nil {
+				return err
+			}
 			o.Spend = append(o.Spend, sp)
 		}
 		rows, err := tx.Query(ctx, `SELECT a.provider, count(*), coalesce(sum(r.tokens_in + r.tokens_cache_write + r.tokens_out), 0)
@@ -164,6 +172,35 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		return rows.Err()
 	})
 	return o, err
+}
+
+// priceSpend adds the dollar cost of the runs created since `since` (a Postgres interval).
+func priceSpend(ctx context.Context, tx pgx.Tx, since string, sp *Spend) error {
+	rows, err := tx.Query(ctx, `SELECT a.model, a.provider, count(*), coalesce(sum(r.tokens_in), 0), coalesce(sum(r.tokens_out), 0),
+			coalesce(sum(r.tokens_cache_read), 0), coalesce(sum(r.tokens_cache_write), 0)
+		FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.created_at > now() - $1::interval
+		GROUP BY a.model, a.provider`, since)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var model, provider string
+		var n int
+		var in, out, cr, cw int64
+		if err := rows.Scan(&model, &provider, &n, &in, &out, &cr, &cw); err != nil {
+			return err
+		}
+		if pricing.Subscription(provider) {
+			continue // spends the owner's subscription limits, not money
+		}
+		if c := pricing.Cost(model, in, out, cr, cw); c != nil {
+			sp.CostUSD += *c
+		} else if in+out+cr+cw > 0 {
+			sp.Unpriced += n
+		}
+	}
+	return rows.Err()
 }
 
 // SettingsPatch changes only the switches it names.

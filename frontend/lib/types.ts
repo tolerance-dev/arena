@@ -8,10 +8,15 @@ export interface Text { en: string; ru: string }
 
 // A ready agent the upload form offers instead of a file (GET /agents/examples).
 export interface ExampleAgent { slug: string; name: string; model: string; providers: string[] }
+// USD per million tokens (list price).
+export interface Price { in: number; out: number; cache_read: number; cache_write: number }
+export interface ExampleModel { slug: string; name: string; ids: Record<string, string>; price: Price; source: string }
 
 export interface Agent {
   id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
+  // A ready agent's model; price absent when unknown or on a subscription; typical = average finished run on it.
+  model?: string; model_name?: string; price?: Price; typical_cost_usd?: number; typical_runs?: number
 }
 
 export type RunStatus = 'queued' | 'agent' | 'checking' | 'done' | 'infra_error'
@@ -22,11 +27,12 @@ export interface Check { name: string; passed: boolean; detail?: string }
 
 export interface Run {
   id: string; task: string; task_title: Text
-  agent: { id: string; name: string; description: string; provider: string; owner: string }
+  agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | error:N
   time_limit_s: number; token_budget: number
   tokens: Tokens
+  cost_usd: number | null // at list price; null when the model is unknown (on a subscription: no money spent)
   agent_seconds: number | null
   stats: { loc: number; files: number; languages: Record<string, number>; start_seconds?: number; console_errors: number }
   checks: Check[]; score: number | null; app_started: boolean
@@ -58,6 +64,7 @@ export interface AdminSettings { runs_paused: boolean; user_runs: boolean }
 export interface AdminSpend {
   period: '24h' | '7d' | '30d' | 'all'; runs: number; failed: number
   in: number; out: number; cache_read: number; cache_write: number; requests: number
+  cost_usd: number; unpriced: number // dollars at list prices; runs of uploaded agents (model unknown) left out
 }
 export interface AdminUser {
   id: string; handle: string; email: string; role: 'user' | 'admin'; blocked: boolean; agents: number

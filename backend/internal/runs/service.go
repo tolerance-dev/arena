@@ -17,6 +17,7 @@ import (
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
+	"tolerance/internal/pricing"
 	"tolerance/internal/tasks"
 )
 
@@ -37,6 +38,8 @@ type AgentRef struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Provider    string `json:"provider"`
+	Model       string `json:"model,omitempty"`      // pricing.Models slug; empty for an uploaded agent
+	ModelName   string `json:"model_name,omitempty"` // its display name
 	Owner       string `json:"owner"`
 }
 
@@ -74,16 +77,19 @@ type Run struct {
 	TimeLimitS    int        `json:"time_limit_s"`
 	TokenBudget   int64      `json:"token_budget"`
 	Tokens        Tokens     `json:"tokens"`
-	AgentSeconds  *int       `json:"agent_seconds"`
-	Stats         Stats      `json:"stats"`
-	Checks        []Check    `json:"checks"`
-	Score         *int       `json:"score"`
-	AppStarted    bool       `json:"app_started"`
-	HasShot       bool       `json:"has_shot"`
-	HasShotMobile bool       `json:"has_shot_mobile"`
-	HasSource     bool       `json:"has_source"`
-	PreviewURL    string     `json:"preview_url,omitempty"`
-	AgentLog      string     `json:"agent_log,omitempty"`
+	// CostUSD is the tokens at the model's list price: nil when the model is unknown. On a subscription no money is
+	// spent; it is what the run would have cost.
+	CostUSD       *float64 `json:"cost_usd"`
+	AgentSeconds  *int     `json:"agent_seconds"`
+	Stats         Stats    `json:"stats"`
+	Checks        []Check  `json:"checks"`
+	Score         *int     `json:"score"`
+	AppStarted    bool     `json:"app_started"`
+	HasShot       bool     `json:"has_shot"`
+	HasShotMobile bool     `json:"has_shot_mobile"`
+	HasSource     bool     `json:"has_source"`
+	PreviewURL    string   `json:"preview_url,omitempty"`
+	AgentLog      string   `json:"agent_log,omitempty"`
 	// LogTail is the end of the agent's log, for lists: what it is doing now, or why it stopped.
 	LogTail    string     `json:"log_tail"`
 	CheckLog   string     `json:"check_log,omitempty"`
@@ -95,7 +101,7 @@ type Run struct {
 	QueueWaitS    *int `json:"queue_wait_s,omitempty"`
 }
 
-const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, u.handle, r.status, r.failure_reason, r.agent_exit,
+const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, a.model, u.handle, r.status, r.failure_reason, r.agent_exit,
 	r.time_limit_s, r.token_budget, r.tokens_in, r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, r.llm_requests,
 	r.agent_seconds, r.stats, r.checks, r.score, r.app_started,
 	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.created_at, r.started_at, r.finished_at,
@@ -106,7 +112,7 @@ const runFrom = ` FROM runs r JOIN agents a ON a.id = r.agent_id JOIN users u ON
 func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	var r Run
 	var stats, checks []byte
-	dest := []any{&r.ID, &r.Task, &r.Agent.ID, &r.Agent.Name, &r.Agent.Description, &r.Agent.Provider, &r.Agent.Owner,
+	dest := []any{&r.ID, &r.Task, &r.Agent.ID, &r.Agent.Name, &r.Agent.Description, &r.Agent.Provider, &r.Agent.Model, &r.Agent.Owner,
 		&r.Status, &r.FailureReason, &r.AgentExit, &r.TimeLimitS, &r.TokenBudget, &r.Tokens.In, &r.Tokens.Out,
 		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests,
 		&r.AgentSeconds, &stats, &checks, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
@@ -117,6 +123,10 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 		}
 		return r, err
 	}
+	if m := pricing.BySlug(r.Agent.Model); m != nil {
+		r.Agent.ModelName = m.Name
+	}
+	r.CostUSD = pricing.Cost(r.Agent.Model, r.Tokens.In, r.Tokens.Out, r.Tokens.CacheRead, r.Tokens.CacheWrite)
 	_ = json.Unmarshal(stats, &r.Stats)
 	if r.Stats.Languages == nil {
 		r.Stats.Languages = map[string]int{}

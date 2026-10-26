@@ -15,7 +15,8 @@ import { del, post, put, upload } from '@/lib/api'
 import { useT } from '@/lib/i18n/client'
 import { errorText } from '@/lib/i18n/messages/errors'
 import { runsMessages } from '@/lib/i18n/messages/runs'
-import type { Agent, ExampleAgent, Run, TaskSummary } from '@/lib/types'
+import type { Agent, ExampleAgent, ExampleModel, Run, TaskSummary } from '@/lib/types'
+import { costCeiling, usd } from '@/lib/format'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, ProviderOptions, providerLabel, usePoll, type RT } from './bits'
@@ -76,15 +77,22 @@ export function MyAgents() {
 const EXAMPLES_URL = 'https://github.com/tolerance-dev/arena/tree/main/backend/internal/agents/examples'
 
 function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () => void; onCancel?: () => void; subscriptions: boolean }) {
-  const examples = usePoll<{ items: ExampleAgent[] }>('/agents/examples', 3_600_000).data?.items ?? []
+  const catalog = usePoll<{ items: ExampleAgent[]; models: ExampleModel[] }>('/agents/examples', 3_600_000).data
+  const examples = catalog?.items ?? []
   const [source, setSource] = useState<'example' | 'file'>('example')
   const [slug, setSlug] = useState('')
   const example = source === 'example' ? (examples.find((e) => e.slug === slug) ?? examples[0]) : undefined
-  // The name follows the picked agent until the user types their own.
+  const usable = (p: string) => subscriptions || !p.endsWith('-sub')
+  // Any CLI with any model: the model must be served at a key kind the CLI speaks.
+  const models = (catalog?.models ?? []).filter((m) => example?.providers.some((p) => usable(p) && m.ids[p]))
+  const [modelSlug, setModelSlug] = useState('')
+  const model = models.find((m) => m.slug === modelSlug) ?? models.find((m) => m.slug === example?.model) ?? models[0]
+  // The name follows the picked agent and model until the user types their own.
   const [name, setName] = useState<string | null>(null)
   const [provider, setProvider] = useState('anthropic')
-  const offered = example?.providers.filter((p) => subscriptions || !p.endsWith('-sub'))
+  const offered = example?.providers.filter((p) => usable(p) && (!model || model.ids[p]))
   const providerValue = offered && !offered.includes(provider) ? offered[0] : provider
+  const defaultName = example && model ? `${example.name} · ${model.name.replace(' (free)', '')}` : ''
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -95,6 +103,7 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
     try {
       const data = new FormData(form)
       if (example) data.set('example', example.slug)
+      if (example && model) data.set('model', model.slug)
       await upload<Agent>('/my/agents', data)
       form.reset()
       setName(null)
@@ -119,11 +128,16 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
           {source === 'example' ? (
             <div className="space-y-1.5">
               <Label htmlFor="example">{t('exampleLabel')}</Label>
-              <select id="example" className={field} value={example?.slug ?? ''} onChange={(e) => setSlug(e.target.value)}>
+              <select id="example" className={field} value={example?.slug ?? ''} onChange={(e) => { setSlug(e.target.value); setModelSlug('') }}>
                 {examples.map((e) => <option key={e.slug} value={e.slug}>{e.name}</option>)}
               </select>
-              {example && <p className="text-xs text-muted-foreground">
-                {t('exampleHint', { model: example.model, providers: example.providers.filter((p) => subscriptions || !p.endsWith('-sub')).map(providerLabel).join(', ') })}
+              <Label htmlFor="model" className="pt-2">{t('modelLabel')}</Label>
+              <select id="model" className={field} value={model?.slug ?? ''} onChange={(e) => setModelSlug(e.target.value)}>
+                {models.map((m) => <option key={m.slug} value={m.slug}>{m.name}{m.slug === example?.model ? ` · ${t('modelNative')}` : ''}</option>)}
+              </select>
+              {example && model && <p className="text-xs text-muted-foreground">
+                {t(model.slug === example.model ? 'exampleHint' : 'exampleHintMixed', { providers: (offered ?? []).map(providerLabel).join(', ') })}{' '}
+                {model.price.in + model.price.out === 0 ? t('modelFree') : t('modelPrice', { in: usd(model.price.in), out: usd(model.price.out) })}
               </p>}
             </div>
           ) : (
@@ -143,7 +157,7 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
         <div className="space-y-1.5">
           <Label htmlFor="name">{t('agentName')}</Label>
           <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5"
-            value={name ?? example?.name ?? ''} onChange={(e) => setName(e.target.value)} />
+            value={name ?? defaultName} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="description">{t('agentDescription')}</Label>
@@ -248,6 +262,7 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
           <Button size="icon" variant="ghost" aria-label={t('moreSettings')} aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreHorizontal /></Button>
         </div>
       </div>
+      <CostHint agent={agent} budget={limits.token_budget || (tasks.find((x) => x.slug === chosen)?.token_budget ?? 0)} t={t} />
       {err && <p className="mt-2 text-body text-destructive">{err}</p>}
       {more && (
         <div className="mt-4 grid gap-4 rounded-lg bg-muted p-4 sm:grid-cols-2">
@@ -278,5 +293,21 @@ function AgentRow({ agent, tasks, preset, t, onChange, onStarted, subscriptions 
         </div>
       )}
     </div>
+  )
+}
+
+// What a run of this agent will roughly cost: the average finished run on its model, and the budget's ceiling.
+function CostHint({ agent, budget, t }: { agent: Agent; budget: number; t: RT }) {
+  if (!agent.price) return agent.model ? null : <p className="mt-2 text-meta text-muted-foreground">{t('costHintUnknown')}</p>
+  const p = agent.price
+  if (p.in + p.out + p.cache_read + p.cache_write === 0) return <p className="mt-2 text-meta text-muted-foreground">{t('costHintFree')}</p>
+  const ceiling = usd(costCeiling(p, budget))
+  const sub = agent.provider.endsWith('-sub')
+  return (
+    <p className="mt-2 text-meta text-muted-foreground">
+      {agent.typical_cost_usd != null
+        ? t(sub ? 'costHintSub' : 'costHint', { typical: usd(agent.typical_cost_usd), n: agent.typical_runs ?? 0, ceiling })
+        : t(sub ? 'costHintSubNoRuns' : 'costHintNoRuns', { ceiling })}
+    </p>
   )
 }

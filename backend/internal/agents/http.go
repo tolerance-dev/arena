@@ -7,6 +7,7 @@ import (
 
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/httpx"
+	"tolerance/internal/pricing"
 )
 
 // RegisterPublicRoutes mounts the public reads (no keys).
@@ -20,7 +21,7 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
 	})
 	mux.HandleFunc("GET /api/v1/agents/examples", func(w http.ResponseWriter, r *http.Request) {
-		httpx.Respond(w, http.StatusOK, map[string]any{"items": Examples})
+		httpx.Respond(w, http.StatusOK, map[string]any{"items": Examples, "models": pricing.Models})
 	})
 	mux.HandleFunc("GET /api/v1/agents/{id}", func(w http.ResponseWriter, r *http.Request) {
 		a, err := s.Get(r.Context(), r.PathValue("id"), false)
@@ -55,14 +56,14 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
-		data, err := formBundle(r)
+		data, model, err := formBundle(r)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		a, err := s.Create(r.Context(), identity.MustFromContext(r.Context()).UserID, identity.OwnerScope(r.Context()) != "", CreateInput{
 			Name: r.FormValue("name"), Description: r.FormValue("description"), Provider: r.FormValue("provider"),
-			APIKey: r.FormValue("api_key"), Bundle: data,
+			APIKey: r.FormValue("api_key"), Bundle: data, Model: model,
 		})
 		if err != nil {
 			httpx.WriteError(w, r, err)
@@ -100,19 +101,20 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 	})
 }
 
-// formBundle is the upload's bundle: a ready example (example=<slug>, see Examples) or the uploaded file.
-func formBundle(r *http.Request) ([]byte, error) {
+// formBundle is the upload's bundle and its model: a ready example (example=<slug>, model=<slug>, see Examples)
+// or the uploaded file (model unknown).
+func formBundle(r *http.Request) ([]byte, string, error) {
 	if slug := r.FormValue("example"); slug != "" {
-		return exampleBundle(slug, r.FormValue("provider"))
+		return exampleBundle(slug, r.FormValue("model"), r.FormValue("provider"))
 	}
 	f, _, err := r.FormFile("bundle")
 	if err != nil {
-		return nil, invalid("Pick a ready agent or upload a bundle")
+		return nil, "", invalid("Pick a ready agent or upload a bundle")
 	}
 	defer f.Close()
 	data, err := io.ReadAll(io.LimitReader(f, MaxBundleBytes+1))
 	if err != nil || len(data) > MaxBundleBytes {
-		return nil, httpx.New(http.StatusRequestEntityTooLarge, "body_too_large", "The bundle is larger than 20 MB")
+		return nil, "", httpx.New(http.StatusRequestEntityTooLarge, "body_too_large", "The bundle is larger than 20 MB")
 	}
-	return data, nil
+	return data, "", nil
 }
