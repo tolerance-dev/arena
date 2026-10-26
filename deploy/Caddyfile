@@ -4,8 +4,7 @@
 {
 	# Cloudflare's edge ranges (https://www.cloudflare.com/ips-v4, ips-v6) as
 	# of 2026-09-25: CF-Connecting-IP is trusted only from them. tolerance.cc
-	# is DNS-only (Cloudflare's proxy is slowed down in Russia), so this is
-	# for mentor.nualimov.dev, still proxied.
+	# no longer goes through Cloudflare, so this is for mentor.nualimov.dev.
 	servers {
 		trusted_proxies static \
  173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
@@ -58,18 +57,17 @@
 	}
 }
 
-# tolerance.cc is DNS-only in Cloudflare: browsers reach this host directly.
-# Its certificates, the *.tolerance.cc wildcard for the previews among them,
-# come from Let's Encrypt through DNS-01 (caddy-dns/cloudflare, built into
-# tolerance-caddy; CLOUDFLARE_API_TOKEN in .env: Zone.DNS edit on the zone).
-(acme_cloudflare_dns) {
+# tolerance.cc's DNS is Bunny (deploy/README.md): Russia gets the relay's address, everyone else this host's.
+# Its certificates, the *.tolerance.cc wildcard for the previews among them, come from Let's Encrypt through
+# DNS-01 (caddy-dns/bunny, built into tolerance-caddy; BUNNY_API_KEY in .env).
+(acme_dns) {
 	tls {
-		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		dns bunny {env.BUNNY_API_KEY}
 	}
 }
 
 {$ARENA_DOMAIN} {
-	import acme_cloudflare_dns
+	import acme_dns
 
 	encode zstd gzip
 
@@ -116,16 +114,16 @@
 }
 
 www.{$ARENA_DOMAIN} {
-	import acme_cloudflare_dns
+	import acme_dns
 	redir https://{$ARENA_DOMAIN}{uri} permanent
 }
 
 # Live previews: p-<run>.{$ARENA_DOMAIN} → the gateway, which starts the run's app from its snapshot on demand.
 # This is agent-written code, so each preview is its own origin and the api refuses writes from other origins.
-# A wildcard A record (DNS-only) in Cloudflare points them here; one wildcard certificate covers them all.
+# The wildcard record in Bunny DNS points them here (or at the relay); one wildcard certificate covers them all.
 # The gateway sets frame-ancestors to the site, so previews open only inside tolerance.cc or on their own.
 *.{$ARENA_DOMAIN} {
-	import acme_cloudflare_dns
+	import acme_dns
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"

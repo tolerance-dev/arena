@@ -174,14 +174,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
 
-  # caddy + the Cloudflare DNS module (caddy/Dockerfile): Let's Encrypt certificates through DNS-01, see the Caddyfile.
+  # caddy + the Bunny DNS module (caddy/Dockerfile): Let's Encrypt certificates through DNS-01, see the Caddyfile.
   caddy:
     image: ghcr.io/tolerance-dev/tolerance-caddy:${TAG:?}
     restart: unless-stopped
     logging: *logging
     environment:
       ARENA_DOMAIN: ${ARENA_DOMAIN:?}
-      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?}
+      BUNNY_API_KEY: ${BUNNY_API_KEY:?}
     ports:
       - "80:80"
       - "443:443"
