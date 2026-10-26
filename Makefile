@@ -94,9 +94,11 @@ images:
 docker:
 	@docker info >/dev/null 2>&1 || (command -v colima >/dev/null && colima start) || (echo "Docker is not running"; exit 1)
 
-# Everyday check: fmt, vet, tests, typecheck.
-test-fast:
-	cd backend && test -z "$$(gofmt -l .)" && go vet ./... && go test ./...
+# Everyday check: fmt, vet, tests, typecheck. The database tests (internal/platform/db/dbtest) make their own
+# throwaway databases in this checkout's postgres.
+test-fast: db
+	cd backend && test -z "$$(gofmt -l .)" && go vet ./... && \
+		ARENA_TEST_DATABASE_URL="postgres://arena_migrate:$(POSTGRES_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" go test ./...
 	cd frontend && pnpm typecheck
 
 # test-fast plus a production frontend build.
