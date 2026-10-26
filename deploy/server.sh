@@ -8,6 +8,8 @@
 #                                    is edited in place, so a schema change needs it.
 #   server.sh backup [label]         pg_dump into backups/ (keeps the newest 30); cron runs it daily, deploy before
 #                                    every swap (a failed dump stops a reset)
+#                                    and, when BACKUP_REMOTE is set in .env, an encrypted copy off the server
+#   server.sh offsite-get <name>     fetch and decrypt an off-site copy into backups/ (for restore)
 #   server.sh restore <dump> [table...]
 #                                    whole dump back (api/gateway/web stopped meanwhile), or only these tables' rows
 #                                    into the current schema (e.g. users user_identities agents after a reset)
@@ -49,6 +51,48 @@ cmd_backup() {
   # shellcheck disable=SC2012 # our own file names, no spaces
   ls -1t "$BACKUPS"/arena-*.dump | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -f
   echo "--- backup $f ($(du -h "$f" | cut -f1))"
+  # The off-site copy is extra: its failure doesn't fail the backup (a deploy goes on, the local dump is there).
+  offsite_put "$f" || echo "WARNING: off-site copy of $f failed" >&2
+}
+
+# Off-site copies: the dump, encrypted with BACKUP_PASSPHRASE (openssl, AES-256), copied by rclone (in a container,
+# nothing to install) to BACKUP_REMOTE, e.g. offsite:tolerance-backups/arena. The remote is configured by
+# RCLONE_CONFIG_<NAME>_* lines in .env (rclone's env config; for Cloudflare R2: _TYPE=s3 _PROVIDER=Cloudflare
+# _ACCESS_KEY_ID _SECRET_ACCESS_KEY _ENDPOINT). Copies older than OFFSITE_DAYS are deleted there.
+RCLONE_IMAGE=rclone/rclone:1.68.2
+OFFSITE_DAYS=30
+envval() { grep "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2-; }
+rclone() {
+  docker run --rm --env-file <(grep '^RCLONE_' .env) -v "$PWD/$BACKUPS:/data" "$RCLONE_IMAGE" "$@"
+}
+
+offsite_put() {
+  local f=$1 remote pass name
+  remote=$(envval BACKUP_REMOTE)
+  [ -n "$remote" ] || return 0
+  pass=$(envval BACKUP_PASSPHRASE)
+  [ -n "$pass" ] || { echo "BACKUP_REMOTE is set but BACKUP_PASSPHRASE is empty" >&2; return 1; }
+  name=$(basename "$f").enc
+  BACKUP_PASSPHRASE=$pass openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_PASSPHRASE \
+    -in "$f" -out "$BACKUPS/$name" || return 1
+  rclone copyto "/data/$name" "$remote/$name" --s3-no-check-bucket; local rc=$?
+  rm -f "$BACKUPS/$name"
+  [ $rc -eq 0 ] || return 1
+  rclone delete --min-age "${OFFSITE_DAYS}d" "$remote" || true
+  echo "--- off-site $remote/$name"
+}
+
+cmd_offsite_get() {
+  local name=$1 remote pass out
+  remote=$(envval BACKUP_REMOTE); pass=$(envval BACKUP_PASSPHRASE)
+  [ -n "$remote" ] && [ -n "$pass" ] || { echo "BACKUP_REMOTE / BACKUP_PASSPHRASE not set in .env" >&2; exit 1; }
+  mkdir -p "$BACKUPS"
+  rclone copyto "$remote/$name" "/data/$name"
+  out="$BACKUPS/${name%.enc}"
+  BACKUP_PASSPHRASE=$pass openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE \
+    -in "$BACKUPS/$name" -out "$out"
+  rm -f "$BACKUPS/$name"
+  echo "--- $out (server.sh restore $out)"
 }
 
 cmd_restore() {
@@ -183,6 +227,7 @@ cmd_status() {
 case "${1:-}" in
   deploy) cmd_deploy "${2:?usage: server.sh deploy <sha> [reset]}" "${3:-}" ;;
   backup) cmd_backup "${2:-}" ;;
+  offsite-get) cmd_offsite_get "${2:?usage: server.sh offsite-get <name>.dump.enc}" ;;
   restore) shift; cmd_restore "${1:?usage: server.sh restore <dump> [table...]}" "${@:2}" ;;
   status) cmd_status ;;
   *) echo "usage: server.sh deploy <sha> [reset] | backup [label] | restore <dump> [table...] | status" >&2; exit 2 ;;
