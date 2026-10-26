@@ -6,9 +6,10 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   `-f reset_db=true` wipes the DB — needed after any schema change). It builds backend, web and
   `tolerance-runtime` (= `arena-runtime:1`) into `ghcr.io/tolerance-dev` and runs `server.sh` on the host over SSH
   (secrets in the `production` environment).
-- **Host**: UpCloud `STARTER-2xCPU-4GB` (pl-waw1, 30 GB disk, 3 GB swap, ~$21/month since 2026-10-20),
-  81.27.103.131, `/opt/tolerance`, user `deploy`. Enough for one run at a time (`ARENA_RUN_CONCURRENCY=1`); more
-  parallel runs need a bigger plan first. Nothing else lives there.
+- **Host**: UpCloud `STARTER-4xCPU-16GB` (pl-waw1, 3 GB swap, ~$34/month for the plan plus disk and IP; was
+  `STARTER-2xCPU-4GB` until 2026-10-26), 81.27.103.131, `/opt/tolerance`, user `deploy`. Two runs at a time
+  (`ARENA_RUN_CONCURRENCY`, default 2 in `compose.yml`): an agent may take 6 GB and 2 CPUs (`runs/worker.go`), the
+  stack about 1 GB. A third needs more memory first. The account is prepaid: the API reports `credits` in cents. Nothing else lives there.
 - **Backups**: `server.sh backup` dumps the DB to `/opt/tolerance/backups/` (newest 30 kept, same disk, not
   off-site): daily at 03:17 UTC from the `deploy` crontab (installed by every deploy) and before every deploy, so a
   `reset_db` deploy leaves `arena-<time>-pre-<sha>.dump` behind. After migrating, a reset loads users,
