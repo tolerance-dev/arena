@@ -58,7 +58,7 @@ export interface TaskView extends TaskSummary {
 export interface Rating { elo: number; votes: number; wins: number; losses: number; ties: number }
 
 // One side of a blind pair: what shows the app, nothing that names the agent.
-// alias stands for the run until the vote: its shots are /api/v1/my/vote/<alias>/shot.jpg.
+// alias stands for the run until the vote: its shots are /api/v1/vote/<alias>/shot.jpg.
 export interface Contender { alias: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
 export interface Pair { id: string; task: string; task_title: string; a: Contender; b: Contender; left: number }
 export interface Reveal { a: Run['agent']; b: Run['agent'] }

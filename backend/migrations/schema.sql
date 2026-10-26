@@ -126,7 +126,7 @@ CREATE TABLE pair_votes (
 -- live previews are served by alias, so the run ids (and through them the agents) stay hidden until the vote.
 CREATE TABLE vote_pairs (
     id         text PRIMARY KEY,
-    user_id    text NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id    text REFERENCES users (id) ON DELETE CASCADE, -- NULL: handed to a guest, whoever signs in and votes on it
     task       text NOT NULL,
     run_a      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
     run_b      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,

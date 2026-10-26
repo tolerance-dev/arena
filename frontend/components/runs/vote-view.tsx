@@ -1,7 +1,7 @@
 'use client'
 
 import { plural } from '@/lib/format'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Equal, ExternalLink, Maximize2 } from 'lucide-react'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
@@ -18,8 +18,23 @@ import { cn } from '@/lib/utils'
 import { AgentAvatar, usePoll } from './bits'
 
 
+// A guest's pick waits here while they sign in (OAuth leaves the page); back on /vote it is sent and revealed.
+const pendingKey = 'tolerance:pending-vote'
+
+type Pending = { pair: Pair; winner: Winner; sent?: boolean }
+
+function readPending(): Pending | null {
+  try {
+    const raw = sessionStorage.getItem(pendingKey)
+    sessionStorage.removeItem(pendingKey)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 // The blind pairwise vote: two agents' apps at one task, names hidden until the pick is in. /vote?task=<slug>
-// starts on that task.
+// starts on that task. Guests see the pairs too and sign in when they pick.
 export function VoteView() {
   const { me, loading } = useMe()
   const signIn = useSignIn()
@@ -29,25 +44,54 @@ export function VoteView() {
   const [picked, setPicked] = useState<{ winner: Winner; reveal: Reveal } | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // undefined = not read yet. Kept in a ref so a re-run of the effect (React dev runs effects twice) neither sends the
+  // pick again nor loads a new pair over its reveal.
+  const pending = useRef<Pending | null | undefined>(undefined)
 
   useEffect(() => setTask(new URLSearchParams(window.location.search).get('task') ?? ''), [])
 
   const load = useCallback(async (slug: string) => {
     setPair(undefined); setPicked(null); setErr('')
     try {
-      const r = await api<{ pair: Pair | null }>(`/my/vote${slug ? `?task=${encodeURIComponent(slug)}` : ''}`)
+      const r = await api<{ pair: Pair | null }>(`${me ? '/my/vote' : '/vote'}${slug ? `?task=${encodeURIComponent(slug)}` : ''}`)
       setPair(r.pair)
     } catch (e) {
       setPair(null); setErr(errorText(e))
     }
-  }, [])
+  }, [me])
+
+  // Back from sign-in with a pick: send it on the same pair; if that fails (expired, own agent), go on to a new one.
+  const sendPending = useCallback(async (p: Pending, slug: string) => {
+    setPair(p.pair); setPicked(null); setBusy(true); setErr('')
+    try {
+      setPicked({ winner: p.winner, reveal: await post<Reveal>('/my/votes', { pair: p.pair.id, winner: p.winner }) })
+    } catch (e) {
+      await load(slug)
+      setErr(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }, [load])
 
   useEffect(() => {
-    if (me && task != null) void load(task)
-  }, [me, task, load])
+    if (loading || task == null) return
+    if (me && pending.current === undefined) pending.current = readPending()
+    const p = me ? pending.current : null
+    if (!p) void load(task)
+    else if (!p.sent) {
+      p.sent = true
+      void sendPending(p, task)
+    }
+  }, [loading, me, task, load, sendPending])
 
   const vote = useCallback(async (winner: Winner) => {
     if (!pair || picked || busy) return
+    if (!me) {
+      try { sessionStorage.setItem(pendingKey, JSON.stringify({ pair, winner })) } catch { /* the pick is lost: they pick again */ }
+      if (signIn) signIn()
+      else window.location.href = loginHref('/vote')
+      return
+    }
     setBusy(true); setErr('')
     try {
       setPicked({ winner, reveal: await post<Reveal>('/my/votes', { pair: pair.id, winner }) })
@@ -56,7 +100,7 @@ export function VoteView() {
     } finally {
       setBusy(false)
     }
-  }, [pair, picked, busy])
+  }, [pair, picked, busy, me, signIn])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,6 +117,7 @@ export function VoteView() {
   }, [picked, vote, load, task])
 
   const choose = (slug: string) => {
+    pending.current = null
     setTask(slug)
     const url = new URL(window.location.href)
     if (slug) url.searchParams.set('task', slug)
@@ -81,17 +126,6 @@ export function VoteView() {
   }
 
   if (loading) return <Skeleton className="h-96" />
-  if (!me) {
-    return (
-      <div className="max-w-md space-y-4">
-        <h1 className="display text-page">Какое приложение лучше?</h1>
-        <p className="text-muted-foreground">Войдите, чтобы голосовать: один голос за пару от человека делает рейтинг честным.</p>
-        {signIn
-          ? <Button onClick={signIn}>Войти</Button>
-          : <Button render={<Link href={loginHref('/vote')} />} nativeButton={false}>Войти</Button>}
-      </div>
-    )
-  }
 
   return (
     <div>
@@ -128,6 +162,7 @@ export function VoteView() {
               )}
             </div>
             {err && <p className="mt-3 text-center text-body text-destructive">{err}</p>}
+            {!me && !picked && <p className="mt-3 text-center text-body text-muted-foreground">Голос засчитается после входа: один человек — один голос за пару. Имена агентов откроются сразу.</p>}
             <p className="mt-4 text-center text-body text-muted-foreground">
               {(picked ? pair.left - 1 : pair.left) > 0 && <>{plural(picked ? pair.left - 1 : pair.left, 'В этом задании осталась {n} пара', 'В этом задании осталось {n} пары', 'В этом задании осталось {n} пар')}<span className="max-sm:hidden"> · </span></>}
               <span className="max-sm:hidden">Клавиши: ← A, ↓ ничья, → B, Enter — дальше.</span>
@@ -141,8 +176,8 @@ export function VoteView() {
 
 // One app of the pair: the desktop screenshot leads, the phone one beside it; after the vote, whose it was.
 function Side({ c, side, agent, won }: { c: Contender; side: 'A' | 'B'; agent?: Reveal['a']; won?: boolean }) {
-  const shot = `/api/v1/my/vote/${c.alias}/shot.jpg`
-  const mobile = `/api/v1/my/vote/${c.alias}/shot-mobile.jpg`
+  const shot = `/api/v1/vote/${c.alias}/shot.jpg`
+  const mobile = `/api/v1/vote/${c.alias}/shot-mobile.jpg`
   return (
     <article className={cn('rounded-xl border-2 p-3 transition-colors duration-300', won ? 'border-primary' : 'border-border')}>
       <div className="flex items-center justify-between gap-3">

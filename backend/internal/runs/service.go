@@ -29,6 +29,8 @@ type Service struct {
 	Slots int
 	// VoteAllowed rate-limits votes (by user and client address); nil = no limit.
 	VoteAllowed func(r *http.Request, userID string) bool
+	// GuestPairAllowed rate-limits the pairs handed to guests (by client address); nil = no limit.
+	GuestPairAllowed func(r *http.Request) bool
 }
 
 func NewService(pool *db.Pool, previewURL string, slots int) *Service {

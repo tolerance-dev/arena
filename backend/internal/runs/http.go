@@ -117,6 +117,34 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/runs/{id}/source.zip", func(w http.ResponseWriter, r *http.Request) {
 		blob("source_zip", "application/zip", `attachment; filename="`+PreviewHost(r.PathValue("id"))+`-source.zip"`)(w, r)
 	})
+
+	// A guest's pair: they see the apps before signing in, and sign in to vote (POST /api/v1/my/votes claims it).
+	mux.HandleFunc("GET /api/v1/vote", func(w http.ResponseWriter, r *http.Request) {
+		if s.GuestPairAllowed != nil && !s.GuestPairAllowed(r) {
+			httpx.WriteError(w, r, httpx.New(http.StatusTooManyRequests, "rate_limited", "Too many pairs: take a break and come back later"))
+			return
+		}
+		p, err := s.NextPair(r.Context(), "", r.URL.Query().Get("task"))
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]any{"pair": p})
+	})
+	voteShot := func(column string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			b, err := s.VoteShot(r.Context(), r.PathValue("alias"), column)
+			if err != nil {
+				httpx.WriteError(w, r, err)
+				return
+			}
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Header().Set("Cache-Control", "private, max-age=3600")
+			_, _ = w.Write(b)
+		}
+	}
+	mux.HandleFunc("GET /api/v1/vote/{alias}/shot.jpg", voteShot("shot"))
+	mux.HandleFunc("GET /api/v1/vote/{alias}/shot-mobile.jpg", voteShot("shot_mobile"))
 }
 
 // RegisterOwnerRoutes mounts starting, cancelling and deleting runs for any signed-in user, on their own agents
@@ -161,20 +189,6 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		}
 		httpx.Respond(w, http.StatusOK, map[string]any{"pair": p})
 	})
-	voteShot := func(column string) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			b, err := s.VoteShot(r.Context(), identity.MustFromContext(r.Context()).UserID, r.PathValue("alias"), column)
-			if err != nil {
-				httpx.WriteError(w, r, err)
-				return
-			}
-			w.Header().Set("Content-Type", "image/jpeg")
-			w.Header().Set("Cache-Control", "private, max-age=3600")
-			_, _ = w.Write(b)
-		}
-	}
-	mux.HandleFunc("GET /api/v1/my/vote/{alias}/shot.jpg", voteShot("shot"))
-	mux.HandleFunc("GET /api/v1/my/vote/{alias}/shot-mobile.jpg", voteShot("shot_mobile"))
 	mux.HandleFunc("POST /api/v1/my/votes", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)
 		if err != nil {
