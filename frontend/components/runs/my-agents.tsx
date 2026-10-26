@@ -70,7 +70,33 @@ export function MyAgents() {
           </ul>
         )}
       </section>
+      {!me.can_admin && <DeleteAccount t={t} />}
     </div>
+  )
+}
+
+// Deleting the account takes everything with it (agents and their keys, runs, votes); two clicks, like an agent.
+function DeleteAccount({ t }: { t: RT }) {
+  const [armed, setArmed] = useState(false)
+  const [err, setErr] = useState('')
+  const remove = async () => {
+    if (!armed) return setArmed(true)
+    try {
+      await del('/me')
+      window.location.assign('/')
+    } catch (e) {
+      setErr(errorText(e, t.locale))
+    }
+  }
+  return (
+    <section className="max-w-[68ch]">
+      <SectionTitle>{t('accountTitle')}</SectionTitle>
+      <p className="text-body text-muted-foreground">{t('accountLead')}</p>
+      <Button className="mt-3" variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>
+        {armed ? t('confirmAgain') : t('deleteAccount')}
+      </Button>
+      {err && <p className="mt-2 text-body text-destructive">{err}</p>}
+    </section>
   )
 }
 
