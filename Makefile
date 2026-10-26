@@ -1,4 +1,4 @@
-.PHONY: oauth-relay up down logs reset dev db gateway docker migrate run-api run-web images test test-fast
+.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -6,8 +6,7 @@ COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compos
 LOCAL_SECRETS ?= $(HOME)/.config/tolerance/env
 -include $(LOCAL_SECRETS)
 -include .env
-# docker compose (make up / gateway) reads these from the environment.
-export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
+# docker compose (the gateway) reads it from the environment.
 export ARENA_GATEWAY_FAKE
 # Checkouts share the Docker host: each is its own stack, so its worker attaches its own gateway to its runs'
 # networks and cleans up only its own sandboxes and snapshots.
@@ -30,15 +29,6 @@ API_PORT ?= 8080
 PG_PORT ?= 5432
 GATEWAY_PORT ?= 3023
 ARENA_SECRET_KEY ?= dev-only-secret-key-change-me
-
-# Everything in Docker.
-up: .env docker images oauth-relay
-	$(COMPOSE) up --build -d
-	@echo
-	@echo "  site:  http://localhost:$(WEB_PORT)"
-	@echo "  api:   http://localhost:$(API_PORT)/healthz"
-	@echo "  previews: http://<run>.preview.localhost:$(GATEWAY_PORT)"
-	@echo "  logs:  make logs"
 
 down:
 	$(COMPOSE) down
