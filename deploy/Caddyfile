@@ -106,8 +106,8 @@ www.{$ARENA_DOMAIN} {
 # mentor.nualimov.dev (repo artur-gavronchuk/nualimov.dev): its own stack runs
 # from /root/nualimov.dev with no public ports; its Caddy joins
 # tolerance_default as mentor-web. Nothing else is hosted on this server.
-# Its DNS (Cloudflare zone nualimov.dev, not proxied) is a CNAME to
-# edge.tolerance.cc, so Russia reaches it through the relay too. Certificate:
+# nualimov.dev's DNS is Bunny too: mentor is a script record on the same
+# tolerance-geo script, so Russia reaches it through the relay. Certificate:
 # Caddy's default ACME (HTTP-01 / TLS-ALPN-01).
 mentor.nualimov.dev {
 	reverse_proxy mentor-web:80 {
