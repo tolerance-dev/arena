@@ -7,6 +7,7 @@ import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Feed, Meta } from '@/components/ui/feed'
 import { Button } from '@/components/ui/button'
+import { RECENT_RUNS } from '@/lib/api'
 import { compact, plural } from '@/lib/format'
 import type { Run, TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
@@ -17,9 +18,10 @@ import { rankAgents } from './standings'
 
 // The front page in the site's one frame: the tasks as cards with their best solution, the latest runs as a feed,
 // and in the aside a line with the conditions every agent works under and the top three agents.
-export function HomeView() {
-  const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000)
-  const recent = usePoll<{ items: Run[] }>('/runs?limit=10', 8_000)
+// initialTasks and initialRuns come from the server render, so the numbers are in the HTML.
+export function HomeView({ initialTasks, initialRuns }: { initialTasks?: { items: TaskSummary[] } | null; initialRuns?: { items: Run[] } | null }) {
+  const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000, undefined, initialTasks)
+  const recent = usePoll<{ items: Run[] }>(RECENT_RUNS, 8_000, undefined, initialRuns)
   const items = tasks.data?.items
 
   return (
