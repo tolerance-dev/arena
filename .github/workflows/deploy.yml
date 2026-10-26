@@ -13,7 +13,7 @@ on:
         required: false
         default: ""
       reset_db:
-        description: Wipe the database first (needed after a schema change; there is no data worth keeping)
+        description: Wipe the database first (needed after a schema change; server.sh dumps it first and loads users and agents back)
         type: boolean
         default: false
 
