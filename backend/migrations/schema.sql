@@ -88,6 +88,18 @@ CREATE TABLE runs (
 CREATE INDEX runs_open_idx ON runs (created_at) WHERE status IN ('queued', 'agent', 'checking');
 CREATE INDEX runs_task_idx ON runs (task, score DESC NULLS LAST);
 
+-- The daily run quota (runs.Create): one row per run a user started, kept when the run or its agent is deleted, so
+-- deleting doesn't give the quota back. run_id has no foreign key on purpose. refunded: the worker ended the run
+-- in infra_error (the platform's fault; a cancel isn't), so it doesn't count. arena_app may not delete rows;
+-- they go only with the user (account deletion).
+CREATE TABLE run_quota (
+    run_id     text PRIMARY KEY,
+    user_id    text NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    refunded   boolean NOT NULL DEFAULT false,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX run_quota_user_idx ON run_quota (user_id, created_at);
+
 -- Short-lived credentials the sandboxed agent sends to the gateway instead of a real key.
 CREATE TABLE gateway_tokens (
     token_hash text PRIMARY KEY,
@@ -136,4 +148,5 @@ INSERT INTO settings DEFAULT VALUES;
 
 GRANT USAGE ON SCHEMA public TO arena_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, vote_pairs, settings TO arena_app;
+GRANT SELECT, INSERT, UPDATE ON run_quota TO arena_app;
 

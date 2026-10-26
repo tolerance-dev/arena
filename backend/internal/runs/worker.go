@@ -69,8 +69,8 @@ func (w *Worker) Run(ctx context.Context) {
 	sandbox.RemoveByLabel(ctx, "arena.role=agent")
 	sandbox.RemoveByLabel(ctx, "arena.role=check") // the check, the app under check and the source reader
 	sandbox.RemoveNetworks(ctx, "arena.role=run")
-	_ = w.exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
-		WHERE status IN ('agent', 'checking')`)
+	_ = w.exec(ctx, refundQuota(`UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
+		WHERE status IN ('agent', 'checking') RETURNING id`))
 	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
 	go w.collectImages(ctx)
 	sem := make(chan struct{}, w.cfg.Concurrency)
@@ -204,8 +204,8 @@ func (w *Worker) process(ctx context.Context, id string) {
 		if len(reason) > 500 {
 			reason = reason[:500]
 		}
-		_ = w.exec(context.Background(), `UPDATE runs SET status = 'infra_error', failure_reason = $2, finished_at = now(), updated_at = now()
-			WHERE id = $1 AND status IN ('agent', 'checking')`, id, reason)
+		_ = w.exec(context.Background(), refundQuota(`UPDATE runs SET status = 'infra_error', failure_reason = $2, finished_at = now(), updated_at = now()
+			WHERE id = $1 AND status IN ('agent', 'checking') RETURNING id`), id, reason)
 	}
 	_ = w.exec(context.Background(), `DELETE FROM gateway_tokens WHERE run_id = $1`, id)
 }

@@ -299,11 +299,20 @@ func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_run", msg) }
 
-// Per-user limits for non-admins: one run server is shared by everyone.
+// Per-user limits for non-admins: one run server is shared by everyone. The daily limit counts run_quota rows, which
+// stay when a run or its agent is deleted. Only the worker's infra_error (the platform's fault) gives the quota back
+// (refundQuota); a cancel doesn't, whoever made it: the run took a slot and may have spent tokens.
 const (
 	maxOpenRunsPerUser  = 3
 	maxDailyRunsPerUser = 30
 )
+
+// refundQuota wraps an UPDATE of runs to infra_error ending in RETURNING id: it also gives those runs' daily quota
+// back, and returns how many runs the UPDATE changed.
+func refundQuota(update string) string {
+	return `WITH f AS (` + update + `), q AS (UPDATE run_quota SET refunded = true WHERE run_id IN (SELECT id FROM f))
+		SELECT count(*) FROM f`
+}
 
 // Create queues a run of agentID at task. Zero limits take the task's defaults. ownerID is the caller's scope
 // (identity.OwnerScope): a user may run only their own agents, within the per-user limits and the task's time limit
@@ -334,13 +343,19 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 	id := idgen.New("run")
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if ownerID != "" {
+			// The user's row lock serializes their creates: a parallel one waits here and then counts this run.
+			if _, err := tx.Exec(ctx, `SELECT 1 FROM users WHERE id = $1 FOR NO KEY UPDATE`, ownerID); err != nil {
+				return err
+			}
 			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
 				return err
 			}
 			var open, day int
-			if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
-					count(*) FILTER (WHERE r.created_at > now() - interval '1 day')
-				FROM runs r JOIN agents a ON a.id = r.agent_id WHERE a.owner_id = $1`, ownerID).Scan(&open, &day); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT
+					(SELECT count(*) FROM runs r JOIN agents a ON a.id = r.agent_id
+						WHERE a.owner_id = $1 AND r.status IN ('queued', 'agent', 'checking')),
+					(SELECT count(*) FROM run_quota WHERE user_id = $1 AND NOT refunded AND created_at > now() - interval '1 day')`,
+				ownerID).Scan(&open, &day); err != nil {
 				return err
 			}
 			if open >= maxOpenRunsPerUser {
@@ -355,6 +370,9 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 			id, agentID, task, timeLimitS, tokenBudget, ownerID)
 		if err == nil && tag.RowsAffected() == 0 {
 			return invalid("Unknown agent")
+		}
+		if err == nil && ownerID != "" {
+			_, err = tx.Exec(ctx, `INSERT INTO run_quota (run_id, user_id) VALUES ($1, $2)`, id, ownerID)
 		}
 		return err
 	})
