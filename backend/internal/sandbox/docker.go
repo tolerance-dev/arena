@@ -164,7 +164,7 @@ func connectGateway(ctx context.Context, network string) error {
 // AttachGateway attaches a (re)started gateway to the networks of the runs in flight: a new gateway container
 // starts on the default network only.
 func AttachGateway(ctx context.Context) {
-	for _, n := range networks(ctx, "arena.role=run") {
+	for _, n := range Networks(ctx, "arena.role=run") {
 		_ = connectGateway(ctx, n)
 	}
 }
@@ -185,12 +185,13 @@ func RemoveNetwork(name string) {
 
 // RemoveNetworks removes this stack's sandbox networks carrying label (k=v), best effort: leftovers of a crash.
 func RemoveNetworks(ctx context.Context, label string) {
-	for _, n := range networks(ctx, label) {
+	for _, n := range Networks(ctx, label) {
 		RemoveNetwork(n)
 	}
 }
 
-func networks(ctx context.Context, label string) []string {
+// Networks lists the names of this stack's sandbox networks carrying label (k=v); nil when docker fails.
+func Networks(ctx context.Context, label string) []string {
 	out, err := docker(ctx, nil, "network", "ls", "--format", "{{.Name}}", "--filter", "label=arena.sandbox=1",
 		"--filter", "label=arena.stack="+Stack, "--filter", "label="+label)
 	if err != nil {
@@ -525,6 +526,23 @@ func RemoveByLabel(ctx context.Context, label string) {
 		return
 	}
 	_, _ = docker(ctx, nil, append([]string{"rm", "-f"}, strings.Fields(out)...)...)
+}
+
+// Containers lists this stack's containers (running or not) carrying label (k=v): container id → its arena.run
+// label ("" when it has none). An error means docker didn't answer: the caller should remove nothing.
+func Containers(ctx context.Context, label string) (map[string]string, error) {
+	out, err := docker(ctx, nil, "ps", "-a", "--filter", "label="+label, "--filter", "label=arena.stack="+Stack,
+		"--format", `{{.ID}} {{.Label "arena.run"}}`)
+	if err != nil {
+		return nil, err
+	}
+	m := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		if f := strings.Fields(line); len(f) > 0 {
+			m[f[0]] = strings.Join(f[1:], "")
+		}
+	}
+	return m, nil
 }
 
 // Images lists this stack's local image references (repo:tag) of a repository.

@@ -38,7 +38,7 @@ func TestQueueOrder(t *testing.T) {
 	pool := dbtest.New(t)
 	f := fixture{t, pool}
 	s := NewService(pool, "", 2)
-	w := NewWorker(pool, slog.Default(), WorkerConfig{})
+	w := NewWorker(pool, slog.Default(), WorkerConfig{Concurrency: 10})
 	ctx := context.Background()
 
 	alice := f.agent(f.user("alice", time.Hour), "a")

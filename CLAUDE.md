@@ -41,7 +41,10 @@ pairwise votes (Elo per task). **There is no LLM judge** (removed: cost dollars 
 bring one back unless asked. Monorepo: `backend/` (Go module `tolerance`), `frontend/` (Next.js, talks to the
 backend over HTTP only).
 
-Run (`internal/runs/worker.go`): `queued → agent → checking → done | infra_error`.
+Run (`internal/runs/worker.go`, its own process `cmd/worker`, apart from the api):
+`queued → agent → checking → done | infra_error`. A run belongs to the worker that claimed it (`runs.worker_id`;
+workers beat in `workers`): only a run whose worker stopped beating is reaped as infra_error, and SIGTERM drains (no
+new claims, runs in flight finish) instead of killing.
 - **queued**: round-robin between owners (`queueOrder`, `internal/runs/queue.go`); the same order gives the API's
   `queue_position`/`queue_wait_s`, so change them together.
 - **agent**: `arena-runtime:1` container on the run's own internal network with only the gateway; LLM base URLs
@@ -82,7 +85,7 @@ writes (`sameOrigin`, `cmd/api/handler.go`) and the prod session cookie is `__Ho
 ## Running locally
 
 ```sh
-make dev         # postgres + gateway in Docker, migrate, api and web natively (Ctrl-C stops api/web)
+make dev         # postgres + gateway in Docker, migrate, api, worker and web natively (Ctrl-C stops them)
 make reset       # drop the containers and the DB volume (make down keeps the DB)
 make images      # arena-runtime:1, built only when missing
 make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) + pnpm typecheck

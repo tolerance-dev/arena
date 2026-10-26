@@ -83,7 +83,9 @@ CREATE TABLE runs (
     created_at         timestamptz NOT NULL DEFAULT now(),
     started_at         timestamptz,
     finished_at        timestamptz,
-    updated_at         timestamptz NOT NULL DEFAULT now()
+    updated_at         timestamptz NOT NULL DEFAULT now(),
+    -- worker_id: the worker (workers.id) that claimed the run; it alone touches the run's containers.
+    worker_id          text
 );
 CREATE INDEX runs_open_idx ON runs (created_at) WHERE status IN ('queued', 'agent', 'checking');
 CREATE INDEX runs_task_idx ON runs (task, score DESC NULLS LAST);
@@ -146,7 +148,16 @@ CREATE TABLE settings (
 );
 INSERT INTO settings DEFAULT VALUES;
 
+-- Live run workers (cmd/worker), each beating every few seconds. A run in flight whose worker stopped beating is
+-- lost: another worker (or the next one to start) marks it infra_error and removes its containers.
+CREATE TABLE workers (
+    id           text PRIMARY KEY,
+    host         text NOT NULL,
+    started_at   timestamptz NOT NULL DEFAULT now(),
+    heartbeat_at timestamptz NOT NULL DEFAULT now()
+);
+
 GRANT USAGE ON SCHEMA public TO arena_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, vote_pairs, settings TO arena_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, vote_pairs, settings, workers TO arena_app;
 GRANT SELECT, INSERT, UPDATE ON run_quota TO arena_app;
 

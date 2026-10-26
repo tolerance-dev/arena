@@ -40,20 +40,36 @@ const (
 )
 
 type WorkerConfig struct {
-	Concurrency int
+	Concurrency int           // runs in flight at once, on this worker and across all of them
+	Drain       time.Duration // how long a stopping worker lets its runs finish before it gives them up
 }
+
+// Ownership: a worker registers in the workers table and beats there; the runs it claims carry its id
+// (runs.worker_id), and only it touches their containers. A run in flight whose worker stopped beating for
+// beatStale is lost: whichever worker reaps next marks it infra_error and removes its containers and network.
+const (
+	beatEvery = 10 * time.Second
+	beatStale = time.Minute
+	reapEvery = 30 * time.Second
+)
 
 type Worker struct {
 	pool *db.Pool
 	log  *slog.Logger
 	cfg  WorkerConfig
+	id   string
 }
 
 func NewWorker(pool *db.Pool, log *slog.Logger, cfg WorkerConfig) *Worker {
 	if cfg.Concurrency < 1 {
 		cfg.Concurrency = 1
 	}
-	return &Worker{pool: pool, log: log.With("worker", "runs"), cfg: cfg}
+	var b [6]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	id := "w-" + hex.EncodeToString(b[:])
+	return &Worker{pool: pool, log: log.With("worker", id), cfg: cfg, id: id}
 }
 
 func (w *Worker) exec(ctx context.Context, q string, args ...any) error {
@@ -63,44 +79,178 @@ func (w *Worker) exec(ctx context.Context, q string, args ...any) error {
 	})
 }
 
-// Run claims queued runs until ctx ends. One api process runs this loop, so whatever is mid-flight at start was
-// cut off by a restart: it becomes infra_error (its container is gone with the old process's docker calls).
-func (w *Worker) Run(ctx context.Context) {
-	sandbox.RemoveByLabel(ctx, "arena.role=agent")
-	sandbox.RemoveByLabel(ctx, "arena.role=check") // the check, the app under check and the source reader
-	sandbox.RemoveNetworks(ctx, "arena.role=run")
-	_ = w.exec(ctx, refundQuota(`UPDATE runs SET status = 'infra_error', failure_reason = 'interrupted by a platform restart', finished_at = now()
-		WHERE status IN ('agent', 'checking') RETURNING id`))
-	_ = w.exec(ctx, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
-	go w.collectImages(ctx)
+// Run claims queued runs until stop ends, then drains: no new claims, the runs in flight go on until they finish,
+// cfg.Drain passes or abort ends; whatever is still running then is stopped and marked infra_error.
+func (w *Worker) Run(stop, abort context.Context, host string) error {
+	if err := w.exec(stop, `INSERT INTO workers (id, host) VALUES ($1, $2)`, w.id, host); err != nil {
+		return fmt.Errorf("register worker: %w", err)
+	}
+	beatCtx, endBeat := context.WithCancel(context.Background())
+	beatDone := make(chan struct{})
+	go func() { defer close(beatDone); w.heartbeat(beatCtx, host) }()
+	defer func() {
+		endBeat()
+		<-beatDone
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = w.exec(ctx, `DELETE FROM workers WHERE id = $1`, w.id)
+	}()
+	w.log.Info("worker started", "concurrency", w.cfg.Concurrency, "drain", w.cfg.Drain.String())
+
+	w.reap(stop)
+	_ = w.exec(stop, `DELETE FROM gateway_tokens WHERE expires_at < now()`)
+	go w.collectImages(stop)
+	go func() {
+		for {
+			select {
+			case <-stop.Done():
+				return
+			case <-time.After(reapEvery):
+			}
+			w.reap(stop)
+		}
+	}()
+
+	// Runs live on runCtx, not stop: a SIGTERM ends the claiming, not the runs.
+	runCtx, cancelRuns := context.WithCancel(context.Background())
+	defer cancelRuns()
 	sem := make(chan struct{}, w.cfg.Concurrency)
 	var wg sync.WaitGroup
-	defer wg.Wait()
+	var inFlight sync.Map
+claiming:
 	for {
 		select {
-		case <-ctx.Done():
-			return
+		case <-stop.Done():
+			break claiming
 		case sem <- struct{}{}:
 		}
-		id, err := w.claim(ctx)
+		id, err := w.claim(stop)
 		if err != nil || id == "" {
 			<-sem
-			if err != nil && ctx.Err() == nil {
+			if err != nil && stop.Err() == nil {
 				w.log.Error("claim run", "err", err)
 			}
 			select {
-			case <-ctx.Done():
-				return
+			case <-stop.Done():
+				break claiming
 			case <-time.After(2 * time.Second):
 			}
 			continue
 		}
 		wg.Add(1)
+		inFlight.Store(id, true)
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			w.process(ctx, id)
+			defer inFlight.Delete(id)
+			w.process(runCtx, id)
 		}()
+	}
+
+	var draining []string
+	inFlight.Range(func(k, _ any) bool { draining = append(draining, k.(string)); return true })
+	w.log.Info("worker stopping: draining runs in flight", "runs", draining, "drain", w.cfg.Drain.String())
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(w.cfg.Drain):
+		w.log.Warn("drain ran out: stopping the runs still in flight")
+		cancelRuns()
+		<-done
+	case <-abort.Done():
+		w.log.Warn("worker aborted: stopping the runs still in flight")
+		cancelRuns()
+		<-done
+	}
+	w.log.Info("worker stopped")
+	return nil
+}
+
+// heartbeat keeps this worker's row fresh, so nobody reaps its runs; a row reaped meanwhile (the database was out
+// of reach for beatStale) is put back, its runs are already lost by then.
+func (w *Worker) heartbeat(ctx context.Context, host string) {
+	t := time.NewTicker(beatEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		err := w.exec(ctx, `INSERT INTO workers (id, host) VALUES ($1, $2)
+			ON CONFLICT (id) DO UPDATE SET heartbeat_at = now()`, w.id, host)
+		if err != nil && ctx.Err() == nil {
+			w.log.Error("worker heartbeat", "err", err)
+		}
+	}
+}
+
+// reap marks lost runs (in flight, their worker gone) infra_error and removes the run containers and networks of
+// this stack that no live run owns: leftovers of a crashed worker. The containers are listed before the database is
+// read, so a run claimed meanwhile is already in flight when its containers are judged.
+func (w *Worker) reap(ctx context.Context) {
+	containers, err := sandbox.Containers(ctx, "arena.run")
+	if err != nil {
+		if ctx.Err() == nil {
+			w.log.Error("list run containers", "err", err)
+		}
+		return
+	}
+	networks := sandbox.Networks(ctx, "arena.role=run")
+	var lost, live []string
+	err = w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		// The same refund as refundQuota: an infra_error is the platform's fault and gives the run back.
+		rows, err := tx.Query(ctx, `WITH f AS (UPDATE runs SET status = 'infra_error', finished_at = now(), updated_at = now(),
+				failure_reason = 'the worker running it stopped (crash or restart) before the run finished'
+			WHERE status IN ('agent', 'checking') AND worker_id IS DISTINCT FROM $1
+				AND (worker_id IS NULL OR worker_id NOT IN (SELECT id FROM workers WHERE heartbeat_at > now() - make_interval(secs => $2)))
+			RETURNING id), q AS (UPDATE run_quota SET refunded = true WHERE run_id IN (SELECT id FROM f))
+			SELECT id FROM f`, w.id, beatStale.Seconds())
+		if err != nil {
+			return err
+		}
+		if lost, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM gateway_tokens WHERE run_id = ANY($1)`, lost); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM workers WHERE heartbeat_at <= now() - make_interval(secs => $1)`, beatStale.Seconds()); err != nil {
+			return err
+		}
+		rows, err = tx.Query(ctx, `SELECT id FROM runs WHERE status IN ('agent', 'checking')`)
+		if err != nil {
+			return err
+		}
+		live, err = pgx.CollectRows(rows, pgx.RowTo[string])
+		return err
+	})
+	if err != nil {
+		if ctx.Err() == nil {
+			w.log.Error("reap lost runs", "err", err)
+		}
+		return
+	}
+	for _, id := range lost {
+		w.log.Warn("run lost: its worker stopped", "run_id", id)
+	}
+	keep := map[string]bool{}
+	for _, id := range live {
+		keep[id] = true
+		keep["arena-run-"+PreviewHost(id)] = true
+	}
+	for c, run := range containers {
+		if !keep[run] {
+			sandbox.Remove(c)
+			w.log.Info("removed leftover run container", "container", c, "run_id", run)
+		}
+	}
+	for _, n := range networks {
+		if !keep[n] {
+			sandbox.RemoveNetwork(n)
+			w.log.Info("removed leftover run network", "network", n)
+		}
 	}
 }
 
@@ -154,10 +304,13 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, queueLock); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `UPDATE runs SET status = 'agent', started_at = now(), updated_at = now()
+		// The concurrency caps runs in flight across every worker, so one starting while another drains doesn't
+		// put twice the agents on the host.
+		return tx.QueryRow(ctx, `UPDATE runs SET status = 'agent', worker_id = $1, started_at = now(), updated_at = now()
 			WHERE status = 'queued' AND NOT coalesce((SELECT runs_paused FROM settings), false)
+				AND (SELECT count(*) FROM runs WHERE status IN ('agent', 'checking')) < $2
 				AND id = (SELECT id FROM (`+queueOrder+`) head ORDER BY `+queueSort+` LIMIT 1)
-			RETURNING id`).Scan(&id)
+			RETURNING id`, w.id, w.cfg.Concurrency).Scan(&id)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
@@ -198,7 +351,13 @@ func (w *Worker) process(ctx context.Context, id string) {
 	if err == nil {
 		err = w.check(ctx, c, log)
 	}
-	if err != nil && ctx.Err() == nil {
+	if ctx.Err() != nil {
+		// The worker gave the run up (drain ran out or abort): its containers are gone with the deferred removes.
+		log.Warn("run stopped by the worker shutting down")
+		_ = w.exec(context.Background(), refundQuota(`UPDATE runs SET status = 'infra_error', finished_at = now(), updated_at = now(),
+			failure_reason = 'the worker shut down before the run finished' WHERE id = $1 AND status IN ('agent', 'checking')
+			RETURNING id`), id)
+	} else if err != nil {
 		log.Error("run failed", "err", err)
 		reason := err.Error()
 		if len(reason) > 500 {

@@ -9,7 +9,7 @@ https://tolerance.cc — арена кодинг-агентов. Агент по
 Локально без ключей — `ARENA_GATEWAY_FAKE=true`.
 
 ```sh
-make dev        # postgres + gateway в Docker, api и сайт нативно (Ctrl-C останавливает)
+make dev        # postgres + gateway в Docker, api, worker и сайт нативно (Ctrl-C останавливает)
 make test-fast  # gofmt + go vet + go test + typecheck
 make reset      # снести контейнеры вместе с базой
 ```

@@ -1,4 +1,4 @@
-.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-web images test test-fast
+.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-worker run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -39,11 +39,13 @@ reset:
 logs:
 	$(COMPOSE) logs -f --tail=100
 
-# Fastest loop: postgres in Docker, api and web on the host (web hot-reloads;
-# restart `make dev` after Go changes). Ctrl-C stops both.
+# Fastest loop: postgres in Docker, api, runs worker and web on the host (web hot-reloads;
+# restart `make dev` after Go changes). Ctrl-C stops all three. The api and the worker are separate processes:
+# restart one alone with `make run-api` / `make run-worker` in another terminal.
 dev: .env docker images oauth-relay db migrate gateway
 	@trap 'kill 0' INT TERM; \
 	$(MAKE) --no-print-directory run-api & \
+	$(MAKE) --no-print-directory run-worker & \
 	$(MAKE) --no-print-directory run-web & \
 	echo; echo "  site:  http://localhost:$(WEB_PORT)"; echo "  api:   http://localhost:$(API_PORT)/healthz"; echo; \
 	wait
@@ -70,6 +72,12 @@ run-api:
 		ARENA_GITHUB_CLIENT_ID="$(ARENA_GITHUB_CLIENT_ID)" ARENA_GITHUB_CLIENT_SECRET="$(ARENA_GITHUB_CLIENT_SECRET)" \
 		ARENA_GOOGLE_CLIENT_ID="$(ARENA_GOOGLE_CLIENT_ID)" ARENA_GOOGLE_CLIENT_SECRET="$(ARENA_GOOGLE_CLIENT_SECRET)" \
 		go run ./cmd/api
+
+# One Ctrl-C drains (no new runs, the ones in flight finish), a second stops them.
+run-worker:
+	cd backend && ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
+		ARENA_TASKS_HIDDEN_DIR="$(ARENA_TASKS_HIDDEN_DIR)" ARENA_RUN_CONCURRENCY="$(ARENA_RUN_CONCURRENCY)" \
+		ARENA_WORKER_DRAIN="$(ARENA_WORKER_DRAIN)" go run ./cmd/worker
 
 run-web:
 	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) pnpm dev -p $(WEB_PORT)

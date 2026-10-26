@@ -48,7 +48,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # HTTP plus the runs worker, one process. Starts agent/check containers from arena-runtime:1 through docker.sock.
+  # The HTTP API. Runs are the worker's (below), so replacing the api leaves them going. docker.sock: deleting a run
+  # removes its snapshot image.
   api:
     image: *backend
     restart: unless-stopped
@@ -64,10 +65,8 @@ services:
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
       ARENA_PREVIEW_URL: https://p-{id}.${ARENA_DOMAIN:?}
+      # Queue positions and waits, and the stuck-queue alert, count on this many slots: the worker's own value.
       ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-2}
-      # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
-      ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
-      ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
       # Alerts (internal/alerts) also go to this Telegram chat when both are set; else only to the log.
       ARENA_ALERT_TELEGRAM_TOKEN: ${ARENA_ALERT_TELEGRAM_TOKEN:-}
       ARENA_ALERT_TELEGRAM_CHAT: ${ARENA_ALERT_TELEGRAM_CHAT:-}
@@ -81,6 +80,30 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # The runs worker: claims queued runs and starts their agent/check containers from arena-runtime:1 through
+  # docker.sock. On SIGTERM it takes no new runs and lets the ones in flight finish (ARENA_WORKER_DRAIN), so a stop
+  # waits up to stop_grace_period; server.sh swaps it in the background after the rest of a deploy.
+  worker:
+    image: *backend
+    command: ["worker"]
+    restart: unless-stopped
+    logging: *logging
+    stop_grace_period: 65m
+    environment:
+      ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
+      ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-2}
+      ARENA_WORKER_DRAIN: 60m
+      # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
+      ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
+      ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}
+    # Group that owns docker.sock on the host.
+    group_add: ["${DOCKER_GID:?}"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
