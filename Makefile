@@ -1,4 +1,4 @@
-.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-worker run-web images test test-fast
+.PHONY: oauth-relay down logs reset dev db gateway docker migrate run-api run-worker run-web images seed test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -71,6 +71,17 @@ run-api:
 		ARENA_GITHUB_CLIENT_ID="$(ARENA_GITHUB_CLIENT_ID)" ARENA_GITHUB_CLIENT_SECRET="$(ARENA_GITHUB_CLIENT_SECRET)" \
 		ARENA_GOOGLE_CLIENT_ID="$(ARENA_GOOGLE_CLIENT_ID)" ARENA_GOOGLE_CLIENT_SECRET="$(ARENA_GOOGLE_CLIENT_SECRET)" \
 		go run ./cmd/api
+
+# Real runs for free: seeded agents built from the demo example run every task through the gateway switched to
+# ARENA_GATEWAY_FAKE=true for the while (no keys, no tokens), then the gateway goes back to .env's setting. Works with
+# or without `make dev` running; run it again to fill in what's missing. Live runs of your own during it get fake answers.
+seed: .env docker images db migrate
+	@restore() { echo "  gateway back to ARENA_GATEWAY_FAKE=$(or $(ARENA_GATEWAY_FAKE),false)"; $(COMPOSE) up -d gateway >/dev/null 2>&1; }; \
+	trap restore EXIT; trap 'exit 130' INT TERM; \
+	ARENA_GATEWAY_FAKE=true $(COMPOSE) up -d --build --wait gateway && \
+	(cd backend && ARENA_GATEWAY_FAKE=true ARENA_SECRET_KEY="$(ARENA_SECRET_KEY)" \
+		ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
+		ARENA_TASKS_HIDDEN_DIR="$(ARENA_TASKS_HIDDEN_DIR)" go run ./cmd/seed)
 
 # One Ctrl-C drains (no new runs, the ones in flight finish), a second stops them.
 run-worker:

@@ -91,10 +91,13 @@ writes (`sameOrigin`, `cmd/api/handler.go`) and the prod session cookie is `__Ho
 ```sh
 make dev         # postgres + gateway in Docker, migrate, api, worker and web natively (Ctrl-C stops them)
 make reset       # drop the containers and the DB volume (make down keeps the DB)
+make seed        # agents + real runs of every task (~1 min, fake gateway: no keys, no tokens)
 make images      # arena-runtime:1, built only when missing
 make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) + pnpm typecheck
 ```
 
+- Each checkout has its own DB volume (compose project = dir name), empty at first and removed with the
+  workspace (`.superset/teardown.sh`): `make seed` fills it. Don't share one volume between checkouts.
 - Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`). Checkouts share the Docker host:
   `ARENA_STACK` (`arena-<checkout dir>`) scopes sandbox labels and cleanup per checkout.
 - Stopping your dev servers: kill by your own listening ports (`lsof -ti tcp:$API_PORT -sTCP:LISTEN | xargs kill`;
