@@ -68,3 +68,7 @@ func OwnerScope(ctx context.Context) string {
 	}
 	return a.UserID
 }
+
+// OwnerEmail is the site owner: always an admin, the only one who may key agents with a personal subscription, and
+// whose ready agents play the weekly tournament (internal/runs/tournament.go).
+const OwnerEmail = "alimov.nsm@gmail.com"

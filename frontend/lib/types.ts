@@ -78,6 +78,19 @@ export interface Pair { id: string; task: string; task_title: string; a: Contend
 export interface Reveal { a: Run['agent']; b: Run['agent'] }
 export type Winner = 'a' | 'b' | 'tie'
 
+// The weekly tournament (GET /admin/tournament): the site owner's ready agents at every task, `rounds` runs each.
+export interface TournamentPlayer { id: string; name: string; provider: string; model: string; model_name?: string }
+export interface TournamentRecord {
+  id: string; week: string | null // null: started by hand
+  created_at: string; runs: number; open: number; done: number; failed: number
+  cost_usd: number // at list price, a subscription included
+}
+export interface Tournament {
+  can_manage: boolean // the viewer is the site owner
+  weekly: boolean; next_at: string | null; rounds: number; tasks: number
+  players: TournamentPlayer[]; recent: TournamentRecord[]
+}
+
 export interface AdminSettings { runs_paused: boolean; user_runs: boolean }
 export interface AdminSpend {
   period: '24h' | '7d' | '30d' | 'all'; runs: number; failed: number

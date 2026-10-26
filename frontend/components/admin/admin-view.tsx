@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Square } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
+import Link from 'next/link'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { PageHeader, SectionTitle } from '@/components/page-header'
 import { AgentAvatar, Ago } from '@/components/runs/bits'
@@ -14,7 +15,7 @@ import { Skeleton } from '@/components/ui/empty-state'
 import { api, del, post, put } from '@/lib/api'
 import { compact, plural, usd } from '@/lib/format'
 import { errorText } from '@/lib/errors'
-import type { AdminOverview, AdminSettings, AdminSpend, AdminUser, Run } from '@/lib/types'
+import type { AdminOverview, AdminSettings, AdminSpend, AdminUser, Run, Tournament } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +30,7 @@ export function AdminView() {
   const admin = !!me?.can_admin
   const overview = usePoll<AdminOverview>(admin ? '/admin/overview' : null, 10_000)
   const live = usePoll<{ items: Run[] }>(admin ? '/runs?active=1' : null, 3_000)
+  const tournament = usePoll<Tournament>(admin ? '/admin/tournament' : null, 10_000)
   const [err, setErr] = useState('')
 
   if (loading) return <Skeleton className="h-96" />
@@ -42,7 +44,7 @@ export function AdminView() {
     )
   }
   const o = overview.data
-  const reload = () => { void overview.reload(); void live.reload() }
+  const reload = () => { void overview.reload(); void live.reload(); void tournament.reload() }
   async function act(fn: () => Promise<unknown>) {
     setErr('')
     try {
@@ -64,6 +66,7 @@ export function AdminView() {
           main={
             <div className="space-y-12">
               <Switches settings={o.settings} open={o.queued + o.running} act={act} />
+              {tournament.data && <TournamentBlock t={tournament.data} act={act} />}
               <SpendBlock spend={o.spend} />
               {live.data && <LiveRuns runs={live.data.items} empty="Ничего не запущено." />}
               <Users users={o.users} act={act} />
@@ -123,6 +126,80 @@ function Switches({ settings, open, act }: { settings: AdminSettings; open: numb
             <Square /> {confirm ? `Отменить ${open}? Нажмите ещё раз` : 'Остановить все запуски'}
           </Button>
         </li>
+      </ul>
+    </section>
+  )
+}
+
+const WHEN: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }
+
+// The weekly tournament: the owner's ready agents at every task, a few runs each. Only the site owner switches it
+// and starts one; other admins see it.
+function TournamentBlock({ t, act }: { t: Tournament; act: (fn: () => Promise<unknown>) => Promise<void> }) {
+  const [queued, setQueued] = useState<number | null>(null)
+  const total = t.players.length * t.tasks * t.rounds
+  const running = t.recent.some((r) => r.open > 0)
+  const size = `${plural(t.players.length, '{n} агент', '{n} агента', '{n} агентов')} × ${plural(t.tasks, '{n} задание', '{n} задания', '{n} заданий')} × ${plural(t.rounds, '{n} прогон', '{n} прогона', '{n} прогонов')} = ${total}`
+  return (
+    <section>
+      <SectionTitle aside={!t.can_manage ? <span className="text-ui text-muted-foreground">Управляет владелец сайта</span> : undefined}>Турнир</SectionTitle>
+      <ul className="divide-y divide-border rounded-xl border-2 border-border">
+        <li className="flex items-center gap-4 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Каждую неделю</span>
+            <span className="block text-ui text-muted-foreground">
+              {t.weekly && t.next_at
+                ? `Следующий: ${new Date(t.next_at).toLocaleString('ru-RU', WHEN)}. Пока идёт прошлый, новый ждёт.`
+                : 'Выключен. Включённый стартует по понедельникам в 03:00 UTC.'}
+            </span>
+          </span>
+          {t.can_manage
+            ? <Toggle on={t.weekly} label="Турнир каждую неделю" onChange={(on) => void act(() => put('/admin/tournament/weekly', { on }))} />
+            : <span className="text-ui text-muted-foreground">{t.weekly ? 'Включён' : 'Выключен'}</span>}
+        </li>
+        <li className="flex items-center gap-4 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Запустить сейчас</span>
+            <span className="block text-ui text-muted-foreground tnum">
+              {queued != null ? `В очереди: ${plural(queued, '{n} прогон', '{n} прогона', '{n} прогонов')}` : running ? 'Прошлый турнир ещё идёт.' : `${size} прогонов на ключах агентов.`}
+            </span>
+          </span>
+          {t.can_manage && (
+            <Button size="sm" disabled={running || t.players.length === 0}
+              onClick={() => void act(async () => setQueued((await post<{ runs: number }>('/admin/tournament')).runs))}>
+              <Play /> Запустить
+            </Button>
+          )}
+        </li>
+        <li className="px-4 py-3">
+          <span className="block font-semibold">Участники</span>
+          {t.players.length ? (
+            <ul className="mt-2 space-y-2">
+              {t.players.map((p) => (
+                <li key={p.id} className="flex items-center gap-2.5 text-body">
+                  <AgentAvatar name={p.name} size="sm" />
+                  <span className="min-w-0">
+                    <Link href={`/agents/${p.id}`} className="block truncate font-semibold transition-colors hover:text-primary">{p.name}</Link>
+                    <span className="block truncate text-ui text-muted-foreground">{[p.model_name ?? p.model, providerLabel(p.provider)].join(' · ')}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-ui text-muted-foreground">Играют готовые агенты владельца сайта, а их пока нет. Добавьте их в <Link href="/my" className="font-medium text-primary hover:underline">«Мои агенты»</Link>.</p>
+          )}
+        </li>
+        {t.recent.map((r) => (
+          <li key={r.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2.5 text-body">
+            <span className="min-w-0 flex-1 basis-full sm:basis-0">
+              <span className="font-semibold whitespace-nowrap">{new Date(r.created_at).toLocaleString('ru-RU', WHEN)}</span>
+              <span className="ml-2 text-ui whitespace-nowrap text-muted-foreground">{r.week ? `по расписанию, ${r.week}` : 'вручную'}</span>
+            </span>
+            <span className="text-ui text-muted-foreground tnum">
+              {[`готово ${r.done} из ${r.runs}`, r.open ? `идёт ${r.open}` : null, r.failed ? `ошибок ${r.failed}` : null, `${usd(r.cost_usd)} по прайсу`].filter(Boolean).join(' · ')}
+            </span>
+          </li>
+        ))}
       </ul>
     </section>
   )
