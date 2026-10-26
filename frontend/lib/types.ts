@@ -57,7 +57,9 @@ export interface Pair { task: string; task_title: Text; a: Contender; b: Contend
 export interface Reveal { a: Run['agent']; b: Run['agent'] }
 export type Winner = 'a' | 'b' | 'tie'
 
-export interface AdminSettings { runs_paused: boolean; user_runs: boolean; judge: boolean }
+export interface AdminSettings {
+  runs_paused: boolean; user_runs: boolean; judge: boolean; judge_daily_tokens: number; user_daily_runs: number
+}
 export interface AdminSpend {
   period: '24h' | '7d' | '30d' | 'all'; runs: number; failed: number
   in: number; out: number; cache_read: number; cache_write: number; requests: number; judge_in: number; judge_out: number
@@ -67,6 +69,6 @@ export interface AdminUser {
   runs_30d: number; open_runs: number; used_30d: number; judge_30d: number; last_run_at: string | null; created_at: string
 }
 export interface AdminOverview {
-  settings: AdminSettings; spend: AdminSpend[]; providers: { provider: string; runs: number; used: number }[]
+  settings: AdminSettings; judge_spent: number; spend: AdminSpend[]; providers: { provider: string; runs: number; used: number }[]
   users: AdminUser[]; queued: number; running: number
 }

@@ -416,15 +416,15 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return fmt.Errorf("count sources: %w", err)
 	}
 
-	// The admin may turn the judge off to stop spending its key: the run then gets no score.
-	judgeOn := true
-	if err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		s, err := admin.Load(ctx, tx)
-		judgeOn = s.Judge
+	// The admin may turn the judge off, or its daily budget may be spent: the run then gets no score.
+	judgeOff := ""
+	if err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) (err error) {
+		judgeOff, err = admin.JudgeOff(ctx, tx)
 		return err
 	}); err != nil {
 		return err
 	}
+	judgeOn := judgeOff == ""
 	var judge map[string]any // nil = the task has no judge (or it is off)
 	if task.Judge != "" && judgeOn {
 		judgeToken, err := w.issueToken(ctx, c.id, "judge", checkTimeout+5*time.Minute)
@@ -516,7 +516,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	stats.ConsoleErrors = vr.ConsoleErrors
 	checks := append([]Check{{Name: tasks.CheckStart, Passed: vr.Start.OK, Detail: vr.Start.Error}}, vr.Checks...)
 	if task.Judge != "" && !judgeOn && vr.Start.OK {
-		vr.Judge = &Judge{Status: "skipped", Error: "the judge is turned off on the platform"}
+		vr.Judge = &Judge{Status: "skipped", Error: judgeOff}
 	}
 	if vr.Judge == nil {
 		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}

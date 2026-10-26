@@ -19,16 +19,55 @@ type Settings struct {
 	RunsPaused bool `json:"runs_paused"` // the worker takes no queued runs
 	UserRuns   bool `json:"user_runs"`   // non-admins may upload agents and start runs
 	Judge      bool `json:"judge"`       // runs are judged (the platform's judge key)
+	// Judge tokens (in + out) all runs may spend in a rolling day; past it new runs go unjudged. 0 = no cap.
+	JudgeDailyTokens int64 `json:"judge_daily_tokens"`
+	UserDailyRuns    int   `json:"user_daily_runs"` // runs a non-admin may start in a rolling day
+}
+
+const settingsCols = `runs_paused, user_runs, judge, judge_daily_tokens, user_daily_runs`
+
+func (s *Settings) fields() []any {
+	return []any{&s.RunsPaused, &s.UserRuns, &s.Judge, &s.JudgeDailyTokens, &s.UserDailyRuns}
 }
 
 // Load reads the switches inside tx.
 func Load(ctx context.Context, tx pgx.Tx) (Settings, error) {
 	var s Settings
-	err := tx.QueryRow(ctx, `SELECT runs_paused, user_runs, judge FROM settings`).Scan(&s.RunsPaused, &s.UserRuns, &s.Judge)
+	err := tx.QueryRow(ctx, `SELECT `+settingsCols+` FROM settings`).Scan(s.fields()...)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Settings{UserRuns: true, Judge: true}, nil
+		return Settings{UserRuns: true, Judge: true, JudgeDailyTokens: 10_000_000, UserDailyRuns: 5}, nil
 	}
 	return s, err
+}
+
+// JudgeSpent is the judge tokens (in + out) of runs still open or finished in the last 24 hours.
+func JudgeSpent(ctx context.Context, tx pgx.Tx) (int64, error) {
+	var n int64
+	err := tx.QueryRow(ctx, `SELECT coalesce(sum(judge_tokens_in + judge_tokens_out), 0) FROM runs
+		WHERE coalesce(finished_at, now()) > now() - interval '1 day'`).Scan(&n)
+	return n, err
+}
+
+// JudgeOff says why a run about to be checked gets no judge: "" = judge it. The cap is checked before each verdict,
+// so the verdict in flight may overrun it by one.
+func JudgeOff(ctx context.Context, tx pgx.Tx) (string, error) {
+	s, err := Load(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	if !s.Judge {
+		return "the judge is turned off on the platform", nil
+	}
+	if s.JudgeDailyTokens > 0 {
+		spent, err := JudgeSpent(ctx, tx)
+		if err != nil {
+			return "", err
+		}
+		if spent >= s.JudgeDailyTokens {
+			return "the judge's daily budget is spent", nil
+		}
+	}
+	return "", nil
 }
 
 // CanCreate refuses a non-admin's upload or run while the admin has closed them, or blocked the user.
@@ -92,12 +131,13 @@ type User struct {
 }
 
 type Overview struct {
-	Settings  Settings        `json:"settings"`
-	Spend     []Spend         `json:"spend"`
-	Providers []ProviderSpend `json:"providers"`
-	Users     []User          `json:"users"`
-	Queued    int             `json:"queued"`
-	Running   int             `json:"running"`
+	Settings   Settings        `json:"settings"`
+	JudgeSpent int64           `json:"judge_spent"` // against Settings.JudgeDailyTokens (see JudgeSpent)
+	Spend      []Spend         `json:"spend"`
+	Providers  []ProviderSpend `json:"providers"`
+	Users      []User          `json:"users"`
+	Queued     int             `json:"queued"`
+	Running    int             `json:"running"`
 }
 
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
@@ -105,6 +145,9 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
 		if o.Settings, err = Load(ctx, tx); err != nil {
+			return err
+		}
+		if o.JudgeSpent, err = JudgeSpent(ctx, tx); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE status = 'queued'), count(*) FILTER (WHERE status IN ('agent', 'checking'))
@@ -178,14 +221,24 @@ type SettingsPatch struct {
 	RunsPaused *bool `json:"runs_paused"`
 	UserRuns   *bool `json:"user_runs"`
 	Judge      *bool `json:"judge"`
+
+	JudgeDailyTokens *int64 `json:"judge_daily_tokens"`
+	UserDailyRuns    *int   `json:"user_daily_runs"`
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (Settings, error) {
+	if p.JudgeDailyTokens != nil && (*p.JudgeDailyTokens < 0 || *p.JudgeDailyTokens > 1_000_000_000) {
+		return Settings{}, httpx.New(http.StatusBadRequest, "invalid_settings", "The judge's daily tokens must be between 0 (no cap) and 1B")
+	}
+	if p.UserDailyRuns != nil && (*p.UserDailyRuns < 1 || *p.UserDailyRuns > 1000) {
+		return Settings{}, httpx.New(http.StatusBadRequest, "invalid_settings", "Runs per user a day must be between 1 and 1000")
+	}
 	var out Settings
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `UPDATE settings SET runs_paused = coalesce($1, runs_paused), user_runs = coalesce($2, user_runs),
-				judge = coalesce($3, judge), updated_at = now()
-			RETURNING runs_paused, user_runs, judge`, p.RunsPaused, p.UserRuns, p.Judge).Scan(&out.RunsPaused, &out.UserRuns, &out.Judge)
+				judge = coalesce($3, judge), judge_daily_tokens = coalesce($4, judge_daily_tokens),
+				user_daily_runs = coalesce($5, user_daily_runs), updated_at = now()
+			RETURNING `+settingsCols, p.RunsPaused, p.UserRuns, p.Judge, p.JudgeDailyTokens, p.UserDailyRuns).Scan(out.fields()...)
 	})
 	return out, err
 }

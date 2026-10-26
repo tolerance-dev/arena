@@ -118,6 +118,8 @@ CREATE TABLE settings (
     runs_paused boolean NOT NULL DEFAULT false, -- the worker takes no queued runs
     user_runs   boolean NOT NULL DEFAULT true,  -- non-admins may upload agents and start runs
     judge       boolean NOT NULL DEFAULT true,  -- runs are judged (it spends the platform's judge key)
+    judge_daily_tokens bigint  NOT NULL DEFAULT 10000000 CHECK (judge_daily_tokens >= 0), -- judge in + out a rolling day may spend; 0 = no cap
+    user_daily_runs    integer NOT NULL DEFAULT 5 CHECK (user_daily_runs > 0),            -- runs a non-admin may start in a rolling day
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO settings DEFAULT VALUES;

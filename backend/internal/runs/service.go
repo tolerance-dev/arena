@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -300,11 +301,9 @@ func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_run", msg) }
 
-// Per-user limits for non-admins: one run server is shared by everyone, and every run spends the platform's judge key.
-const (
-	maxOpenRunsPerUser  = 3
-	maxDailyRunsPerUser = 30
-)
+// Open runs a non-admin may have: one run server is shared by everyone. The daily limit is a setting
+// (admin.Settings.UserDailyRuns), since every run spends the platform's judge key.
+const maxOpenRunsPerUser = 3
 
 // Create queues a run of agentID at task. Zero limits take the task's defaults. ownerID is the caller's scope
 // (identity.OwnerScope): a user may run only their own agents, within the per-user limits and the task's time limit
@@ -338,6 +337,10 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
 				return err
 			}
+			settings, err := admin.Load(ctx, tx)
+			if err != nil {
+				return err
+			}
 			var open, day int
 			if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
 					count(*) FILTER (WHERE r.created_at > now() - interval '1 day')
@@ -347,8 +350,9 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 			if open >= maxOpenRunsPerUser {
 				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You already have 3 runs queued or running: wait for one to finish")
 			}
-			if day >= maxDailyRunsPerUser {
-				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You have started 30 runs in the last 24 hours: try again later")
+			if day >= settings.UserDailyRuns {
+				return httpx.New(http.StatusTooManyRequests, "too_many_runs",
+					fmt.Sprintf("You have started %d runs in the last 24 hours: try again later", day))
 			}
 		}
 		tag, err := tx.Exec(ctx, `INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget)

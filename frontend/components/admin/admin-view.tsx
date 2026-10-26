@@ -9,6 +9,7 @@ import { LiveRuns } from '@/components/runs/live-runs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
 import { api, post, put } from '@/lib/api'
 import { compact } from '@/lib/format'
 import { useT } from '@/lib/i18n/client'
@@ -66,6 +67,7 @@ export function AdminView() {
           main={
             <div className="space-y-12">
               <Switches settings={o.settings} open={o.queued + o.running} t={t} act={act} />
+              <Limits settings={o.settings} judgeSpent={o.judge_spent} t={t} act={act} />
               <SpendBlock spend={o.spend} t={t} />
               {live.data && <LiveRuns runs={live.data.items} t={rt} empty={t('liveEmpty')} />}
               <Users users={o.users} t={t} act={act} />
@@ -128,6 +130,59 @@ function Switches({ settings, open, t, act }: { settings: AdminSettings; open: n
         </li>
       </ul>
     </section>
+  )
+}
+
+// The two daily limits. The judge's is typed in millions of tokens.
+function Limits({ settings, judgeSpent, t, act }: { settings: AdminSettings; judgeSpent: number; t: AT; act: (fn: () => Promise<unknown>) => Promise<void> }) {
+  const set = (patch: Partial<AdminSettings>) => act(() => api('/admin/settings', { method: 'PATCH', body: JSON.stringify(patch) }))
+  const cap = settings.judge_daily_tokens
+  const over = cap > 0 && judgeSpent >= cap
+  return (
+    <section>
+      <SectionTitle>{t('limitsTitle')}</SectionTitle>
+      <ul className="divide-y divide-border rounded-xl border-2 border-border">
+        <li className="flex items-center gap-4 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{t('judgeCap')}</span>
+            <span className={cn('block text-ui tnum', over ? 'text-destructive' : 'text-muted-foreground')}>
+              {cap > 0 ? t(over ? 'judgeCapOver' : 'judgeCapHint', { spent: compact(judgeSpent), cap: compact(cap) }) : t('judgeCapNone', { spent: compact(judgeSpent) })}
+            </span>
+          </span>
+          <NumberField value={cap / 1e6} step={0.5} label={t('judgeCap')} suffix={t('millionTokens')}
+            onSave={(v) => void set({ judge_daily_tokens: Math.round(v * 1e6) })} />
+        </li>
+        <li className="flex items-center gap-4 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{t('userDailyRuns')}</span>
+            <span className="block text-ui text-muted-foreground">{t('userDailyRunsHint')}</span>
+          </span>
+          <NumberField value={settings.user_daily_runs} step={1} min={1} label={t('userDailyRuns')} suffix={t('perDay')}
+            onSave={(v) => void set({ user_daily_runs: Math.round(v) })} />
+        </li>
+      </ul>
+    </section>
+  )
+}
+
+// A number that saves on Enter or when it loses focus, if it changed.
+function NumberField({ value, step, min = 0, label, suffix, onSave }: {
+  value: number; step: number; min?: number; label: string; suffix: string; onSave: (v: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  function save() {
+    if (draft == null) return
+    const v = Number(draft)
+    setDraft(null)
+    if (draft.trim() !== '' && Number.isFinite(v) && v >= min && v !== value) onSave(v)
+  }
+  return (
+    <span className="flex shrink-0 items-center gap-2 text-ui text-muted-foreground">
+      <Input type="number" inputMode="decimal" min={min} step={step} aria-label={label} className="w-24 text-right tnum"
+        value={draft ?? String(value)} onChange={(e) => setDraft(e.target.value)} onBlur={save}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} />
+      {suffix}
+    </span>
   )
 }
 

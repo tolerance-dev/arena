@@ -127,11 +127,11 @@ make test-fast   # gofmt + go vet + go test + pnpm typecheck
 The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
 (the Makefile loads it before `.env`). Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
 Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user
-limits (3 open runs, 30 a day, time limit and token budget ≤ the task's; `internal/runs/service.go`) since every run spends the
+limits (3 open runs, `settings.user_daily_runs` a day (5), time limit and token budget ≤ the task's; `internal/runs/service.go`) since every run spends the
 platform's judge key. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
 change anyone's agents and runs. `/admin` (API `/api/v1/admin/*`) shows token spending and holds the switches: the
 `settings` row (worker skips the queue while `runs_paused`; `user_runs` off or `users.blocked` refuses non-admins in
-`admin.CanCreate`; `judge` off leaves new runs unscored). `ARENA_JUDGE_API_KEY` can live in `~/.config/tolerance/env` (the Makefile exports it).
+`admin.CanCreate`; `judge` off, or `judge_daily_tokens` spent in the last 24 hours, leaves new runs unscored). `ARENA_JUDGE_API_KEY` can live in `~/.config/tolerance/env` (the Makefile exports it).
 
 ## Map
 
