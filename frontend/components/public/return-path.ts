@@ -1,7 +1,3 @@
-'use client'
-
-import { usePathname } from 'next/navigation'
-
 // Where to send people after sign-in. Same-site relative paths only, mirroring the backend's safeNext.
 export function safeReturnPath(next: string | null | undefined): string | null {
   if (!next || next.length > 512 || !next.startsWith('/') || next.startsWith('//')) return null
@@ -16,9 +12,4 @@ export function safeReturnPath(next: string | null | undefined): string | null {
 export function loginHref(next: string | null | undefined): string {
   const p = safeReturnPath(next)
   return !p || p === '/' ? '/login' : `/login?next=${encodeURIComponent(p)}`
-}
-
-// A /login link that returns to the page it is rendered on.
-export function useLoginHref(): string {
-  return loginHref(usePathname())
 }

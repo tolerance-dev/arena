@@ -22,11 +22,6 @@ import (
 //go:embed catalog
 var catalog embed.FS
 
-type Text struct {
-	En string `json:"en"`
-	Ru string `json:"ru"`
-}
-
 // Check is one automatic check against the running app, run by verify.py in order. An HTTP check calls Method Path
 // ({var} in paths and expect paths = a value saved by an earlier check) and compares the status and the JSON. A page
 // check (Page set) opens the path in a browser and wants every Text on the rendered page.
@@ -47,8 +42,8 @@ type Check struct {
 type Task struct {
 	Slug        string `json:"slug"`
 	Order       int    `json:"order"`
-	Title       Text   `json:"title"`
-	Tagline     Text   `json:"tagline"`
+	Title       string `json:"title"`
+	Tagline     string `json:"tagline"`
 	TimeLimitS  int    `json:"time_limit_s"`
 	TokenBudget int64  `json:"token_budget"`
 	UI          bool   `json:"ui"` // the app has a web UI: the HTML check, screenshots and the live preview apply

@@ -181,10 +181,9 @@ session.
 - Errors go through `httpx.WriteError` (`{code, message, request_id}`); timestamps are UTC (`.UTC()` after
   scanning — pgx returns local time).
 - Frontend: no mocks, data from the API, browser calls same-origin `/api/v1/*`.
-- UI copy is bilingual (en, ru): strings live in `frontend/lib/i18n/messages/<area>.ts` (`defineMessages`, ru must
-  have every en key), read with `useT(m)` in client components or `await getT(m)` on the server; dates via
-  `formatDate`/`formatDateTime` from `lib/i18n/core`. Language = `lang` cookie, else Accept-Language, else en.
-  Task content (TASK.md) stays English.
+- UI copy is Russian only, written inline in the components (no i18n layer); plurals via `plural()` from
+  `lib/format`, API error texts via `errorText()` from `lib/errors`. Task titles are Russian (`gen_data.py`); task
+  content (TASK.md) stays English.
 - Colours are tokens from `frontend/app/globals.css`, never raw hex in classes: `bg-terminal`/
   `text-terminal-foreground` for copy blocks and dark panels (navy in both themes), `border-input` for control
   borders (3:1), `border-strong` for dashed empty states.

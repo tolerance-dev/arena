@@ -10,22 +10,18 @@ import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/empty-state'
 import { api, del, post, put } from '@/lib/api'
-import { compact, usd } from '@/lib/format'
-import { useT } from '@/lib/i18n/client'
-import { adminMessages } from '@/lib/i18n/messages/admin'
-import { errorText } from '@/lib/i18n/messages/errors'
-import { runsMessages } from '@/lib/i18n/messages/runs'
+import { compact, plural, usd } from '@/lib/format'
+import { errorText } from '@/lib/errors'
 import type { AdminOverview, AdminSettings, AdminSpend, AdminUser, Run } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 
-type AT = ReturnType<typeof useT<typeof adminMessages.en>>
+
+const PERIODS = { '24h': '24 часа', '7d': '7 дней', '30d': '30 дней', all: 'Всё время' }
 
 // The platform owner's page: the switches first (they are why one comes here in a hurry), then spending, what is
 // running and who spends what.
 export function AdminView() {
-  const t = useT(adminMessages)
-  const rt = useT(runsMessages)
   const { me, loading } = useMe()
   const signIn = useSignIn()
   const admin = !!me?.can_admin
@@ -37,9 +33,9 @@ export function AdminView() {
   if (!me || !admin) {
     return (
       <div className="max-w-md space-y-4">
-        <h1 className="display text-page">{t('title')}</h1>
-        <p className="text-muted-foreground">{me ? t('notAdmin') : t('signIn')}</p>
-        {!me && signIn && <Button onClick={signIn}>{rt('signInButton')}</Button>}
+        <h1 className="display text-page">Админка</h1>
+        <p className="text-muted-foreground">{me ? 'Эта страница только для админов.' : 'Войдите как админ, чтобы открыть эту страницу.'}</p>
+        {!me && signIn && <Button onClick={signIn}>Войти</Button>}
       </div>
     )
   }
@@ -50,34 +46,34 @@ export function AdminView() {
     try {
       await fn()
     } catch (e) {
-      setErr(errorText(e, t.locale))
+      setErr(errorText(e))
     }
     reload()
   }
 
   return (
     <div className="space-y-10">
-      <PageHeader title={t('title')} actions={o && (
-        <span className="text-ui text-muted-foreground tnum">{t('queuedRunning', { queued: o.queued, running: o.running })}</span>
-      )}>{t('lead')}</PageHeader>
+      <PageHeader title="Админка" actions={o && (
+        <span className="text-ui text-muted-foreground tnum">{`${o.queued} в очереди · ${o.running} идёт`}</span>
+      )}>Куда уходят токены, кто их тратит, и рубильники, чтобы это остановить.</PageHeader>
       {err && <p role="alert" className="text-body text-destructive">{err}</p>}
       {!o ? <Skeleton className="h-96" /> : (
         <Columns
           main={
             <div className="space-y-12">
-              <Switches settings={o.settings} open={o.queued + o.running} t={t} act={act} />
-              <SpendBlock spend={o.spend} t={t} />
-              {live.data && <LiveRuns runs={live.data.items} t={rt} empty={t('liveEmpty')} />}
-              <Users users={o.users} t={t} act={act} />
+              <Switches settings={o.settings} open={o.queued + o.running} act={act} />
+              <SpendBlock spend={o.spend} />
+              {live.data && <LiveRuns runs={live.data.items} empty="Ничего не запущено." />}
+              <Users users={o.users} act={act} />
             </div>
           }
           aside={o.providers.length > 0 && (
-            <AsideBlock title={t('providersTitle')}>
+            <AsideBlock title="По провайдерам, 30 дней">
               <ul className="space-y-2">
                 {o.providers.map((p) => (
                   <li key={p.provider} className="flex items-baseline justify-between gap-3 text-body">
                     <span className="truncate">{providerLabel(p.provider)}</span>
-                    <span className="text-muted-foreground tnum">{compact(p.used)} · {rt.plural('runs', p.runs)}</span>
+                    <span className="text-muted-foreground tnum">{compact(p.used)} · {plural(p.runs, '{n} прогон', '{n} прогона', '{n} прогонов')}</span>
                   </li>
                 ))}
               </ul>
@@ -89,13 +85,13 @@ export function AdminView() {
   )
 }
 
-function Switches({ settings, open, t, act }: { settings: AdminSettings; open: number; t: AT; act: (fn: () => Promise<unknown>) => Promise<void> }) {
+function Switches({ settings, open, act }: { settings: AdminSettings; open: number; act: (fn: () => Promise<unknown>) => Promise<void> }) {
   const [confirm, setConfirm] = useState(false)
   const [stopped, setStopped] = useState<number | null>(null)
   const set = (patch: Partial<AdminSettings>) => act(() => api('/admin/settings', { method: 'PATCH', body: JSON.stringify(patch) }))
   const rows: { key: keyof AdminSettings; label: string; on: boolean; hint: string }[] = [
-    { key: 'runs_paused', label: t('runsPaused'), on: !settings.runs_paused, hint: settings.runs_paused ? t('runsPausedOff') : t('runsPausedOn') },
-    { key: 'user_runs', label: t('userRuns'), on: settings.user_runs, hint: settings.user_runs ? t('userRunsOn') : t('userRunsOff') },
+    { key: 'runs_paused', label: 'Очередь', on: !settings.runs_paused, hint: settings.runs_paused ? 'Пауза: очередь ждёт, идущие запуски доработают.' : 'Воркер берёт запуски из очереди.' },
+    { key: 'user_runs', label: 'Запуски для пользователей', on: settings.user_runs, hint: settings.user_runs ? 'Любой вошедший может загружать агентов и запускать их.' : 'Закрыто: загружают и запускают только админы.' },
   ]
   async function stopAll() {
     if (!confirm) { setConfirm(true); return }
@@ -104,7 +100,7 @@ function Switches({ settings, open, t, act }: { settings: AdminSettings; open: n
   }
   return (
     <section>
-      <SectionTitle>{t('switchesTitle')}</SectionTitle>
+      <SectionTitle>Рубильники</SectionTitle>
       <ul className="divide-y divide-border rounded-xl border-2 border-border">
         {rows.map((r) => (
           <li key={r.key} className="flex items-center gap-4 px-4 py-3">
@@ -118,11 +114,11 @@ function Switches({ settings, open, t, act }: { settings: AdminSettings; open: n
         ))}
         <li className="flex items-center gap-4 px-4 py-3">
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">{t('stopAll')}</span>
-            <span className="block text-ui text-muted-foreground">{stopped != null ? t('stopped', { n: stopped }) : t('stopAllHint')}</span>
+            <span className="block font-semibold">Остановить все запуски</span>
+            <span className="block text-ui text-muted-foreground">{stopped != null ? `Отменено: ${stopped}` : 'Сразу отменяет всё, что в очереди и идёт.'}</span>
           </span>
           <Button variant="destructive" size="sm" disabled={open === 0} onClick={() => void stopAll()} onBlur={() => setConfirm(false)}>
-            <Square /> {confirm ? t('stopAllConfirm', { n: open }) : t('stopAll')}
+            <Square /> {confirm ? `Отменить ${open}? Нажмите ещё раз` : 'Остановить все запуски'}
           </Button>
         </li>
       </ul>
@@ -140,7 +136,7 @@ function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange:
   )
 }
 
-function SpendBlock({ spend, t }: { spend: AdminSpend[]; t: AT }) {
+function SpendBlock({ spend }: { spend: AdminSpend[] }) {
   const [period, setPeriod] = useState<AdminSpend['period']>('7d')
   const s = spend.find((x) => x.period === period) ?? spend[0]
   if (!s) return null
@@ -152,18 +148,18 @@ function SpendBlock({ spend, t }: { spend: AdminSpend[]; t: AT }) {
             <button key={x.period} type="button" onClick={() => setPeriod(x.period)} aria-pressed={x.period === period}
               className={cn('rounded-full px-2.5 py-0.5 text-ui font-semibold transition-colors',
                 x.period === period ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-              {t(`period.${x.period}`)}
+              {PERIODS[x.period as keyof typeof PERIODS] ?? x.period}
             </button>
           ))}
         </span>
-      }>{t('spendTitle')}</SectionTitle>
+      }>Траты</SectionTitle>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label={t('agentCost')} value={usd(s.cost_usd)} note={s.unpriced ? t('unpriced', { n: s.unpriced }) : t('atListPrice')} />
-        <Stat label={t('agentTokens')} value={compact(s.in + s.cache_write + s.out)}
-          note={t('breakdown', { in: compact(s.in), out: compact(s.out), cache: compact(s.cache_read + s.cache_write), req: compact(s.requests) })} />
-        <Stat label={t('runsCount')} value={String(s.runs)} note={s.failed ? t('failed', { n: s.failed }) : undefined} />
+        <Stat label="Траты агентов" value={usd(s.cost_usd)} note={s.unpriced ? `не учтены: ${s.unpriced} прогонов загруженных агентов (модель неизвестна)` : 'по прайсу, с ключей самих агентов'} />
+        <Stat label="Токены агентов" value={compact(s.in + s.cache_write + s.out)}
+          note={`вход ${compact(s.in)} · выход ${compact(s.out)} · кэш ${compact(s.cache_read + s.cache_write)} · ${compact(s.requests)} запросов`} />
+        <Stat label="Запуски" value={String(s.runs)} note={s.failed ? `ошибок платформы: ${s.failed}` : undefined} />
       </div>
-      <p className="mt-2 text-meta text-faint">{t('spendHint')}</p>
+      <p className="mt-2 text-meta text-faint">Токены агентов идут с ключа каждого агента. Токены бюджета = вход + запись в кэш + выход.</p>
     </section>
   )
 }
@@ -178,22 +174,22 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
   )
 }
 
-function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => Promise<unknown>) => Promise<void> }) {
+function Users({ users, act }: { users: AdminUser[]; act: (fn: () => Promise<unknown>) => Promise<void> }) {
   return (
     <section>
-      <SectionTitle count={users.length}>{t('usersTitle')}</SectionTitle>
+      <SectionTitle count={users.length}>Пользователи</SectionTitle>
       <div className="overflow-x-auto rounded-xl border-2 border-border">
         <table className="w-full min-w-[640px] text-body">
           <thead className="text-left text-ui text-muted-foreground">
             <tr className="border-b border-border">
-              <th className="px-4 py-2 font-medium">{t('colUser')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('colAgents')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('colRuns')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('colTokens')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('colCost')}</th>
-              <th className="px-3 py-2 text-right font-medium">{t('colVotes')}</th>
-              <th className="px-3 py-2 font-medium">{t('colLast')}</th>
-              <th className="px-4 py-2 text-right font-medium">{t('colAccess')}</th>
+              <th className="px-4 py-2 font-medium">Пользователь</th>
+              <th className="px-3 py-2 text-right font-medium">Агенты</th>
+              <th className="px-3 py-2 text-right font-medium">Запуски, 30 дн.</th>
+              <th className="px-3 py-2 text-right font-medium">Токены, 30 дн.</th>
+              <th className="px-3 py-2 text-right font-medium">Траты, 30 дн.</th>
+              <th className="px-3 py-2 text-right font-medium">Голоса</th>
+              <th className="px-3 py-2 font-medium">Последний запуск</th>
+              <th className="px-4 py-2 text-right font-medium">Доступ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -205,8 +201,8 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">
                         {u.handle}
-                        {u.role === 'admin' && <span className="ml-1.5 rounded-full bg-secondary px-1.5 text-meta font-semibold">{t('adminRole')}</span>}
-                        {u.blocked && <span className="ml-1.5 rounded-full bg-destructive/10 px-1.5 text-meta font-semibold text-destructive">{t('blocked')}</span>}
+                        {u.role === 'admin' && <span className="ml-1.5 rounded-full bg-secondary px-1.5 text-meta font-semibold">админ</span>}
+                        {u.blocked && <span className="ml-1.5 rounded-full bg-destructive/10 px-1.5 text-meta font-semibold text-destructive">Заблокирован</span>}
                       </span>
                       <span className="block truncate text-meta text-faint">{u.email}</span>
                     </span>
@@ -215,7 +211,7 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                 <td className="px-3 py-2.5 text-right tnum">{u.agents}</td>
                 <td className="px-3 py-2.5 text-right tnum">
                   {u.runs_30d}
-                  {u.open_runs > 0 && <span className="block text-meta text-primary">{t('open', { n: u.open_runs })}</span>}
+                  {u.open_runs > 0 && <span className="block text-meta text-primary">{`идёт: ${u.open_runs}`}</span>}
                 </td>
                 <td className="px-3 py-2.5 text-right tnum">
                   {compact(u.used_30d)}
@@ -225,15 +221,15 @@ function Users({ users, t, act }: { users: AdminUser[]; t: AT; act: (fn: () => P
                   {u.votes}
                   {u.votes > 0 && (
                     <button type="button" className="block w-full text-right text-meta text-destructive hover:underline"
-                      onClick={() => void act(() => del(`/admin/users/${u.id}/votes`))}>{t('dropVotes')}</button>
+                      onClick={() => void act(() => del(`/admin/users/${u.id}/votes`))}>Удалить голоса</button>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-ui text-muted-foreground">{u.last_run_at ? <Ago iso={u.last_run_at} /> : t('never')}</td>
+                <td className="px-3 py-2.5 text-ui text-muted-foreground">{u.last_run_at ? <Ago iso={u.last_run_at} /> : '—'}</td>
                 <td className="px-4 py-2.5 text-right">
                   {u.role !== 'admin' && (
                     <Button variant={u.blocked ? 'outline' : 'ghost'} size="xs"
                       onClick={() => void act(() => put(`/admin/users/${u.id}/blocked`, { blocked: !u.blocked }))}>
-                      {u.blocked ? t('unblock') : t('block')}
+                      {u.blocked ? 'Разблокировать' : 'Заблокировать'}
                     </Button>
                   )}
                 </td>

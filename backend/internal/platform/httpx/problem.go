@@ -32,10 +32,6 @@ func New(status int, code, message string) *Problem {
 	return &Problem{Status: status, Code: code, Message: message}
 }
 
-func WithField(status int, code, message, path, fieldCode string) *Problem {
-	return &Problem{Status: status, Code: code, Message: message, Fields: []FieldError{{Path: path, Code: fieldCode}}}
-}
-
 func Unauthenticated(message string) *Problem {
 	return New(http.StatusUnauthorized, "unauthenticated", message)
 }

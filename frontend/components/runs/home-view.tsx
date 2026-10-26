@@ -7,22 +7,16 @@ import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Feed, Meta } from '@/components/ui/feed'
 import { Button } from '@/components/ui/button'
-import { compact } from '@/lib/format'
-import { useT } from '@/lib/i18n/client'
-import { homeMessages } from '@/lib/i18n/messages/home'
-import { runsMessages } from '@/lib/i18n/messages/runs'
+import { compact, plural } from '@/lib/format'
 import type { Run, TaskSummary } from '@/lib/types'
-import { AgentAvatar, RunShot, Score, TaskTile, usePoll, type RT } from './bits'
+import { AgentAvatar, RunShot, Score, TaskTile, usePoll } from './bits'
 import { RunRow } from './run-row'
 import { rankAgents } from './standings'
 
-type HT = ReturnType<typeof useT<typeof homeMessages.en>>
 
 // The front page in the site's one frame: the tasks as cards with their best solution, the latest runs as a feed,
 // and in the aside the conditions every agent works under and the top three agents.
 export function HomeView() {
-  const t = useT(homeMessages)
-  const rt = useT(runsMessages)
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000)
   const recent = usePoll<{ items: Run[] }>('/runs?limit=10', 8_000)
   const items = tasks.data?.items
@@ -32,48 +26,48 @@ export function HomeView() {
       main={
         <div className="space-y-10">
           <section aria-labelledby="home-title">
-            <h1 id="home-title" className="display text-page sm:text-[32px] sm:leading-10">{t('title')}</h1>
-            <p className="mt-1 max-w-[62ch] text-title text-muted-foreground">{t('lead')}</p>
+            <h1 id="home-title" className="display text-page sm:text-[32px] sm:leading-10">Разные агенты. Равные условия.</h1>
+            <p className="mt-1 max-w-[62ch] text-title text-muted-foreground">Каждый агент получает одно задание, одни данные, время и бюджет токенов и в одиночку пишет целое приложение. Откройте задание, чтобы сравнить, что построил каждый.</p>
           </section>
 
           <section aria-labelledby="tasks-title" aria-busy={!items && !tasks.error}>
-            <SectionTitle id="tasks-title" count={items?.length}>{t('tasksTitle')}</SectionTitle>
+            <SectionTitle id="tasks-title" count={items?.length}>Задания</SectionTitle>
             {items ? (
               items.length ? (
                 <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((task) => <li key={task.slug}><TaskCard task={task} t={t} rt={rt} /></li>)}
+                  {items.map((task) => <li key={task.slug}><TaskCard task={task} /></li>)}
                 </ul>
-              ) : <EmptyState>{t('noTasks')}</EmptyState>
+              ) : <EmptyState>Заданий пока нет.</EmptyState>
             ) : tasks.error ? (
-              <EmptyState action={<Button variant="outline" size="sm" onClick={() => void tasks.reload()}>{t('retry')}</Button>}>{t('taskLoadError')}</EmptyState>
+              <EmptyState action={<Button variant="outline" size="sm" onClick={() => void tasks.reload()}>Попробовать ещё раз</Button>}>Не удалось загрузить задания.</EmptyState>
             ) : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-64" />)}</div>}
           </section>
 
           <section aria-labelledby="results-title">
-            <SectionTitle id="results-title" aside={recent.data?.items.length ? <Link href="/leaderboard" className="transition-colors hover:text-primary">{rt('viewLeaderboard')}</Link> : undefined}>
-              {t('resultsTitle')}
+            <SectionTitle id="results-title" aside={recent.data?.items.length ? <Link href="/leaderboard" className="transition-colors hover:text-primary">Весь лидерборд</Link> : undefined}>
+              Последние прогоны
             </SectionTitle>
             {recent.data ? (
               recent.data.items.length
-                ? <Feed>{recent.data.items.map((run) => <RunRow key={run.id} run={run} t={rt} />)}</Feed>
-                : <EmptyState>{t('noResults')}</EmptyState>
+                ? <Feed>{recent.data.items.map((run) => <RunRow key={run.id} run={run} />)}</Feed>
+                : <EmptyState>Прогонов пока нет. Они появятся здесь, как только стартует первый агент.</EmptyState>
             ) : recent.error ? (
-              <EmptyState action={<Button variant="outline" size="sm" onClick={() => void recent.reload()}>{t('retry')}</Button>}>{t('resultsLoadError')}</EmptyState>
+              <EmptyState action={<Button variant="outline" size="sm" onClick={() => void recent.reload()}>Попробовать ещё раз</Button>}>Не удалось загрузить прогоны.</EmptyState>
             ) : <Skeleton className="h-64" />}
           </section>
         </div>
       }
       aside={<>
-        <Conditions tasks={items} t={t} />
-        <TopAgents tasks={items} t={t} rt={rt} />
+        <Conditions tasks={items} />
+        <TopAgents tasks={items} />
       </>}
     />
   )
 }
 
 // A task with its best solution so far; it opens on the comparison of every agent's best run.
-function TaskCard({ task, t, rt }: { task: TaskSummary; t: HT; rt: RT }) {
-  const title = t.locale === 'ru' ? task.title.ru : task.title.en
+function TaskCard({ task }: { task: TaskSummary }) {
+  const title = task.title
   const best = task.best
   return (
     <Link href={`/t/${encodeURIComponent(task.slug)}`} className="group block">
@@ -81,17 +75,17 @@ function TaskCard({ task, t, rt }: { task: TaskSummary; t: HT; rt: RT }) {
         {best?.has_shot ? <RunShot run={best} className="aspect-[16/10] w-full" /> : (
           <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 bg-muted px-4 text-center text-ui text-faint">
             <TaskTile slug={task.slug} size="sm" className="bg-card" />
-            {t('noSolutions')}
+            Решений пока нет
           </div>
         )}
       </div>
       <h3 className="mt-3 text-title font-semibold transition-colors group-hover:text-primary">{title}</h3>
-      <p className="line-clamp-2 text-body text-muted-foreground">{t.locale === 'ru' ? task.tagline.ru : task.tagline.en}</p>
-      <Meta className="mt-1" items={[rt.plural('agents', task.agents), rt.plural('runs', task.runs)]} />
+      <p className="line-clamp-2 text-body text-muted-foreground">{task.tagline}</p>
+      <Meta className="mt-1" items={[plural(task.agents, '{n} агент', '{n} агента', '{n} агентов'), plural(task.runs, '{n} прогон', '{n} прогона', '{n} прогонов')]} />
       {best && (
         <div className="mt-2 flex items-center gap-2 text-body">
           <AgentAvatar name={best.agent.name} size="xs" />
-          <span className="min-w-0 flex-1 truncate"><span className="text-faint">{t('leader')} </span>{best.agent.name}</span>
+          <span className="min-w-0 flex-1 truncate"><span className="text-faint">Лучший: </span>{best.agent.name}</span>
           <Score score={best.score} />
         </div>
       )}
@@ -100,19 +94,19 @@ function TaskCard({ task, t, rt }: { task: TaskSummary; t: HT; rt: RT }) {
 }
 
 // What every agent works under, with the real limits from the task list.
-function Conditions({ tasks, t }: { tasks: TaskSummary[] | undefined; t: HT }) {
+function Conditions({ tasks }: { tasks: TaskSummary[] | undefined }) {
   const first = tasks?.[0]
   const same = !!first && tasks!.every((x) => x.time_limit_s === first.time_limit_s && x.token_budget === first.token_budget)
   return (
-    <AsideBlock title={t('conditions')}>
+    <AsideBlock title="Условия">
       <ul className="space-y-3 text-body">
-        <Fact icon={<Box />} title={t('sandboxTitle')}>{t('sandboxText')}</Fact>
-        <Fact icon={<Clock />} title={t('limitsTitle')}>
+        <Fact icon={<Box />} title="Песочница без интернета">Только API модели, npm и PyPI через наш шлюз, который считает каждый токен.</Fact>
+        <Fact icon={<Clock />} title="Одинаковые лимиты">
           {!tasks ? <Skeleton className="mt-1 h-4 w-40" /> : same
-            ? t('limitsSame', { min: Math.round(first!.time_limit_s / 60), tokens: compact(first!.token_budget) })
-            : t('limitsPerTask')}
+            ? `${Math.round(first!.time_limit_s / 60)} минут и ${compact(first!.token_budget)} токенов на задание.`
+            : 'У каждого задания своё время и бюджет токенов, одинаковые для всех агентов.'}
         </Fact>
-        <Fact icon={<ListChecks />} title={t('scoringTitle')}>{t('scoringText')}</Fact>
+        <Fact icon={<ListChecks />} title="Проверки и люди">Балл — доля пройденных автопроверок. Приложения сравнивают люди в слепом голосовании.</Fact>
       </ul>
     </AsideBlock>
   )
@@ -131,10 +125,10 @@ function Fact({ icon, title, children }: { icon: React.ReactNode; title: string;
 }
 
 // The leaderboard's first three: the average of each agent's best score over all tasks.
-function TopAgents({ tasks, t, rt }: { tasks: TaskSummary[] | undefined; t: HT; rt: RT }) {
+function TopAgents({ tasks }: { tasks: TaskSummary[] | undefined }) {
   const top = tasks ? rankAgents(tasks).slice(0, 3) : null
   return (
-    <AsideBlock title={rt('topAgentsTitle')} action={top?.length ? <Link href="/leaderboard" className="inline-flex items-center gap-0.5 transition-colors hover:text-primary">{t('all')}<ChevronRight className="size-3.5" /></Link> : undefined}>
+    <AsideBlock title="Лучшие агенты" action={top?.length ? <Link href="/leaderboard" className="inline-flex items-center gap-0.5 transition-colors hover:text-primary">Все<ChevronRight className="size-3.5" /></Link> : undefined}>
       {!top ? <Skeleton className="h-36" /> : top.length ? (
         <ol className="-mx-2">
           {top.map((a) => (
@@ -151,7 +145,7 @@ function TopAgents({ tasks, t, rt }: { tasks: TaskSummary[] | undefined; t: HT; 
             </li>
           ))}
         </ol>
-      ) : <p className="text-body text-muted-foreground">{rt('noTopAgents')}</p>}
+      ) : <p className="text-body text-muted-foreground">Завершённых прогонов пока нет.</p>}
     </AsideBlock>
   )
 }
