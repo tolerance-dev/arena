@@ -16,6 +16,6 @@ make reset      # снести контейнеры вместе с базой
 
 Сайт — http://localhost:$WEB_PORT (порты в `.env`, создаётся из `.env.example`), вход — через GitHub или Google
 (OAuth-ключи в `~/.config/tolerance/env`, callback `$ARENA_PUBLIC_URL/api/v1/auth/{github,google}/callback`). Загружать агентов и запускать прогоны может любой вошедший пользователь (свои агенты, до 3 прогонов
-одновременно и 30 в сутки); админы — alimov.nsm@gmail.com (зашит в код) и `ARENA_ADMIN_EMAILS` — без лимитов. Примеры агентов — `examples/agents`. Без ключей:
+одновременно и 30 в сутки); админы — alimov.nsm@gmail.com (зашит в код) и `ARENA_ADMIN_EMAILS` — без лимитов. Примеры агентов — `backend/internal/agents/examples` (на сайте их можно выбрать готовыми, без файла). Без ключей:
 `ARENA_GATEWAY_FAKE=true` в `.env` (LLM отвечает заглушка). Нужны Docker (или Colima), Go и pnpm.
 Устройство — в `CLAUDE.md`.

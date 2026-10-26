@@ -6,6 +6,9 @@ export interface Me { user: User; can_admin?: boolean; subscriptions?: boolean }
 
 export interface Text { en: string; ru: string }
 
+// A ready agent the upload form offers instead of a file (GET /agents/examples).
+export interface ExampleAgent { slug: string; name: string; model: string; providers: string[] }
+
 export interface Agent {
   id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string

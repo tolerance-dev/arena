@@ -91,7 +91,7 @@ calls (`auth`/`save`/`{var}` chain logins and created ids; `ids` compares a list
 (text on a deep link in the browser). Every task has an API contract in TASK.md and checks generated from the data:
 hotels (34), marketplace (40: catalog, cart and stock, checkout, orders), cinema (41). The data has no image
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
-verify.py's check names. Example agents (`examples/agents/README.md`): each vendor's model on its own CLI (Claude Code,
+verify.py's check names. Example agents (`backend/internal/agents/examples/README.md`, embedded: the upload form offers them as ready agents, `agents.Examples`; demo is left out of the picker): each vendor's model on its own CLI (Claude Code,
 Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with one OrcaRouter key (`run.sh` picks
 model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check; for every task it is the reference implementation of the API contract (all checks pass); a new contract's checks
 are tested against it, and against it with typical bugs put in by hand. The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from

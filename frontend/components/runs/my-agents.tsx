@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Layers, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
+import { ExternalLink, Layers, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { PageHeader, SectionTitle } from '@/components/page-header'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { loginHref } from '@/components/public/return-path'
@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Input, fieldClass } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Segmented } from '@/components/ui/segmented'
 import { del, post, put, upload } from '@/lib/api'
 import { useT } from '@/lib/i18n/client'
 import { errorText } from '@/lib/i18n/messages/errors'
 import { runsMessages } from '@/lib/i18n/messages/runs'
-import type { Agent, Run, TaskSummary } from '@/lib/types'
+import type { Agent, ExampleAgent, Run, TaskSummary } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, ProviderOptions, providerLabel, usePoll, type RT } from './bits'
@@ -72,8 +73,18 @@ export function MyAgents() {
   )
 }
 
+const EXAMPLES_URL = 'https://github.com/tolerance-dev/arena/tree/main/backend/internal/agents/examples'
+
 function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () => void; onCancel?: () => void; subscriptions: boolean }) {
+  const examples = usePoll<{ items: ExampleAgent[] }>('/agents/examples', 3_600_000).data?.items ?? []
+  const [source, setSource] = useState<'example' | 'file'>('example')
+  const [slug, setSlug] = useState('')
+  const example = source === 'example' ? (examples.find((e) => e.slug === slug) ?? examples[0]) : undefined
+  // The name follows the picked agent until the user types their own.
+  const [name, setName] = useState<string | null>(null)
   const [provider, setProvider] = useState('anthropic')
+  const offered = example?.providers.filter((p) => subscriptions || !p.endsWith('-sub'))
+  const providerValue = offered && !offered.includes(provider) ? offered[0] : provider
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -82,8 +93,11 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
     setBusy(true)
     setErr('')
     try {
-      await upload<Agent>('/my/agents', new FormData(form))
+      const data = new FormData(form)
+      if (example) data.set('example', example.slug)
+      await upload<Agent>('/my/agents', data)
       form.reset()
+      setName(null)
       onDone()
     } catch (e) {
       setErr(errorText(e, t.locale))
@@ -98,9 +112,38 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('newAgentHint')}</p>
       </div>
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Segmented label={t('sourceLabel')} value={source} onChange={setSource} options={[
+            { value: 'example', label: t('sourceExample') }, { value: 'file', label: t('sourceFile') },
+          ]} />
+          {source === 'example' ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="example">{t('exampleLabel')}</Label>
+              <select id="example" className={field} value={example?.slug ?? ''} onChange={(e) => setSlug(e.target.value)}>
+                {examples.map((e) => <option key={e.slug} value={e.slug}>{e.name}</option>)}
+              </select>
+              {example && <p className="text-xs text-muted-foreground">
+                {t('exampleHint', { model: example.model, providers: example.providers.filter((p) => subscriptions || !p.endsWith('-sub')).map(providerLabel).join(', ') })}
+              </p>}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="bundle">{t('agentBundle')}</Label>
+              <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
+                className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-8 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
+              <p className="text-xs text-muted-foreground">
+                {t('agentBundleHint')}{' '}
+                <a href={EXAMPLES_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2">
+                  {t('examplesLink')} <ExternalLink className="size-3" />
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="name">{t('agentName')}</Label>
-          <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5" />
+          <Input id="name" name="name" required minLength={2} maxLength={60} placeholder="Claude Code · Opus 5.5"
+            value={name ?? example?.name ?? ''} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="description">{t('agentDescription')}</Label>
@@ -108,27 +151,21 @@ function NewAgent({ t, onDone, onCancel, subscriptions }: { t: RT; onDone: () =>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="provider">{t('agentProvider')}</Label>
-          <select id="provider" name="provider" className={field} value={provider} onChange={(e) => setProvider(e.target.value)}>
-            <ProviderOptions subscriptions={subscriptions} />
+          <select id="provider" name="provider" className={field} value={providerValue} onChange={(e) => setProvider(e.target.value)}>
+            <ProviderOptions subscriptions={subscriptions} only={offered} />
           </select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="api_key">{t('agentKey')}</Label>
-          {provider === 'chatgpt-sub' ? (
+          {providerValue === 'chatgpt-sub' ? (
             <textarea id="api_key" name="api_key" required rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
               className={cn(field, 'h-auto py-2 font-mono text-xs')} />
           ) : (
             <Input id="api_key" name="api_key" type="password" required autoComplete="off" placeholder="sk-…" />
           )}
           <p className="text-xs text-muted-foreground">
-            {provider === 'claude-sub' ? t('keyHintClaudeSub') : provider === 'chatgpt-sub' ? t('keyHintChatgptSub') : t('agentKeyHint')}
+            {providerValue === 'claude-sub' ? t('keyHintClaudeSub') : providerValue === 'chatgpt-sub' ? t('keyHintChatgptSub') : t('agentKeyHint')}
           </p>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="bundle">{t('agentBundle')}</Label>
-          <input id="bundle" name="bundle" type="file" required accept=".zip,.sh,application/zip,text/x-sh"
-            className="block w-full rounded-md border border-input bg-card text-sm file:mr-3 file:h-8 file:border-0 file:border-r file:border-input file:bg-muted file:px-4 file:font-medium disabled:cursor-not-allowed disabled:opacity-50" />
-          <p className="text-xs text-muted-foreground">{t('agentBundleHint')}</p>
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
           <Button type="submit" disabled={busy}><Upload /> {busy ? t('uploading') : t('upload')}</Button>

@@ -30,8 +30,10 @@ export const SUBSCRIPTIONS = [
 
 export const providerLabel = (p: string) => [...PROVIDERS, ...SUBSCRIPTIONS].find((x) => x.value === p)?.label ?? p
 
-export function ProviderOptions({ subscriptions }: { subscriptions?: boolean }) {
-  return <>{[...PROVIDERS, ...(subscriptions ? SUBSCRIPTIONS : [])].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
+// only: the providers to offer (a ready agent works with some keys only).
+export function ProviderOptions({ subscriptions, only }: { subscriptions?: boolean; only?: string[] }) {
+  return <>{[...PROVIDERS, ...(subscriptions ? SUBSCRIPTIONS : [])].filter((p) => !only || only.includes(p.value))
+    .map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
 }
 
 // Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted).

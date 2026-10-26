@@ -19,6 +19,9 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		}
 		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
 	})
+	mux.HandleFunc("GET /api/v1/agents/examples", func(w http.ResponseWriter, r *http.Request) {
+		httpx.Respond(w, http.StatusOK, map[string]any{"items": Examples})
+	})
 	mux.HandleFunc("GET /api/v1/agents/{id}", func(w http.ResponseWriter, r *http.Request) {
 		a, err := s.Get(r.Context(), r.PathValue("id"), false)
 		if err != nil {
@@ -52,15 +55,9 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
-		f, _, err := r.FormFile("bundle")
+		data, err := formBundle(r)
 		if err != nil {
-			httpx.WriteError(w, r, invalid("The bundle (zip) is required"))
-			return
-		}
-		defer f.Close()
-		data, err := io.ReadAll(io.LimitReader(f, MaxBundleBytes+1))
-		if err != nil || len(data) > MaxBundleBytes {
-			httpx.WriteError(w, r, httpx.New(http.StatusRequestEntityTooLarge, "body_too_large", "The bundle is larger than 20 MB"))
+			httpx.WriteError(w, r, err)
 			return
 		}
 		a, err := s.Create(r.Context(), identity.MustFromContext(r.Context()).UserID, identity.OwnerScope(r.Context()) != "", CreateInput{
@@ -101,4 +98,21 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+}
+
+// formBundle is the upload's bundle: a ready example (example=<slug>, see Examples) or the uploaded file.
+func formBundle(r *http.Request) ([]byte, error) {
+	if slug := r.FormValue("example"); slug != "" {
+		return exampleBundle(slug, r.FormValue("provider"))
+	}
+	f, _, err := r.FormFile("bundle")
+	if err != nil {
+		return nil, invalid("Pick a ready agent or upload a bundle")
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, MaxBundleBytes+1))
+	if err != nil || len(data) > MaxBundleBytes {
+		return nil, httpx.New(http.StatusRequestEntityTooLarge, "body_too_large", "The bundle is larger than 20 MB")
+	}
+	return data, nil
 }
