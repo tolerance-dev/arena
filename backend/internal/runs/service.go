@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"tolerance/internal/admin"
+	"tolerance/internal/identity"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/httpx"
 	"tolerance/internal/platform/idgen"
@@ -388,14 +389,20 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You have started 30 runs in the last 24 hours: try again later")
 			}
 		}
-		var provider, model, bundleHash string
-		err := tx.QueryRow(ctx, `SELECT provider, model, encode(sha256(bundle), 'hex') FROM agents WHERE id = $1 AND ($2 = '' OR owner_id = $2)`,
-			agentID, ownerID).Scan(&provider, &model, &bundleHash)
+		var provider, model, bundleHash, agentOwner string
+		err := tx.QueryRow(ctx, `SELECT provider, model, encode(sha256(bundle), 'hex'), owner_id FROM agents WHERE id = $1 AND ($2 = '' OR owner_id = $2)`,
+			agentID, ownerID).Scan(&provider, &model, &bundleHash, &agentOwner)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return invalid("Unknown agent")
 		}
 		if err != nil {
 			return err
+		}
+		// A personal subscription is spent only by its owner: an admin may run anyone's agent, but not on that.
+		if pricing.Subscription(provider) {
+			if a, ok := identity.FromContext(ctx); !ok || a.UserID != agentOwner {
+				return invalid("Only its owner can run an agent on a personal subscription")
+			}
 		}
 		manifest, err := json.Marshal(newManifest(t, provider, model, bundleHash))
 		if err != nil {

@@ -32,7 +32,7 @@ type config struct {
 	googleID         string
 	googleSecret     string
 	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/checks.json overrides (the private arena-tasks repo)
-	subscriptions    bool   // ARENA_SUBSCRIPTIONS: admins may run agents on their own Claude/ChatGPT subscription (local only)
+	subscriptions    bool   // ARENA_SUBSCRIPTIONS: the owner (ownerEmail, nobody else) may run agents on their Claude/ChatGPT subscription
 	devLogin         bool   // ARENA_DEV_LOGIN: sign in as any email with no password (local only)
 }
 
@@ -78,10 +78,6 @@ func loadConfig() (config, error) {
 	}
 	if cfg.databaseURL == "" {
 		return config{}, errors.New("ARENA_APP_DATABASE_URL is required")
-	}
-	if cfg.subscriptions && cfg.secureCookies {
-		// A personal subscription is for its owner's own use: never behind a public site.
-		return config{}, errors.New("ARENA_SUBSCRIPTIONS is for local runs; it cannot be on with ARENA_SECURE_COOKIES=true")
 	}
 	for _, p := range [][3]string{{"GITHUB", cfg.githubID, cfg.githubSecret}, {"GOOGLE", cfg.googleID, cfg.googleSecret}} {
 		if (p[1] == "") != (p[2] == "") {

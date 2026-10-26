@@ -39,7 +39,15 @@ func newHandler(cfg config, d deps) http.Handler {
 	owner := http.NewServeMux()
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
 		admin := identity.MustFromContext(ctx).Role == "admin"
-		return map[string]any{"can_admin": admin, "subscriptions": admin && cfg.subscriptions}, nil
+		subs := false
+		if cfg.subscriptions {
+			u, err := d.users.Get(ctx, userID)
+			if err != nil {
+				return nil, err
+			}
+			subs = strings.EqualFold(u.Email, ownerEmail)
+		}
+		return map[string]any{"can_admin": admin, "subscriptions": subs}, nil
 	})
 
 	owner.HandleFunc("DELETE /api/v1/me", func(w http.ResponseWriter, r *http.Request) {
