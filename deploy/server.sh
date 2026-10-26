@@ -155,7 +155,12 @@ cmd_deploy() {
   if healthy; then
     [ -n "$prev" ] && [ "$prev" != "$tag" ] && echo "$prev" > .prev-tag
     echo "--- deployed $tag"
+    # Every deploy pulls a ~6 GB runtime image; keep only this tag and the rollback target, or the 30 GB disk fills
+    # up and takes postgres down with it (2026-10-26).
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$REGISTRY/tolerance-" \
+      | grep -v -e ":$tag\$" ${prev:+-e ":$prev\$"} | xargs -r docker rmi >/dev/null 2>&1 || true
     docker image prune -f >/dev/null
+    docker builder prune -af >/dev/null 2>&1 || true
     return 0
   fi
 
