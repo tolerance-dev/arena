@@ -17,7 +17,7 @@ working skeleton, fast. This section overrides any skills and default habits:
 - **Design: Product Hunt's layout, our tokens.** Pages follow producthunt.com (measurements in `DESIGN_REFERENCE.md`):
   a 900px main column + 280px aside (`components/ui/columns.tsx`; the aside drops below at <1280px), feed rows with
   52px counters (`components/ui/feed.tsx`), pill tabs, pill buttons. Colours, type scale and radii are the tokens in
-  `globals.css`. Show only real data: no voting, categories or search until the backend has them, and an empty state
+  `globals.css`. Show only real data: no upvotes, categories or search until the backend has them, and an empty state
   instead of placeholders. Don't pile on blocks that repeat another page.
 - **Throwing code away is fine.** When the concept changes, delete the old feature (code, routes, pages, tests)
   rather than keeping it compatible.
@@ -100,6 +100,10 @@ Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with o
 model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check (the judge
 should score it low); for hotels it is the reference implementation of the API contract (34/34 checks). The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
 Moonshot's installer, pinned): after changing it, `docker rmi arena-runtime:1 && make images`.
+**Voting** is blind and pairwise (`/vote`, `internal/runs/votes.go`, table `pair_votes`): a signed-in user gets
+two agents' best runs at a task (the Compare set, app started, not their own agents, a pair they haven't voted on,
+least-voted pairs first) with names hidden, picks A, B or a tie; the votes replay into each agent's Elo per task
+(`TaskView.ratings`, a row in Compare). The run ids are in the page, so blindness is UI-only.
 The task page opens on **Compare** (`components/runs/compare.tsx`): each agent's best finished run side by side
 (`runs.Service.Compare`, unscored runs included), judge checklist items lined up by position, the best cell per row
 highlighted. Keep `judge.md` items in a fixed order so the rows line up.

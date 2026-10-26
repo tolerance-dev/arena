@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Download, ExternalLink, FileJson, Play } from 'lucide-react'
+import { Download, ExternalLink, FileJson, Play, Scale } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
@@ -57,6 +57,11 @@ export function TaskView({ slug }: { slug: string }) {
               <Play /> {t('runYourAgent')}
             </Button>
           )}
+          {data.compare.length >= 2 && (
+            <Button variant="outline" size="lg" render={<Link href={`/vote?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
+              <Scale /> {t('voteOnTask')}
+            </Button>
+          )}
           <Button variant="outline" size="lg" render={<a href={bundle} />} nativeButton={false}>
             <Download /> {t('downloadBrief')}
           </Button>
@@ -71,7 +76,7 @@ export function TaskView({ slug }: { slug: string }) {
       ]} />
 
       <div className="mt-6">
-        {tab === 'compare' && <Compare runs={data.compare} t={t} />}
+        {tab === 'compare' && <Compare runs={data.compare} ratings={data.ratings} t={t} />}
         {tab === 'submissions' && (
           data.compare.length === 0 ? <EmptyState>{t('noRuns')}</EmptyState> : (
             <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

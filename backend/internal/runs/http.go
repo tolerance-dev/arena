@@ -18,6 +18,8 @@ type TaskView struct {
 	Checks    []string `json:"checks"`
 	Compare   []Run    `json:"compare"`
 	Recent    []Run    `json:"recent"`
+	// Ratings is the agents' Elo from people's blind votes, by agent id (only agents someone voted on).
+	Ratings map[string]Rating `json:"ratings"`
 }
 
 // RegisterPublicRoutes mounts the public reads.
@@ -43,6 +45,9 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		}
 		if err == nil {
 			v.Compare, err = s.Compare(r.Context(), t.Slug)
+		}
+		if err == nil {
+			v.Ratings, err = s.Ratings(r.Context(), t.Slug)
 		}
 		if err != nil {
 			httpx.WriteError(w, r, err)
@@ -147,6 +152,36 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 			return
 		}
 		httpx.Respond(w, http.StatusCreated, run)
+	})
+	mux.HandleFunc("GET /api/v1/my/vote", func(w http.ResponseWriter, r *http.Request) {
+		p, err := s.NextPair(r.Context(), identity.MustFromContext(r.Context()).UserID, r.URL.Query().Get("task"))
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]any{"pair": p})
+	})
+	mux.HandleFunc("POST /api/v1/my/votes", func(w http.ResponseWriter, r *http.Request) {
+		raw, err := httpx.ReadBody(w, r)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		var in struct {
+			A      string `json:"a"`
+			B      string `json:"b"`
+			Winner string `json:"winner"`
+		}
+		if err := httpx.Decode(raw, &in); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		rev, err := s.Vote(r.Context(), identity.MustFromContext(r.Context()).UserID, in.A, in.B, in.Winner)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusCreated, rev)
 	})
 	mux.HandleFunc("POST /api/v1/my/runs/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Cancel(r.Context(), identity.OwnerScope(r.Context()), r.PathValue("id")); err != nil {

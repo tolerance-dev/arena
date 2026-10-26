@@ -45,7 +45,7 @@ export function Meta({ items, className }: { items: React.ReactNode[]; className
 }
 
 // Product Hunt's 52×52 counter: icon over a number in a 2px-outlined square. Ours count real things (submissions,
-// best score); there is no voting.
+// best score); there are no upvotes (voting is pairwise, on /vote).
 export function Counter({ icon, value, label, className }: { icon: React.ReactNode; value: React.ReactNode; label: string; className?: string }) {
   return (
     <div title={label} className={cn('flex size-[52px] flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-border bg-card text-title leading-5 tnum transition-colors duration-300 group-hover:border-border-strong [&_svg]:size-4 [&_svg]:text-muted-foreground', className)}>
