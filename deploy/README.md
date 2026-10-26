@@ -15,6 +15,13 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   `reset_db` deploy leaves `arena-<time>-pre-<sha>.dump` behind. After migrating, a reset loads users,
   user_identities, sessions and agents back from that dump (all or nothing; if the columns changed it warns in the
   deploy log and leaves them in the dump). By hand: `bash server.sh restore backups/<dump> [table...]`.
+- **Off-site copies** (off until set in `/opt/tolerance/.env`): each dump is also encrypted (`openssl`, AES-256,
+  `BACKUP_PASSPHRASE`) and copied by rclone (the `rclone/rclone` image, nothing installed) to `BACKUP_REMOTE`, e.g.
+  `offsite:tolerance-backups/arena`; copies older than 30 days are deleted there. The remote is `RCLONE_CONFIG_OFFSITE_*`
+  lines, for Cloudflare R2: `_TYPE=s3`, `_PROVIDER=Cloudflare`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`,
+  `_ENDPOINT=https://<account>.r2.cloudflarestorage.com`. Keep the passphrase somewhere other than the server too:
+  without it the copies are useless. Get one back: `bash server.sh offsite-get arena-<time>.dump.enc`, then restore.
+  A failed copy warns and doesn't fail the backup.
 - `compose.yml` and `Caddyfile` are the server's source of truth. The Caddyfile also serves `mentor.nualimov.dev`
   (its stack is `/root/nualimov.dev`): keep that block.
 - Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
