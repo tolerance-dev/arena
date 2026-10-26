@@ -15,8 +15,8 @@ import (
 
 type contender struct{ agent, run, shot string }
 
-// Pairs carry nothing that names a run or an agent, each alias serves its own side's shot to the voter only, and a
-// vote for side "a" counts for the agent behind alias a, whatever order the pair is stored in.
+// Pairs carry nothing that names a run or an agent, each alias serves its own side's shot, only the voter votes with
+// their pair, and a vote for side "a" counts for the agent behind alias a, whatever order the pair is stored in.
 func TestVoteBlind(t *testing.T) {
 	pool := dbtest.New(t)
 	f := fixture{t, pool}
@@ -59,7 +59,7 @@ func TestVoteBlind(t *testing.T) {
 
 		side := func(alias string) contender {
 			t.Helper()
-			shot, err := s.VoteShot(ctx, voter, alias, "shot")
+			shot, err := s.VoteShot(ctx, alias, "shot")
 			if err != nil {
 				t.Fatalf("shot of %s: %v", alias, err)
 			}
@@ -70,8 +70,8 @@ func TestVoteBlind(t *testing.T) {
 			return c
 		}
 		a, b := side(p.A.Alias), side(p.B.Alias)
-		if _, err := s.VoteShot(ctx, other, p.A.Alias, "shot"); !isStatus(err, http.StatusNotFound) {
-			t.Fatalf("another user fetched the voter's shot: %v", err)
+		if _, err := s.Vote(ctx, other, p.ID, "b"); !isStatus(err, http.StatusConflict) {
+			t.Fatalf("another user voted with the voter's pair: %v", err)
 		}
 
 		before, err := s.Ratings(ctx, "marketplace")
@@ -98,6 +98,38 @@ func TestVoteBlind(t *testing.T) {
 	}
 	if p, err := s.NextPair(ctx, voter, "marketplace"); err != nil || p != nil {
 		t.Fatalf("pair after every pair was voted on: %+v, %v", p, err)
+	}
+}
+
+// A guest's pair is voted on by whoever signs in with it, once, and never on their own agent.
+func TestVoteGuestPair(t *testing.T) {
+	pool := dbtest.New(t)
+	f := fixture{t, pool}
+	s := NewService(pool, "", 1)
+	ctx := context.Background()
+
+	owner := f.user("owner", 48*time.Hour)
+	f.done(f.agent(owner, "x"), "marketplace", 50, "x")
+	f.done(f.agent(owner, "y"), "marketplace", 50, "y")
+	voter := f.user("voter", 48*time.Hour)
+
+	guest := func() *Pair {
+		t.Helper()
+		p, err := s.NextPair(ctx, "", "marketplace")
+		if err != nil || p == nil {
+			t.Fatalf("guest pair: %+v, %v", p, err)
+		}
+		return p
+	}
+	if _, err := s.Vote(ctx, owner, guest().ID, "a"); err == nil {
+		t.Fatal("the owner voted on their own agents through a guest pair")
+	}
+	p := guest()
+	if _, err := s.Vote(ctx, voter, p.ID, "tie"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Vote(ctx, voter, guest().ID, "a"); !isStatus(err, http.StatusConflict) {
+		t.Fatalf("voted twice on one pair through a second guest pair: %v", err)
 	}
 }
 

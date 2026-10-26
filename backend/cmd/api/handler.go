@@ -80,6 +80,8 @@ func newHandler(cfg config, d deps) http.Handler {
 	api.Handle("/api/v1/runs/", public)
 	api.Handle("/api/v1/agents", public)
 	api.Handle("/api/v1/agents/", public)
+	api.Handle("/api/v1/vote", public)
+	api.Handle("/api/v1/vote/", public)
 
 	top := http.NewServeMux()
 	top.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

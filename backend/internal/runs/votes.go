@@ -19,7 +19,7 @@ import (
 // tie). Each pick moves the two agents' Elo at that task: a human ranking next to the checks' score.
 
 // Contender is one side of a blind pair: only what shows the app, nothing that names the agent or the run. Alias
-// serves its shots (/api/v1/my/vote/{alias}/shot.jpg) and its live preview (the preview host takes it like a run hex).
+// serves its shots (/api/v1/vote/{alias}/shot.jpg) and its live preview (the preview host takes it like a run hex).
 type Contender struct {
 	Alias         string `json:"alias"`
 	HasShot       bool   `json:"has_shot"`
@@ -70,7 +70,7 @@ func keyOf(x, y string) pairKey {
 
 // NextPair picks two apps for userID to compare: each agent's best run at the task (as on Compare) whose app
 // started, not the voter's own agents, a pair they haven't voted on, the pairs with the fewest votes first. task ""
-// means any task. nil = nothing left to vote on.
+// means any task. userID "" is a guest: they see the pair, and signing in to vote claims it. nil = nothing left.
 func (s *Service) NextPair(ctx context.Context, userID, task string) (*Pair, error) {
 	slugs := []string{task}
 	if task == "" {
@@ -181,7 +181,7 @@ func (s *Service) nextPairAt(ctx context.Context, userID, task string) (*Pair, e
 		if _, err := tx.Exec(ctx, `DELETE FROM vote_pairs WHERE created_at < now() - $1::interval`, votePairTTL); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO vote_pairs (id, user_id, task, run_a, run_b, alias_a, alias_b) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		_, err := tx.Exec(ctx, `INSERT INTO vote_pairs (id, user_id, task, run_a, run_b, alias_a, alias_b) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7)`,
 			pair.ID, userID, task, o.a.ID, o.b.ID, pair.A.Alias, pair.B.Alias)
 		return err
 	})
@@ -191,12 +191,13 @@ func (s *Service) nextPairAt(ctx context.Context, userID, task string) (*Pair, e
 	return pair, nil
 }
 
-// VoteShot is a shot (column shot or shot_mobile) of one side of a pair handed to userID, by the side's alias.
-func (s *Service) VoteShot(ctx context.Context, userID, side, column string) ([]byte, error) {
+// VoteShot is a shot (column shot or shot_mobile) of one side of a pair, by the side's alias. The alias is random and
+// only its pair's page knows it, as with the live preview, so it needs no session.
+func (s *Service) VoteShot(ctx context.Context, side, column string) ([]byte, error) {
 	var run string
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT CASE WHEN alias_a = $2 THEN run_a ELSE run_b END FROM vote_pairs
-			WHERE user_id = $1 AND (alias_a = $2 OR alias_b = $2)`, userID, side).Scan(&run)
+		return tx.QueryRow(ctx, `SELECT CASE WHEN alias_a = $1 THEN run_a ELSE run_b END FROM vote_pairs
+			WHERE alias_a = $1 OR alias_b = $1`, side).Scan(&run)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, httpx.NotFound()
@@ -213,15 +214,15 @@ type Reveal struct {
 	B AgentRef `json:"b"`
 }
 
-// Vote records userID's pick in the pair they were handed: winner is "a", "b" or "tie". Both must be finished runs
-// of different agents at one task, neither of them the voter's.
+// Vote records userID's pick in the pair they were handed, or in a guest's pair (a guest signs in to vote): winner is
+// "a", "b" or "tie". Both must be finished runs of different agents at one task, neither of them the voter's.
 func (s *Service) Vote(ctx context.Context, userID, pairID, winner string) (Reveal, error) {
 	if winner != "a" && winner != "b" && winner != "tie" {
 		return Reveal{}, invalid(`winner must be "a", "b" or "tie"`)
 	}
 	var a, b string
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT run_a, run_b FROM vote_pairs WHERE id = $1 AND user_id = $2`, pairID, userID).Scan(&a, &b)
+		return tx.QueryRow(ctx, `SELECT run_a, run_b FROM vote_pairs WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)`, pairID, userID).Scan(&a, &b)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Reveal{}, httpx.StateConflict("This pair has expired: load the next one")

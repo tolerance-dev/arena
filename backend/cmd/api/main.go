@@ -70,6 +70,10 @@ func main() {
 		return d.limiter.Allow("vote:user:"+userID, 60, time.Hour) &&
 			d.limiter.Allow("vote:ip:"+clientip.FromRequest(r, cfg.trustProxy), 120, time.Hour)
 	}
+	// Each guest pair is a row (dropped after votePairTTL): enough for a person browsing, not for filling the table.
+	d.runs.GuestPairAllowed = func(r *http.Request) bool {
+		return d.limiter.Allow("pair:ip:"+clientip.FromRequest(r, cfg.trustProxy), 300, time.Hour)
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
