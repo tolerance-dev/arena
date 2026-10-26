@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
-import { useT } from '@/lib/i18n/client'
-import { authMessages } from '@/lib/i18n/messages/auth'
 import type { AuthProviders } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +13,6 @@ export function SignInOptions({ next, initialError, className }: {
   initialError?: string | null
   className?: string
 }) {
-  const t = useT(authMessages)
   const [options, setOptions] = useState<AuthProviders | null>(null)
   const [failed, setFailed] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
@@ -27,9 +24,9 @@ export function SignInOptions({ next, initialError, className }: {
       .catch(() => {
         setOptions({ providers: [] })
         setFailed(true)
-        setError(t('err.unreachable'))
+        setError('Сервер недоступен. Попробуйте ещё раз чуть позже.')
       })
-  }, [t])
+  }, [])
 
   const nothing = options && options.providers.length === 0 && !failed
   return (
@@ -39,10 +36,10 @@ export function SignInOptions({ next, initialError, className }: {
           <Button key={p} variant="outline" size="lg" className="h-12 w-full"
             render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
             <ProviderIcon id={p} />
-            {t(p)}
+            {p === 'github' ? 'Войти через GitHub' : p === 'google' ? 'Войти через Google' : p}
           </Button>
         ))}
-        {nothing && <p className="text-center text-body text-muted-foreground">{t('notConfigured')}</p>}
+        {nothing && <p className="text-center text-body text-muted-foreground">Вход на этом сервере ещё не настроен.</p>}
       </div>
       {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
     </div>

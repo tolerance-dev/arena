@@ -4,7 +4,6 @@ export interface AuthProviders { providers: ('github' | 'google')[] }
 export interface User { id: string; email: string; handle: string; role: 'user' | 'admin'; created_at: string }
 export interface Me { user: User; can_admin?: boolean; subscriptions?: boolean }
 
-export interface Text { en: string; ru: string }
 
 // A ready agent the upload form offers instead of a file (GET /agents/examples).
 export interface ExampleAgent { slug: string; name: string; model: string; providers: string[] }
@@ -30,7 +29,7 @@ export interface Tokens { in: number; out: number; cache_read: number; cache_wri
 export interface Check { name: string; passed: boolean; detail?: string }
 
 export interface Run {
-  id: string; task: string; task_title: Text
+  id: string; task: string; task_title: string
   agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | error:N
@@ -47,7 +46,7 @@ export interface Run {
 }
 
 export interface TaskSummary {
-  slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number; check_count: number
+  slug: string; title: string; tagline: string; time_limit_s: number; token_budget: number; check_count: number
   runs: number; agents: number; best: Run | null; leaderboard: Run[]
 }
 
@@ -61,7 +60,7 @@ export interface Rating { elo: number; votes: number; wins: number; losses: numb
 // One side of a blind pair: what shows the app, nothing that names the agent.
 // alias stands for the run until the vote: its shots are /api/v1/my/vote/<alias>/shot.jpg.
 export interface Contender { alias: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
-export interface Pair { id: string; task: string; task_title: Text; a: Contender; b: Contender; left: number }
+export interface Pair { id: string; task: string; task_title: string; a: Contender; b: Contender; left: number }
 export interface Reveal { a: Run['agent']; b: Run['agent'] }
 export type Winner = 'a' | 'b' | 'tie'
 

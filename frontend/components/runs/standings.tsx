@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { Run, TaskSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, CheckStrip, Score, type RT } from './bits'
+import { AgentAvatar, CheckStrip, Score } from './bits'
 import { TaskGlyph } from './task-glyph'
 
 export type Standing = { id: string; name: string; owner: string; provider: string; cells: Record<string, Run>; average: number; rank: number }
@@ -27,23 +27,23 @@ export function rankAgents(tasks: TaskSummary[]): Standing[] {
 }
 
 // Agents down, tasks across: every agent's best run on every task.
-export function StandingsTable({ tasks, rows, t }: { tasks: TaskSummary[]; rows: Standing[]; t: RT }) {
-  if (rows.length === 0) return <EmptyState>{t('noStandings')}</EmptyState>
+export function StandingsTable({ tasks, rows }: { tasks: TaskSummary[]; rows: Standing[] }) {
+  if (rows.length === 0) return <EmptyState>Завершённых прогонов пока нет. Результаты появятся здесь после первой проверки.</EmptyState>
   return (
     <div className="overflow-x-auto rounded-xl border-2 border-border">
       <table className="w-full min-w-[640px] text-title">
         <thead>
           <tr className="border-b border-border bg-muted text-left text-body text-muted-foreground">
             <th className="h-11 w-12 pl-4 font-medium">#</th>
-            <th className="h-11 px-3 font-medium">{t('colAgent')}</th>
+            <th className="h-11 px-3 font-medium">Агент</th>
             {tasks.map((x) => (
               <th key={x.slug} className="h-11 px-3 font-medium">
                 <Link href={`/t/${x.slug}`} className="inline-flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-primary">
-                  <TaskGlyph slug={x.slug} className="size-4" />{t.locale === 'ru' ? x.title.ru : x.title.en}
+                  <TaskGlyph slug={x.slug} className="size-4" />{x.title}
                 </Link>
               </th>
             ))}
-            <th className="h-11 px-4 text-right font-medium">{t('colAverage')}</th>
+            <th className="h-11 px-4 text-right font-medium">Среднее</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +64,7 @@ export function StandingsTable({ tasks, rows, t }: { tasks: TaskSummary[]; rows:
                 return (
                   <td key={x.slug} className={cn('relative px-3 py-3', r && 'transition-colors duration-150 hover:bg-secondary')}>
                     {r ? (
-                      <Link href={`/r/${r.id}`} className="flex items-center gap-2.5 after:absolute after:inset-0" aria-label={`${row.name}, ${x.title.en}: ${r.score}`}>
+                      <Link href={`/r/${r.id}`} className="flex items-center gap-2.5 after:absolute after:inset-0" aria-label={`${row.name}, ${x.title}: ${r.score}`}>
                         <Score score={r.score} className="w-8" />
                         <CheckStrip checks={r.checks} size="xs" />
                       </Link>

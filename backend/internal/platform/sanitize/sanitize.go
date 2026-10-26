@@ -4,7 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 const (
@@ -62,47 +61,8 @@ func containsDigit(s string) bool {
 	return false
 }
 
-// CleanText prepares free text from a client for storage and display: it
-// strips ANSI sequences and control characters, collapses whitespace,
-// redacts anything shaped like a secret and truncates to maxRunes.
-// Redaction runs before truncation so a secret cut by the limit cannot
-// leak its head. An empty result means the text should be dropped.
-func CleanText(s string, maxRunes int) string {
-	s = strings.ToValidUTF8(s, "")
-	s = ansiRe.ReplaceAllString(s, "")
-	s = strings.Map(func(r rune) rune {
-		switch {
-		case r == '\n' || r == '\t' || r == '\r' || r == '\v' || r == '\f':
-			return ' '
-		case unicode.IsControl(r) || unicode.Is(unicode.Cf, r):
-			return -1
-		}
-		return r
-	}, s)
-	s = strings.Join(strings.Fields(s), " ")
-	for _, re := range secretPatterns {
-		s = re.ReplaceAllString(s, redacted)
-	}
-	s = hexRe.ReplaceAllStringFunc(s, func(m string) string {
-		if containsDigit(m) {
-			return redacted
-		}
-		return m
-	})
-	s = longTokenRe.ReplaceAllStringFunc(s, func(m string) string {
-		if looksLikeToken(m) {
-			return redacted
-		}
-		return m
-	})
-	if utf8.RuneCountInString(s) > maxRunes {
-		s = string([]rune(s)[:maxRunes])
-	}
-	return strings.TrimSpace(s)
-}
-
-// CleanLog is CleanText for multi-line output: ANSI stripped, secrets
-// redacted per line, newlines kept, and only the last maxBytes returned
+// CleanLog prepares agent output for storage and display: ANSI and control
+// characters stripped, secrets redacted per line, newlines kept, and only the last maxBytes returned
 // (the end of a log is where the failure is).
 func CleanLog(s string, maxBytes int) string {
 	s = strings.ToValidUTF8(s, "")

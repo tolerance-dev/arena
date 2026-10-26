@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { Check, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { compact, duration, usd, usedTokens } from '@/lib/format'
+import { compact, duration, plural, usd, usedTokens } from '@/lib/format'
 import type { Rating, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack, type RT } from './bits'
+import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack } from './bits'
 
 type Row = {
   label: string
@@ -29,25 +29,25 @@ function checkNames(runs: Run[]): string[] {
 // Each agent's best run at the task side by side: what it looks like, which checks it passed, what people think of
 // it, and what it cost to build. The point of the arena is the difference between agents, so this is the task's
 // first tab.
-export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Record<string, Rating>; t: RT }) {
-  if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
+export function Compare({ runs, ratings = {} }: { runs: Run[]; ratings?: Record<string, Rating> }) {
+  if (runs.length === 0) return <EmptyState>Прогонов пока нет.</EmptyState>
   const names = checkNames(runs)
   const sections: Section[] = [
     {
-      title: t('cmpResult'),
+      title: 'Результат',
       rows: [
-        { label: t('colScore'), cell: (r) => <Score score={r.score} className="text-section" />, value: (r) => r.score, better: 'high' },
+        { label: 'Оценка', cell: (r) => <Score score={r.score} className="text-section" />, value: (r) => r.score, better: 'high' },
         // People's Elo, once anyone has voted at this task.
         ...(Object.keys(ratings).length ? [{
-          label: t('cmpPeople'), hint: t('cmpPeopleHint'),
+          label: 'Люди (Elo)', hint: 'По слепым голосам людей на /vote',
           cell: (r: Run) => {
             const p = ratings[r.agent.id]
-            return p ? <span><span className="font-semibold tnum">{p.elo}</span><span className="block text-meta text-faint">{t.plural('votes', p.votes)}</span></span> : <span className="text-faint">—</span>
+            return p ? <span><span className="font-semibold tnum">{p.elo}</span><span className="block text-meta text-faint">{plural(p.votes, '{n} голос', '{n} голоса', '{n} голосов')}</span></span> : <span className="text-faint">—</span>
           },
           value: (r: Run) => ratings[r.agent.id]?.elo ?? null, better: 'high' as const,
         }] : []),
         {
-          label: t('colChecks'),
+          label: 'Проверки',
           cell: (r) => r.checks.length ? (
             <span className="flex items-center gap-2.5"><CheckStrip checks={r.checks} /><span className="text-body text-faint tnum">{r.checks.filter((c) => c.passed).length}/{r.checks.length}</span></span>
           ) : <span className="text-faint">—</span>,
@@ -55,32 +55,32 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
         },
       ],
     },
-    ...(names.length ? [{ title: t('cmpChecks'), rows: names.map(checkRow) }] : []),
+    ...(names.length ? [{ title: 'Проверки', rows: names.map(checkRow) }] : []),
     {
-      title: t('cmpBuild'),
+      title: 'Как строил',
       rows: [
         {
-          label: t('metricTime'),
-          cell: (r) => <span><span className="tnum">{duration(r.agent_seconds)}</span>{r.agent_exit && <span className="block text-meta text-faint">{exitLabel(t, r.agent_exit)}</span>}</span>,
+          label: 'Время агента',
+          cell: (r) => <span><span className="tnum">{duration(r.agent_seconds)}</span>{r.agent_exit && <span className="block text-meta text-faint">{exitLabel(r.agent_exit)}</span>}</span>,
           value: (r) => r.agent_seconds, better: 'low',
         },
-        { label: t('metricTokens'), cell: (r) => <span className="tnum">{compact(usedTokens(r.tokens))}</span>, value: (r) => usedTokens(r.tokens), better: 'low' },
-        { label: t('metricCost'), cell: (r) => <span className="tnum">{usd(r.cost_usd)}</span>, value: (r) => r.cost_usd, better: 'low' },
-        { label: t('cmpRequests'), cell: (r) => <span className="tnum">{r.tokens.requests}</span>, value: (r) => r.tokens.requests, better: 'low' },
-        { label: t('metricLoc'), cell: (r) => <span className="tnum">{compact(r.stats.loc)}<span className="text-faint"> · {t('metricFiles', { n: r.stats.files })}</span></span> },
+        { label: 'Токены', cell: (r) => <span className="tnum">{compact(usedTokens(r.tokens))}</span>, value: (r) => usedTokens(r.tokens), better: 'low' },
+        { label: 'Стоимость', cell: (r) => <span className="tnum">{usd(r.cost_usd)}</span>, value: (r) => r.cost_usd, better: 'low' },
+        { label: 'Запросов к LLM', cell: (r) => <span className="tnum">{r.tokens.requests}</span>, value: (r) => r.tokens.requests, better: 'low' },
+        { label: 'Строк кода', cell: (r) => <span className="tnum">{compact(r.stats.loc)}<span className="text-faint"> · {`файлов: ${r.stats.files}`}</span></span> },
         {
-          label: t('languages'),
+          label: 'Языки',
           cell: (r) => {
             const top = Object.entries(r.stats.languages).sort((a, b) => b[1] - a[1]).slice(0, 3)
             return top.length ? <span className="text-body">{top.map(([l, n]) => `${l} ${compact(n)}`).join(' · ')}</span> : <span className="text-faint">—</span>
           },
         },
         {
-          label: t('metricStart'),
+          label: 'Старт за',
           cell: (r) => <span className="tnum">{r.stats.start_seconds != null ? `${r.stats.start_seconds.toFixed(1)} s` : '—'}</span>,
           value: (r) => r.stats.start_seconds ?? null, better: 'low',
         },
-        { label: t('cmpConsole'), cell: (r) => <span className="tnum">{r.stats.console_errors}</span>, value: (r) => r.stats.console_errors, better: 'low' },
+        { label: 'Ошибок в консоли', cell: (r) => <span className="tnum">{r.stats.console_errors}</span>, value: (r) => r.stats.console_errors, better: 'low' },
       ],
     },
   ]
@@ -88,7 +88,7 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
   // Agents share the width equally, at least 14rem each; more agents than fit scroll sideways.
   const cols = { gridTemplateColumns: `var(--lbl) repeat(${runs.length}, minmax(14rem, 1fr))`, minWidth: `calc(var(--lbl) + ${runs.length} * 14rem)` }
   return (
-    <ScrollSync cols={cols} runs={runs} t={t}
+    <ScrollSync cols={cols} runs={runs}
       head={<>
         <div className="sticky left-0 z-10 bg-muted" />
         {runs.map((r) => (
@@ -104,7 +104,7 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
           </div>
         ))}
       </>}>
-      <RowLabel label={t('desktop')} />
+      <RowLabel label="Десктоп" />
       {runs.map((r) => (
         <div key={r.id} className="min-w-0 border-b border-l border-border p-3">
           <Link href={`/r/${r.id}`} className="block overflow-hidden rounded-lg border border-border">
@@ -112,14 +112,14 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
           </Link>
         </div>
       ))}
-      <RowLabel label={t('mobile')} />
+      <RowLabel label="Телефон" />
       {runs.map((r) => (
         <div key={r.id} className="flex justify-center border-b border-l border-border p-3">
           {r.has_shot_mobile ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt={t('bestShotAlt', { agent: r.agent.name })} loading="lazy"
+            <img src={`/api/v1/runs/${r.id}/shot-mobile.jpg`} alt={`Страница, которую построил ${r.agent.name}`} loading="lazy"
               className="h-56 w-auto rounded-lg border border-border bg-muted object-cover object-top" />
-          ) : <span className="py-8 text-meta text-faint">{t('noShot')}</span>}
+          ) : <span className="py-8 text-meta text-faint">Нет скриншота</span>}
         </div>
       ))}
 
@@ -132,10 +132,10 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
         <div key={r.id} className="flex flex-wrap gap-2 border-l border-border p-3">
           {r.preview_url && (
             <Button variant="outline" size="sm" render={<a href={r.preview_url} target="_blank" rel="noreferrer noopener" />} nativeButton={false}>
-              <ExternalLink /> {t('livePreview')}
+              <ExternalLink /> Живое превью
             </Button>
           )}
-          <Button variant="outline" size="sm" render={<Link href={`/r/${r.id}`} />} nativeButton={false}>{t('details')}</Button>
+          <Button variant="outline" size="sm" render={<Link href={`/r/${r.id}`} />} nativeButton={false}>Подробнее</Button>
         </div>
       ))}
     </ScrollSync>
@@ -145,7 +145,7 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
 // The table in two grids with the same columns: the agents' row sticks under the site header while the body
 // scrolls sideways under it (one element can't do both: a sideways scroller would trap the sticky row). Once the
 // row is stuck, a strip of small screenshots hangs under it, so you still see whose column you are reading.
-function ScrollSync({ cols, runs, t, head, children }: { cols: CSSProperties; runs: Run[]; t: RT; head: ReactNode; children: ReactNode }) {
+function ScrollSync({ cols, runs, head, children }: { cols: CSSProperties; runs: Run[]; head: ReactNode; children: ReactNode }) {
   const sentinel = useRef<HTMLDivElement>(null)
   const sticky = useRef<HTMLDivElement>(null)
   const top = useRef<HTMLDivElement>(null)
@@ -180,7 +180,7 @@ function ScrollSync({ cols, runs, t, head, children }: { cols: CSSProperties; ru
             <div className="grid [--lbl:7.5rem] sm:[--lbl:11rem]" style={cols}>
               <div className="sticky left-0 z-10 bg-card" />
               {runs.map((r) => (
-                <Link key={r.id} href={`/r/${r.id}`} className="flex min-w-0 gap-2 border-l border-border px-3 py-2" aria-label={t('bestShotAlt', { agent: r.agent.name })}>
+                <Link key={r.id} href={`/r/${r.id}`} className="flex min-w-0 gap-2 border-l border-border px-3 py-2" aria-label={`Страница, которую построил ${r.agent.name}`}>
                   <RunShot run={r} className="aspect-[16/10] h-14 rounded-md border border-border" />
                   {r.has_shot_mobile && (
                     // eslint-disable-next-line @next/next/no-img-element

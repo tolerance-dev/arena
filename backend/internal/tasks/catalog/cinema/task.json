@@ -1,13 +1,7 @@
 {
   "order": 3,
-  "title": {
-    "en": "Online cinema",
-    "ru": "Онлайн-кинотеатр"
-  },
-  "tagline": {
-    "en": "Netflix in miniature: rows of titles, title pages, a player, a watchlist, a premium plan.",
-    "ru": "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум."
-  },
+  "title": "Онлайн-кинотеатр",
+  "tagline": "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум.",
   "time_limit_s": 1800,
   "token_budget": 2000000,
   "ui": true,

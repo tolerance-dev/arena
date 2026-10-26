@@ -69,16 +69,16 @@ type Stats struct {
 
 // Run is the full public view of a run.
 type Run struct {
-	ID            string     `json:"id"`
-	Task          string     `json:"task"`
-	TaskTitle     tasks.Text `json:"task_title"` // from the catalog; empty when the task left it
-	Agent         AgentRef   `json:"agent"`
-	Status        string     `json:"status"`
-	FailureReason *string    `json:"failure_reason"`
-	AgentExit     *string    `json:"agent_exit"`
-	TimeLimitS    int        `json:"time_limit_s"`
-	TokenBudget   int64      `json:"token_budget"`
-	Tokens        Tokens     `json:"tokens"`
+	ID            string   `json:"id"`
+	Task          string   `json:"task"`
+	TaskTitle     string   `json:"task_title"` // from the catalog; empty when the task left it
+	Agent         AgentRef `json:"agent"`
+	Status        string   `json:"status"`
+	FailureReason *string  `json:"failure_reason"`
+	AgentExit     *string  `json:"agent_exit"`
+	TimeLimitS    int      `json:"time_limit_s"`
+	TokenBudget   int64    `json:"token_budget"`
+	Tokens        Tokens   `json:"tokens"`
 	// CostUSD is the tokens at the model's list price: nil when the model is unknown, 0 on a subscription.
 	CostUSD       *float64 `json:"cost_usd"`
 	AgentSeconds  *int     `json:"agent_seconds"`
@@ -254,16 +254,16 @@ func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
 
 // TaskSummary is a task with its standing, for the home page.
 type TaskSummary struct {
-	Slug        string     `json:"slug"`
-	Title       tasks.Text `json:"title"`
-	Tagline     tasks.Text `json:"tagline"`
-	TimeLimitS  int        `json:"time_limit_s"`
-	TokenBudget int64      `json:"token_budget"`
-	CheckCount  int        `json:"check_count"`
-	Runs        int        `json:"runs"`
-	Agents      int        `json:"agents"`
-	Best        *Run       `json:"best"`
-	Leaderboard []Run      `json:"leaderboard"`
+	Slug        string `json:"slug"`
+	Title       string `json:"title"`
+	Tagline     string `json:"tagline"`
+	TimeLimitS  int    `json:"time_limit_s"`
+	TokenBudget int64  `json:"token_budget"`
+	CheckCount  int    `json:"check_count"`
+	Runs        int    `json:"runs"`
+	Agents      int    `json:"agents"`
+	Best        *Run   `json:"best"`
+	Leaderboard []Run  `json:"leaderboard"`
 }
 
 // Summary is one task with its counts and leaderboard.

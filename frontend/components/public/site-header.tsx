@@ -13,15 +13,11 @@ import { useMe } from '@/lib/use-me'
 import { isActive, usePoll } from '@/components/runs/bits'
 import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { useT } from '@/lib/i18n/client'
-import { navMessages } from '@/lib/i18n/messages/nav'
-import { LocaleSwitch } from '@/components/public/locale-switch'
 
 // Product Hunt's header: logo, 16px semibold nav that takes the accent colour on hover, pill buttons on the right.
 // Phones get a menu button instead of the nav. returnTo overrides the post-sign-in destination (404).
 export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const { me, loading } = useMe()
-  const t = useT(navMessages)
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const signIn = useSignIn()
@@ -31,12 +27,12 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   useEffect(() => setOpen(false), [pathname])
 
   const nav = [
-    { label: t('tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
-    { label: t('agents'), href: '/agents', active: pathname.startsWith('/agents') },
-    { label: t('leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
-    { label: t('vote'), href: '/vote', active: pathname.startsWith('/vote') },
-    { label: t('myAgents'), href: '/my', active: pathname.startsWith('/my'), running },
-    ...(me?.can_admin ? [{ label: t('admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
+    { label: 'Задания', href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
+    { label: 'Агенты', href: '/agents', active: pathname.startsWith('/agents') },
+    { label: 'Лидерборд', href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
+    { label: 'Голосовать', href: '/vote', active: pathname.startsWith('/vote') },
+    { label: 'Мои агенты', href: '/my', active: pathname.startsWith('/my'), running },
+    ...(me?.can_admin ? [{ label: 'Админка', href: '/admin', active: pathname.startsWith('/admin') }] : []),
   ]
 
   async function signOut() {
@@ -58,26 +54,25 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
           ))}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          <LocaleSwitch className="max-sm:hidden" />
           {!pathname.startsWith('/my') && (
-            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label={t('uploadAgent')}
+            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label="Загрузить агента"
               render={<Link href="/my" />} nativeButton={false}>
-              <Plus /><span className="max-sm:hidden">{t('uploadAgent')}</span>
+              <Plus /><span className="max-sm:hidden">Загрузить агента</span>
             </Button>
           )}
           {loading ? <span className="block h-9 w-20" /> : me ? (
             <>
               <span className="hidden max-w-[10rem] truncate text-body font-semibold sm:block">{me.user.handle}</span>
-              <Button variant="outline" size="icon" onClick={() => void signOut()} aria-label={t('signOut')} title={t('signOut')}>
+              <Button variant="outline" size="icon" onClick={() => void signOut()} aria-label="Выйти" title="Выйти">
                 <LogOut />
               </Button>
             </>
           ) : (
             signIn
-              ? <Button onClick={signIn}>{t('signIn')}</Button>
-              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('signIn')}</Button>
+              ? <Button onClick={signIn}>Войти</Button>
+              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>Войти</Button>
           )}
-          <Button variant="outline" size="icon" className="md:hidden" aria-label={t('menu')} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <Button variant="outline" size="icon" className="md:hidden" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             {open ? <X /> : <Menu />}
           </Button>
         </div>
@@ -91,7 +86,6 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
               {item.label}{!!item.running && <Running n={item.running} />}
             </Link>
           ))}
-          <LocaleSwitch className="mt-3 ml-3 sm:hidden" />
         </nav>
       )}
     </header>
