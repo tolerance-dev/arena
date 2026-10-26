@@ -90,6 +90,7 @@ type User struct {
 	Cost30d   float64    `json:"cost_30d"` // dollars at list prices on API keys (subscriptions and uploaded agents left out)
 	LastRunAt *time.Time `json:"last_run_at"`
 	CreatedAt time.Time  `json:"created_at"`
+	Votes     int        `json:"votes"` // blind votes cast, all time
 }
 
 type Overview struct {
@@ -150,7 +151,8 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 				count(r.id) FILTER (WHERE `+month+`),
 				count(r.id) FILTER (WHERE r.status IN ('queued', 'agent', 'checking')),
 				coalesce(sum(r.tokens_in + r.tokens_cache_write + r.tokens_out) FILTER (WHERE `+month+`), 0),
-				max(r.created_at)
+				max(r.created_at),
+				(SELECT count(*) FROM pair_votes WHERE user_id = u.id)
 			FROM users u LEFT JOIN agents a ON a.owner_id = u.id LEFT JOIN runs r ON r.agent_id = a.id
 			GROUP BY u.id ORDER BY 10 DESC, 11 DESC NULLS LAST, u.created_at DESC LIMIT 200`)
 		if err != nil {
@@ -160,7 +162,7 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		for rows.Next() {
 			var u User
 			if err := rows.Scan(&u.ID, &u.Handle, &u.Email, &u.Role, &u.Blocked, &u.CreatedAt, &u.Agents, &u.Runs30d,
-				&u.OpenRuns, &u.Used30d, &u.LastRunAt); err != nil {
+				&u.OpenRuns, &u.Used30d, &u.LastRunAt, &u.Votes); err != nil {
 				return err
 			}
 			u.CreatedAt = u.CreatedAt.UTC()
@@ -269,6 +271,17 @@ func (s *Service) SetBlocked(ctx context.Context, userID string, blocked bool) e
 	})
 }
 
+// DeleteVotes removes every blind vote a user cast (stuffed votes); Elo is replayed from the rest. It returns how many.
+func (s *Service) DeleteVotes(ctx context.Context, userID string) (int64, error) {
+	var n int64
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `DELETE FROM pair_votes WHERE user_id = $1`, userID)
+		n = tag.RowsAffected()
+		return err
+	})
+	return n, err
+}
+
 // cancelOpen marks open runs cancelled; the worker notices and kills their containers.
 const cancelOpen = `UPDATE runs SET status = 'infra_error', failure_reason = 'cancelled', finished_at = now(), updated_at = now()
 	WHERE status IN ('queued', 'agent', 'checking')`
@@ -311,6 +324,14 @@ func RegisterRoutes(mux *http.ServeMux, s *Service) {
 			return
 		}
 		httpx.Respond(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("DELETE /api/v1/admin/users/{id}/votes", func(w http.ResponseWriter, r *http.Request) {
+		n, err := s.DeleteVotes(r.Context(), r.PathValue("id"))
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, map[string]int64{"deleted": n})
 	})
 	mux.HandleFunc("PUT /api/v1/admin/users/{id}/blocked", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)

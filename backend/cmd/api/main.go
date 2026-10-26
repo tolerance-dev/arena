@@ -17,6 +17,7 @@ import (
 	"tolerance/internal/admin"
 	"tolerance/internal/agents"
 	"tolerance/internal/identity"
+	"tolerance/internal/platform/clientip"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/ratelimit"
 	"tolerance/internal/platform/secretbox"
@@ -62,6 +63,11 @@ func main() {
 		pool: pool, log: log, users: identity.NewService(pool, cfg.adminEmails), admin: admin.NewService(pool),
 		agents: agentService(pool, box, cfg.subscriptions), runs: runs.NewService(pool, cfg.previewURL, cfg.runConcurrency),
 		limiter: ratelimit.New(nil), providers: providersFromConfig(cfg),
+	}
+	// Votes: a person comparing apps does a few a minute; more than this from one account or address is stuffing.
+	d.runs.VoteAllowed = func(r *http.Request, userID string) bool {
+		return d.limiter.Allow("vote:user:"+userID, 60, time.Hour) &&
+			d.limiter.Allow("vote:ip:"+clientip.FromRequest(r, cfg.trustProxy), 120, time.Hour)
 	}
 
 	var wg sync.WaitGroup

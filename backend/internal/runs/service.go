@@ -27,6 +27,8 @@ type Service struct {
 	PreviewURL string
 	// Slots is how many runs the worker runs at once (ARENA_RUN_CONCURRENCY), for the queue's wait estimate.
 	Slots int
+	// VoteAllowed rate-limits votes (by user and client address); nil = no limit.
+	VoteAllowed func(r *http.Request, userID string) bool
 }
 
 func NewService(pool *db.Pool, previewURL string, slots int) *Service {

@@ -104,7 +104,10 @@ Prices are typed in by hand: Gemini 3.8 Flash's are introductory and double on 2
 **Voting** is blind and pairwise (`/vote`, `internal/runs/votes.go`, table `pair_votes`): a signed-in user gets
 two agents' best runs at a task (the Compare set, app started, not their own agents, a pair they haven't voted on,
 least-voted pairs first) with names hidden, picks A, B or a tie; the votes replay into each agent's Elo per task
-(`TaskView.ratings`, a row in Compare). The run ids are in the page, so blindness is UI-only.
+(`TaskView.ratings`, a row in Compare). The page never gets run ids: `NextPair` stores the pair in `vote_pairs` and
+hands out its id plus a random alias per side; shots (`/api/v1/my/vote/{alias}/shot.jpg`) and previews (the gateway
+resolves an alias host to its run, `Previews.runOf`) go by alias. Votes are rate-limited (`VoteAllowed`, cmd/api), and
+votes of blocked users or cast in an account's first day are kept but left out of Elo.
 The task page opens on **Compare** (`components/runs/compare.tsx`): each agent's best finished run side by side
 (`runs.Service.Compare`), then a row per check (by name), the best cell per row highlighted.
 
