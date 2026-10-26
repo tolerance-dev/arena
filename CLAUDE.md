@@ -104,7 +104,7 @@ make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) +
 - `make test-fast` sets the `arena_app` role's password to `test` in the dev postgres (roles are cluster-wide): a
   running api then fails on new connections, and restarting it fails to start until `make migrate`.
 - Sign-in: `make dev` turns on `ARENA_DEV_LOGIN`, an email field under the OAuth buttons (any email, no password;
-  the owner's email `ownerEmail` in `cmd/api/config.go` is admin). OAuth keys, when wanted, live in
+  the owner's email `identity.OwnerEmail` is admin). OAuth keys, when wanted, live in
   `~/.config/tolerance/env`; callbacks go through the shared relay on :2999 (`dev/oauth-relay.conf`).
 - Browser checks: the Chrome extension hangs on `make dev` pages (#96). Headless Chromium from `arena-runtime:1`
   works: `docker run --add-host host.docker.internal:host-gateway -i arena-runtime:1 python3 - < script.py` against
@@ -113,8 +113,13 @@ make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) +
   with curl and `Origin: http://localhost:$WEB_PORT` instead.
 
 Users upload agents and start runs on `/my` within per-user limits (`internal/runs/service.go`); admins
-(`ownerEmail` + `ARENA_ADMIN_EMAILS`) skip them. `/admin` has spending and the switches (pause the queue, close user
+(`identity.OwnerEmail` + `ARENA_ADMIN_EMAILS`) skip them. `/admin` has spending and the switches (pause the queue, close user
 runs, block users).
+
+**Tournament** (`internal/runs/tournament.go`): the owner's ready agents (the ones with a model) at every task, 3
+runs each, on their own keys. The worker queues it weekly (Monday 03:00 UTC, once per ISO week across workers) when
+the owner switched it on in `/admin`, or the owner starts one by hand; only the owner may, since it spends the
+owner's keys and subscription. Its runs are ordinary ranked runs (`runs.tournament_id`), the owner's in the queue.
 
 ## Rules that stay even in prototype mode
 

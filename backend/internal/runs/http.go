@@ -3,6 +3,7 @@ package runs
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/httpx"
@@ -149,6 +150,41 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 
 // RegisterAdminRoutes mounts what only admins do with runs (the caller wraps it in RequireSession + RequireAdmin).
 func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("GET /api/v1/admin/tournament", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.TournamentState(r.Context(), identity.MustFromContext(r.Context()).UserID, time.Now())
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("POST /api/v1/admin/tournament", func(w http.ResponseWriter, r *http.Request) {
+		n, err := s.StartTournament(r.Context(), identity.MustFromContext(r.Context()).UserID)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusCreated, map[string]int{"runs": n})
+	})
+	mux.HandleFunc("PUT /api/v1/admin/tournament/weekly", func(w http.ResponseWriter, r *http.Request) {
+		raw, err := httpx.ReadBody(w, r)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		var in struct {
+			On bool `json:"on"`
+		}
+		if err := httpx.Decode(raw, &in); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		if err := s.SetTournamentWeekly(r.Context(), identity.MustFromContext(r.Context()).UserID, in.On); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("POST /api/v1/admin/runs/{id}/recheck", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Recheck(r.Context(), r.PathValue("id")); err != nil {
 			httpx.WriteError(w, r, err)

@@ -13,7 +13,7 @@ import (
 )
 
 // ownerEmail is always an admin (uploads agents, starts runs), on every deployment; ARENA_ADMIN_EMAILS adds more.
-const ownerEmail = "alimov.nsm@gmail.com"
+const ownerEmail = identity.OwnerEmail
 
 type config struct {
 	addr             string

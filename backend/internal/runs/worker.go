@@ -109,6 +109,7 @@ func (w *Worker) Run(stop, abort context.Context, host string) error {
 			w.reap(stop)
 		}
 	}()
+	go w.scheduleTournaments(stop)
 
 	// Runs live on runCtx, not stop: a SIGTERM ends the claiming, not the runs.
 	runCtx, cancelRuns := context.WithCancel(context.Background())
@@ -164,6 +165,24 @@ claiming:
 	}
 	w.log.Info("worker stopped")
 	return nil
+}
+
+// scheduleTournaments queues the weekly tournament once it is due (ScheduleTournament), checking every minute.
+func (w *Worker) scheduleTournaments(stop context.Context) {
+	for {
+		n, err := ScheduleTournament(stop, w.pool, time.Now())
+		if err != nil && stop.Err() == nil {
+			w.log.Error("schedule tournament", "err", err)
+		}
+		if n > 0 {
+			w.log.Info("weekly tournament queued", "runs", n)
+		}
+		select {
+		case <-stop.Done():
+			return
+		case <-time.After(time.Minute):
+		}
+	}
 }
 
 // heartbeat keeps this worker's row fresh, so nobody reaps its runs; a row reaped meanwhile (the database was out

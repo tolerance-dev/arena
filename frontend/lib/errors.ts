@@ -17,6 +17,9 @@ const BY_CODE: Record<string, string> = {
   key_rejected: 'Провайдер не принял ключ: проверьте, что он скопирован целиком, не отозван и подходит выбранному провайдеру.',
   key_blocked: 'Google не пускает этот ключ к Gemini API: создайте ключ в AI Studio (aistudio.google.com/apikey) или разрешите ему Generative Language API в Google Cloud Console.',
   key_is_subscription: 'Это токен подписки Claude: выберите провайдера «Подписка Claude».',
+  tournament_running: 'Прошлый турнир ещё идёт: новый можно запустить, когда закончатся его прогоны.',
+  tournament_no_agents: 'У владельца сайта нет готовых агентов: добавьте их в «Мои агенты».',
+  not_owner: 'Турниром управляет только владелец сайта.',
   key_is_api_key: 'Это API-ключ Anthropic: выберите провайдера «Anthropic».',
 }
 const GENERIC = 'Что-то пошло не так. Попробуйте ещё раз.'
