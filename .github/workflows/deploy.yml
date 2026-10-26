@@ -4,7 +4,7 @@ name: deploy
 # Builds the backend, web and sandbox runtime images at the chosen commit (default: HEAD of main), pushes them to
 # GHCR, ships deploy/compose.yml, deploy/Caddyfile, deploy/config.alloy and deploy/server.sh to /opt/tolerance on the server, then runs
 # `server.sh deploy <sha>` there: DB dump, migrations, api/gateway/web swap, health check, automatic return to the
-# previous tag if the new one is unhealthy. Rollback by hand = run it again with an older sha in `ref`.
+# previous tag if the new one is unhealthy, then a new runs worker while the old one drains in the background. Rollback by hand = run it again with an older sha in `ref`.
 on:
   workflow_dispatch:
     inputs:

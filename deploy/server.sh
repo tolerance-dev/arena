@@ -4,8 +4,9 @@
 #
 #   server.sh deploy <sha> [reset]   pull images at <sha>, migrate, swap api/gateway/web,
 #                                    health-check; on a failed health check the previous tag is started again
-#                                    (migrations are not reverted). `reset` wipes the database first: the schema
-#                                    is edited in place, so a schema change needs it.
+#                                    (migrations are not reverted). Once healthy, a new worker starts and the old
+#                                    one drains in the background (swap_worker). `reset` wipes the database first:
+#                                    the schema is edited in place, so a schema change needs it.
 #   server.sh backup [label]         pg_dump into backups/ (keeps the newest 30); cron runs it daily, deploy before
 #                                    every swap (a failed dump stops a reset)
 #                                    and, when BACKUP_REMOTE is set in .env, an encrypted copy off the server
@@ -101,6 +102,7 @@ cmd_restore() {
   cmd_backup pre-restore
   if [ $# -eq 0 ]; then
     dc stop api gateway web
+    dc stop -t 10 worker
     dc exec -T postgres pg_restore -U arena_migrate -d arena --clean --if-exists --no-owner < "$f"
     dc up -d
   else
@@ -128,6 +130,27 @@ install_cron() {
   mkdir -p "$BACKUPS"
   line="17 3 * * * bash $PWD/server.sh backup daily >> $PWD/$BACKUPS/cron.log 2>&1"
   (crontab -l 2>/dev/null | grep -v 'server.sh backup' || true; echo "$line") | crontab -
+}
+
+# Everything but the worker (swap_worker has its own way), for the deploy and its rollback. Only the active profiles'
+# services (COMPOSE_PROFILES in .env): naming a profiled service on the command line would start it.
+up_but_worker() {
+  # shellcheck disable=SC2046
+  dc up -d "$@" $(dc config --services | grep -vx worker)
+}
+
+# A stopping worker drains: no new claims, the runs in flight finish (ARENA_WORKER_DRAIN, up to an hour). So the new
+# worker starts next to the old one(s), which are stopped in the background and removed once drained; the runs cap
+# counts every worker's runs, so the overlap puts no more agents on the host. worker-swap.log says how it ended.
+swap_worker() {
+  local old n
+  old=$(dc ps -aq worker | tr '\n' ' ')
+  n=$(echo "$old" | wc -w)
+  dc up -d --no-deps --no-recreate --scale "worker=$((n + 1))" worker
+  if [ -n "$old" ]; then
+    echo "--- old worker draining in the background (worker-swap.log)"
+    setsid nohup sh -c "docker stop -t 3900 $old; docker rm $old" > worker-swap.log 2>&1 < /dev/null &
+  fi
 }
 
 healthy() {
@@ -172,6 +195,9 @@ cmd_deploy() {
   if [ "$reset" = "reset" ]; then
     echo "--- reset database"
     dc stop api gateway web || true
+    # Its runs go with the database: no drain. Removed, so the swap starts a fresh one instead of starting it again.
+    dc stop -t 10 worker || true
+    dc rm -f worker || true
     dc rm -sf postgres
     docker volume rm -f tolerance_arena-postgres-data
   fi
@@ -193,11 +219,12 @@ cmd_deploy() {
 
   echo "--- up"
   # --remove-orphans drops services this file no longer has.
-  dc up -d --remove-orphans
+  up_but_worker --remove-orphans
   docker exec "$(dc ps -q caddy)" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 
   if healthy; then
     [ -n "$prev" ] && [ "$prev" != "$tag" ] && echo "$prev" > .prev-tag
+    swap_worker
     echo "--- deployed $tag"
     # Every deploy pulls a ~6 GB runtime image; keep only this tag and the rollback target, or the 30 GB disk fills
     # up and takes postgres down with it (2026-10-26).
@@ -214,7 +241,7 @@ cmd_deploy() {
     echo "--- rolling back to $prev" >&2
     setenv TAG "$prev"
     runtime_image "$prev" || true
-    dc up -d
+    up_but_worker
   fi
   exit 1
 }

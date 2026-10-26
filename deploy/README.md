@@ -25,13 +25,18 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 - `compose.yml` and `Caddyfile` are the server's source of truth. The Caddyfile also serves `mentor.nualimov.dev`
   (its stack is `/root/nualimov.dev`): keep that block.
 - Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
-- Stack: api + gateway + web + postgres + caddy.
+- Stack: api + worker + gateway + web + postgres + caddy.
+- **Runs worker** (`cmd/worker`, service `worker`): its own container, so an api deploy leaves runs going. A deploy
+  starts the new worker next to the old one, which drains in the background (no new runs; the ones in flight finish,
+  up to `ARENA_WORKER_DRAIN` = 60m) and is then removed: `/opt/tolerance/worker-swap.log`. The runs cap
+  (`ARENA_RUN_CONCURRENCY`) counts both. Runs belong to the worker that claimed them (`runs.worker_id`, heartbeats in
+  `workers`); one whose worker stopped beating for a minute becomes `infra_error` and its containers are removed.
 - **Live previews** are `https://p-<hex>.tolerance.cc`: a proxied wildcard `*` A record in Cloudflare and a
   Cloudflare Origin CA cert for `*.tolerance.cc` in `/opt/tolerance/origin-tls/` (both made once by hand, not by
   deploys; `server.sh` refuses to deploy without the cert).
 - `/opt/tolerance/.env` holds the OAuth keys.
 - **Sandbox hardening** (off until done by hand on the host; `ARENA_SANDBOX_RUNTIME`, `ARENA_SANDBOX_DISK` in
-  `/opt/tolerance/.env`, read by api and gateway, `internal/sandbox`). Pause the queue in /admin first: restarting
+  `/opt/tolerance/.env`, read by worker and gateway, `internal/sandbox`). Pause the queue in /admin first: restarting
   Docker kills running containers.
   - gVisor: **on since 2026-10-26** (runsc release-20261019.0 from gVisor's apt repo, `ARENA_SANDBOX_RUNTIME=runsc`).
     Installed with `runsc install --runtime runsc -- --overlay2=none && systemctl reload docker` (reload, not
@@ -53,6 +58,6 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   on, add to `/opt/tolerance/.env`: `COMPOSE_PROFILES=logs`, `GRAFANA_LOKI_URL` (Grafana Cloud → Loki → Details:
   `https://logs-prod-…grafana.net/loki/api/v1/push`), `GRAFANA_LOKI_USER` (the numeric user there), `GRAFANA_LOKI_TOKEN`
   (an access policy token with `logs:write`), then deploy. Labels: `service`, `level`, `env`. Queries in Explore:
-  `{service="api"} | json | status >= 500`, `{service=~"api|gateway", level="ERROR"}`,
+  `{service="api"} | json | status >= 500`, `{service=~"api|worker|gateway", level="ERROR"}`,
   `{service="api"} | json | msg="alert"`, `sum by (status) (count_over_time({service="api"} | json [5m]))`.
   Uptime: UptimeRobot watches https://tolerance.cc.
