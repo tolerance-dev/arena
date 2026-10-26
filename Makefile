@@ -17,6 +17,10 @@ export ARENA_STACK
 # secure cookies, and deploy/ never sets it).
 ARENA_SUBSCRIPTIONS ?= true
 export ARENA_SUBSCRIPTIONS
+# Sign in as any email with no password (the form under the OAuth buttons), so flows can be clicked through
+# without OAuth; the api refuses it unless ARENA_PUBLIC_URL is localhost. ARENA_DEV_LOGIN=false turns it off.
+ARENA_DEV_LOGIN ?= true
+export ARENA_DEV_LOGIN
 # Sign-in callbacks go through one fixed local port shared by every checkout (dev/oauth-relay.conf), so Google
 # and GitHub need one registered callback whatever WEB_PORT is. Set it empty to call back to WEB_PORT directly.
 ARENA_OAUTH_RELAY_URL ?= http://localhost:2999

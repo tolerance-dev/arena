@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { api } from '@/lib/api'
+import { api, post } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import type { AuthProviders } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 // The sign-in choices, shared by the sign-in modal and the /login page: the OAuth providers this server has (GitHub,
-// Google). `next` is where OAuth returns to.
+// Google), and on a local stack the dev sign-in by email. `next` is where sign-in returns to.
 export function SignInOptions({ next, initialError, className }: {
   next: string
   initialError?: string | null
@@ -39,10 +40,36 @@ export function SignInOptions({ next, initialError, className }: {
             {p === 'github' ? 'Войти через GitHub' : p === 'google' ? 'Войти через Google' : p}
           </Button>
         ))}
-        {nothing && <p className="text-center text-body text-muted-foreground">Вход на этом сервере ещё не настроен.</p>}
+        {nothing && !options?.dev_login && <p className="text-center text-body text-muted-foreground">Вход на этом сервере ещё не настроен.</p>}
       </div>
+      {options?.dev_login && <DevSignIn next={next} onError={setError} />}
       {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
     </div>
+  )
+}
+
+// Local stacks only (ARENA_DEV_LOGIN): any email, no password. The owner's email signs in as admin.
+function DevSignIn({ next, onError }: { next: string; onError: (e: string | null) => void }) {
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    onError(null)
+    try {
+      await post('/auth/dev', { email })
+      window.location.assign(next)
+    } catch (err) {
+      onError(errorText(err))
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={(e) => void submit(e)} className="mt-4 flex gap-2 border-t border-dashed border-border-strong pt-4">
+      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email для локального входа"
+        aria-label="Email для локального входа" className="h-10 min-w-0 flex-1 rounded-full border border-input bg-background px-4 text-body" />
+      <Button type="submit" variant="outline" disabled={busy}>Войти</Button>
+    </form>
   )
 }
 

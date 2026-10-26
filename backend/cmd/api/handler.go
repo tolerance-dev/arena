@@ -69,7 +69,7 @@ func newHandler(cfg config, d deps) http.Handler {
 	session := identity.RequireSession(d.users)
 	api := http.NewServeMux()
 	identity.RegisterAuthRoutes(api, d.users, d.limiter, identity.AuthConfig{
-		Providers: d.providers, PublicURL: cfg.publicURL, OAuthRelay: cfg.oauthRelay, Secure: cfg.secureCookies, TrustProxy: cfg.trustProxy,
+		Providers: d.providers, PublicURL: cfg.publicURL, OAuthRelay: cfg.oauthRelay, DevLogin: cfg.devLogin, Secure: cfg.secureCookies, TrustProxy: cfg.trustProxy,
 	})
 	api.Handle("/api/v1/me", session(owner))
 	api.Handle("/api/v1/my/", session(mine))
