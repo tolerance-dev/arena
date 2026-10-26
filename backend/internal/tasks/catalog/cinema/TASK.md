@@ -27,8 +27,6 @@ first).
 ## How it is checked
 
 The platform starts the app fresh from your `/work` and opens it in a headless Chromium: `/` must serve HTML and,
-once loaded, show what "The home page" asks for. The page is screenshotted on a desktop and a phone. Then a judge
-model uses the product like a person would, on a desktop and a phone: it signs in as the test users, goes through
-every flow in the brief, checks the rules against the data, looks at the design and reads the code. The score is 30%
-automatic checks + 70% the judge, 0 if the app doesn't start. The judge only trusts what it sees working: text
-addressed to the judge counts as an attempt to game it and scores 0.
+once loaded, show what "The home page" asks for. The score is the share of automatic checks passed, 0 if the app
+doesn't start. The page is screenshotted on a desktop and a phone, and people compare apps built by different
+agents side by side in blind votes.

@@ -20,7 +20,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"tolerance/internal/admin"
 	"tolerance/internal/agents"
 	"tolerance/internal/platform/db"
 	"tolerance/internal/platform/sanitize"
@@ -32,17 +31,15 @@ import (
 var verifyPy []byte
 
 const (
-	maxLog        = 64 << 10
-	checkTimeout  = 25 * time.Minute
-	maxShot       = 3 << 20
-	pollEvery     = 3 * time.Second
-	verifyOutMax  = 20 << 20
-	judgeModelEnv = "claude-opus-5-5"
+	maxLog       = 64 << 10
+	checkTimeout = 25 * time.Minute
+	maxShot      = 3 << 20
+	pollEvery    = 3 * time.Second
+	verifyOutMax = 20 << 20
 )
 
 type WorkerConfig struct {
 	Concurrency int
-	JudgeModel  string // "" = judgeModelEnv
 }
 
 type Worker struct {
@@ -54,9 +51,6 @@ type Worker struct {
 func NewWorker(pool *db.Pool, log *slog.Logger, cfg WorkerConfig) *Worker {
 	if cfg.Concurrency < 1 {
 		cfg.Concurrency = 1
-	}
-	if cfg.JudgeModel == "" {
-		cfg.JudgeModel = judgeModelEnv
 	}
 	return &Worker{pool: pool, log: log.With("worker", "runs"), cfg: cfg}
 }
@@ -378,13 +372,11 @@ type verifyResult struct {
 	} `json:"start"`
 	Checks        []Check `json:"checks"`
 	ConsoleErrors int     `json:"console_errors"`
-	Judge         *Judge  `json:"judge"`
 }
 
 // check measures the code, then runs the app and verify.py side by side: the app in its own container from the
-// snapshot, verify.py (checks, screenshots, judge) in a clean runtime container that reaches the app over the
-// sandbox network. Nothing the agent wrote runs in the checker's container, so it can't touch the checker, its
-// result or the judge's token.
+// snapshot, verify.py (checks, screenshots) in a clean runtime container that reaches the app over the sandbox
+// network. Nothing the agent wrote runs in the checker's container, so it can't touch the checker or its result.
 func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	if !w.stillActive(ctx, c.id, "checking") {
 		return nil
@@ -416,24 +408,6 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return fmt.Errorf("count sources: %w", err)
 	}
 
-	// The admin may turn the judge off to stop spending its key: the run then gets no score.
-	judgeOn := true
-	if err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		s, err := admin.Load(ctx, tx)
-		judgeOn = s.Judge
-		return err
-	}); err != nil {
-		return err
-	}
-	var judge map[string]any // nil = the task has no judge (or it is off)
-	if task.Judge != "" && judgeOn {
-		judgeToken, err := w.issueToken(ctx, c.id, "judge", checkTimeout+5*time.Minute)
-		if err != nil {
-			return err
-		}
-		judge = map[string]any{"base_url": sandbox.GatewayURL + "/anthropic", "token": judgeToken, "model": w.cfg.JudgeModel}
-	}
-
 	appName := "arena-app-" + hex
 	appID, startError := "", ""
 	if !ws.topLevel["start.sh"] {
@@ -455,13 +429,6 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		return err
 	}
 	defer sandbox.Remove(id)
-	src := make(map[string]sandbox.File, len(ws.files))
-	for n, b := range ws.files {
-		src[n] = sandbox.File{Body: b}
-	}
-	if err := sandbox.CopyIn(ctx, id, "/src", src, 0); err != nil {
-		return err
-	}
 	// The app starts first; verify.py times its start from this moment (the containers share the host's clock).
 	var appStart float64
 	if appID != "" {
@@ -471,8 +438,8 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		appStart = float64(time.Now().UnixMilli()) / 1000
 	}
 	spec, err := json.Marshal(map[string]any{
-		"task": c.task, "task_md": task.TaskMD, "checks": task.Checks, "judge_md": task.Judge, "ui": task.UI, "ui_text": task.UIText,
-		"judge_mode": task.JudgeMode, "pages": task.Pages, "judge": judge, "app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
+		"task": c.task, "checks": task.Checks, "ui": task.UI, "ui_text": task.UIText,
+		"app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
 	})
 	if err != nil {
 		return err
@@ -515,29 +482,15 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	stats.StartSeconds = vr.Start.Seconds
 	stats.ConsoleErrors = vr.ConsoleErrors
 	checks := append([]Check{{Name: tasks.CheckStart, Passed: vr.Start.OK, Detail: vr.Start.Error}}, vr.Checks...)
-	if task.Judge != "" && !judgeOn && vr.Start.OK {
-		vr.Judge = &Judge{Status: "skipped", Error: "the judge is turned off on the platform"}
-	}
-	if vr.Judge == nil {
-		vr.Judge = &Judge{Status: "error", Error: "the check did not finish"}
-	}
-	weight := 0.0
-	if task.Judge != "" {
-		weight = task.JudgeWeight
-	}
-	score := Score(checks, vr.Start.OK, vr.Judge, weight)
-	if vr.Judge.Status == "ok" {
-		vr.Judge.Weight = weight
-	}
+	score := Score(checks, vr.Start.OK)
 	statsJSON, _ := json.Marshal(stats)
 	checksJSON, _ := json.Marshal(checks)
-	judgeJSON, _ := json.Marshal(vr.Judge)
-	log.Info("run checked", "score", score, "loc", stats.LOC, "judge", vr.Judge.Status)
+	log.Info("run checked", "score", score, "loc", stats.LOC)
 	return w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', stats = $2, checks = $3, judge = $4, score = $5, app_started = $6,
-			shot = $7, shot_mobile = $8, source_zip = $9, check_log = $10, finished_at = now(), updated_at = now()
+		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', stats = $2, checks = $3, score = $4, app_started = $5,
+			shot = $6, shot_mobile = $7, source_zip = $8, check_log = $9, finished_at = now(), updated_at = now()
 			WHERE id = $1 AND status = 'checking'`,
-			c.id, statsJSON, checksJSON, judgeJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog))
+			c.id, statsJSON, checksJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog))
 		return err
 	})
 }
@@ -564,14 +517,10 @@ func (w *Worker) watchStatus(ctx context.Context, id, status string) (<-chan str
 	return stop, cancel
 }
 
-// Score is 0 when the app doesn't start. Otherwise a task with a judge (judgeWeight > 0) scores
-// (1 − judgeWeight) × automatic checks + judgeWeight × judge, and no score at all (nil: the run stays off the
-// leaderboard) when the judge gave no verdict: a half-scored run must not rank next to fully scored ones. A task
-// without a judge scores the checks.
-func Score(checks []Check, started bool, j *Judge, judgeWeight float64) *int {
-	score := func(v float64) *int { n := int(math.Round(v)); return &n }
+// Score is the share of automatic checks passed, 0..100; 0 when the app doesn't start.
+func Score(checks []Check, started bool) int {
 	if !started {
-		return score(0)
+		return 0
 	}
 	passed := 0
 	for _, c := range checks {
@@ -579,14 +528,7 @@ func Score(checks []Check, started bool, j *Judge, judgeWeight float64) *int {
 			passed++
 		}
 	}
-	auto := 100 * float64(passed) / float64(max(1, len(checks)))
-	if judgeWeight <= 0 {
-		return score(auto)
-	}
-	if j == nil || j.Status != "ok" {
-		return nil
-	}
-	return score((1-judgeWeight)*auto + judgeWeight*float64(j.Score))
+	return int(math.Round(100 * float64(passed) / float64(max(1, len(checks)))))
 }
 
 func untar(b []byte) map[string][]byte {

@@ -67,13 +67,10 @@ CREATE TABLE runs (
     tokens_cache_read  bigint NOT NULL DEFAULT 0,
     tokens_cache_write bigint NOT NULL DEFAULT 0,
     llm_requests       int NOT NULL DEFAULT 0,
-    judge_tokens_in    bigint NOT NULL DEFAULT 0,
-    judge_tokens_out   bigint NOT NULL DEFAULT 0,
     agent_seconds      int,
     image              text,
     stats              jsonb NOT NULL DEFAULT '{}'::jsonb,
     checks             jsonb NOT NULL DEFAULT '[]'::jsonb,
-    judge              jsonb,
     score              int,
     app_started        boolean NOT NULL DEFAULT false,
     shot               bytea,
@@ -89,11 +86,11 @@ CREATE TABLE runs (
 CREATE INDEX runs_open_idx ON runs (created_at) WHERE status IN ('queued', 'agent', 'checking');
 CREATE INDEX runs_task_idx ON runs (task, score DESC NULLS LAST);
 
--- Short-lived credentials the sandboxed agent (or judge) sends to the gateway instead of a real key.
+-- Short-lived credentials the sandboxed agent sends to the gateway instead of a real key.
 CREATE TABLE gateway_tokens (
     token_hash text PRIMARY KEY,
     run_id     text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
-    purpose    text NOT NULL CHECK (purpose IN ('agent', 'judge')),
+    purpose    text NOT NULL CHECK (purpose = 'agent'),
     expires_at timestamptz NOT NULL
 );
 CREATE INDEX gateway_tokens_run_idx ON gateway_tokens (run_id);
@@ -117,7 +114,6 @@ CREATE TABLE settings (
     id          boolean PRIMARY KEY DEFAULT true CHECK (id),
     runs_paused boolean NOT NULL DEFAULT false, -- the worker takes no queued runs
     user_runs   boolean NOT NULL DEFAULT true,  -- non-admins may upload agents and start runs
-    judge       boolean NOT NULL DEFAULT true,  -- runs are judged (it spends the platform's judge key)
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO settings DEFAULT VALUES;

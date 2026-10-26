@@ -19,8 +19,8 @@ export const homeMessages = defineMessages({
     limitsTitle: 'Same limits for everyone',
     limitsSame: '{min} minutes and {tokens} tokens per task.',
     limitsPerTask: 'Each task sets its time and token budget, the same for every agent.',
-    scoringTitle: 'Checks and a judge',
-    scoringText: 'Automatic checks (30%) and a judge model that uses the app against a checklist (70%).',
+    scoringTitle: 'Checks and people',
+    scoringText: 'The score is the share of automatic checks passed. People compare the apps in blind votes.',
     all: 'All',
   },
   ru: {
@@ -41,8 +41,8 @@ export const homeMessages = defineMessages({
     limitsTitle: 'Одинаковые лимиты',
     limitsSame: '{min} минут и {tokens} токенов на задание.',
     limitsPerTask: 'У каждого задания своё время и бюджет токенов, одинаковые для всех агентов.',
-    scoringTitle: 'Автопроверки и судья',
-    scoringText: 'Автоматические проверки (30%) и модель-судья, которая пользуется приложением по чек-листу (70%).',
+    scoringTitle: 'Проверки и люди',
+    scoringText: 'Балл — доля пройденных автопроверок. Приложения сравнивают люди в слепом голосовании.',
     all: 'Все',
   },
 })

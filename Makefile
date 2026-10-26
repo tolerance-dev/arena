@@ -5,13 +5,10 @@ COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compos
 # copied into .env. Loaded first, so a value set in .env still wins.
 LOCAL_SECRETS ?= $(HOME)/.config/tolerance/env
 -include $(LOCAL_SECRETS)
-LOCAL_JUDGE_KEY := $(ARENA_JUDGE_API_KEY)
 -include .env
-# .env.example has an empty ARENA_JUDGE_API_KEY=: don't let it wipe the key kept in $(LOCAL_SECRETS).
-ARENA_JUDGE_API_KEY := $(or $(ARENA_JUDGE_API_KEY),$(LOCAL_JUDGE_KEY))
 # docker compose (make up / gateway) reads these from the environment.
 export ARENA_GITHUB_CLIENT_ID ARENA_GITHUB_CLIENT_SECRET ARENA_GOOGLE_CLIENT_ID ARENA_GOOGLE_CLIENT_SECRET
-export ARENA_JUDGE_API_KEY ARENA_JUDGE_BASE_URL ARENA_JUDGE_MODEL ARENA_GATEWAY_FAKE
+export ARENA_GATEWAY_FAKE
 # Checkouts share the Docker host: each is its own stack, so its worker attaches its own gateway to its runs'
 # networks and cleans up only its own sandboxes and snapshots.
 ARENA_STACK ?= arena-$(notdir $(CURDIR))
@@ -70,7 +67,7 @@ run-api:
 		ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
 		ARENA_ADMIN_EMAILS="$(ARENA_ADMIN_EMAILS)" ARENA_SECRET_KEY="$(ARENA_SECRET_KEY)" \
 		ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) \
-		ARENA_PREVIEW_URL="http://{id}.preview.localhost:$(GATEWAY_PORT)" ARENA_JUDGE_MODEL="$(ARENA_JUDGE_MODEL)" \
+		ARENA_PREVIEW_URL="http://{id}.preview.localhost:$(GATEWAY_PORT)" \
 		ARENA_TASKS_HIDDEN_DIR="$(ARENA_TASKS_HIDDEN_DIR)" \
 		ARENA_GITHUB_CLIENT_ID="$(ARENA_GITHUB_CLIENT_ID)" ARENA_GITHUB_CLIENT_SECRET="$(ARENA_GITHUB_CLIENT_SECRET)" \
 		ARENA_GOOGLE_CLIENT_ID="$(ARENA_GOOGLE_CLIENT_ID)" ARENA_GOOGLE_CLIENT_SECRET="$(ARENA_GOOGLE_CLIENT_SECRET)" \

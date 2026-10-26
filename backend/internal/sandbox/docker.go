@@ -110,7 +110,7 @@ func docker(ctx context.Context, stdin io.Reader, args ...string) (string, error
 
 // Every run (and every live preview) gets an internal network of its own: no route out, and nothing on it but its
 // own containers and this stack's gateway, attached as "gateway". So an agent can't reach another run's agent, app
-// or preview, and an app under check can't proxy someone else's preview to the judge.
+// or preview, and an app under check can't pass off someone else's preview as its own.
 
 // CreateNetwork creates an internal network (role: run | preview) and attaches the gateway to it.
 func CreateNetwork(ctx context.Context, name, role string) error {

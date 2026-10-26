@@ -1,5 +1,5 @@
 // Command api is the tolerance backend: the HTTP API plus the runs worker (agents build apps in sandboxes, the
-// platform checks and judges them), one process. The gateway (cmd/gateway) is a separate container.
+// platform checks them), one process. The gateway (cmd/gateway) is a separate container.
 package main
 
 import (
@@ -68,7 +68,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runs.NewWorker(pool, log, runs.WorkerConfig{Concurrency: cfg.runConcurrency, JudgeModel: cfg.judgeModel}).Run(ctx)
+		runs.NewWorker(pool, log, runs.WorkerConfig{Concurrency: cfg.runConcurrency}).Run(ctx)
 	}()
 
 	server := &http.Server{

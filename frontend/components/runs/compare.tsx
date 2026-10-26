@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ExternalLink } from 'lucide-react'
+import { Check, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { compact, duration, usedTokens } from '@/lib/format'
-import type { Criterion, Rating, Run } from '@/lib/types'
+import type { Rating, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack, type RT } from './bits'
 
@@ -20,34 +20,23 @@ type Row = {
 }
 type Section = { title: string; rows: Row[] }
 
-const judged = (r: Run) => (r.judge?.status === 'ok' ? r.judge : null)
-
-// The judge's checklist items, lined up by position across runs (every verdict scores the same checklist in the
-// same order); titles come from the longest verdict.
-function checklist(runs: Run[]): Criterion[] {
-  return runs.map((r) => judged(r)?.criteria ?? []).reduce((a, b) => (b.length > a.length ? b : a), [] as Criterion[])
+// The automatic checks by name, in the order they run (every run of a task runs the same checks); names come from
+// the run with the most of them.
+function checkNames(runs: Run[]): string[] {
+  return runs.map((r) => r.checks.map((c) => c.name)).reduce((a, b) => (b.length > a.length ? b : a), [] as string[])
 }
 
-// Each agent's best run at the task side by side: what it looks like, how the judge scored every checklist item,
-// and what it cost to build. The point of the arena is the difference between agents, so this is the task's
+// Each agent's best run at the task side by side: what it looks like, which checks it passed, what people think of
+// it, and what it cost to build. The point of the arena is the difference between agents, so this is the task's
 // first tab.
 export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Record<string, Rating>; t: RT }) {
   if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
-  const items = checklist(runs)
+  const names = checkNames(runs)
   const sections: Section[] = [
     {
       title: t('cmpResult'),
       rows: [
         { label: t('colScore'), cell: (r) => <Score score={r.score} className="text-section" />, value: (r) => r.score, better: 'high' },
-        {
-          label: t('colJudge'),
-          cell: (r) => {
-            const j = judged(r)
-            if (j) return <span className="font-semibold tnum">{j.score}<span className="text-faint">/100</span></span>
-            return <span className="text-body text-faint">{r.judge?.status === 'error' ? t('cmpJudgeFailed') : t('cmpNoJudge')}</span>
-          },
-          value: (r) => judged(r)?.score ?? null, better: 'high',
-        },
         // People's Elo, once anyone has voted at this task.
         ...(Object.keys(ratings).length ? [{
           label: t('cmpPeople'), hint: t('cmpPeopleHint'),
@@ -66,10 +55,7 @@ export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Reco
         },
       ],
     },
-    ...(items.length ? [{
-      title: t('cmpChecklist'),
-      rows: checklistRows(items, t),
-    }] : []),
+    ...(names.length ? [{ title: t('cmpChecks'), rows: names.map(checkRow) }] : []),
     {
       title: t('cmpBuild'),
       rows: [
@@ -254,35 +240,19 @@ function bestValue(runs: Run[], row: Row): number | null {
   return row.better === 'high' ? Math.max(...vs) : Math.min(...vs)
 }
 
-// One row per checklist item (points, a bar and the judge's note), then the judge's summary.
-function checklistRows(items: Criterion[], t: RT): Row[] {
-  return [
-    ...items.map((it, i): Row => ({
-      label: it.title,
-      hint: t('cmpPoints', { n: it.max }),
-      cell: (r) => {
-        const c = judged(r)?.criteria?.[i]
-        if (!c) return <span className="text-faint">—</span>
-        return (
-          <div title={c.note}>
-            <div className="text-body font-semibold tnum">{c.points}<span className="font-normal text-faint">/{c.max}</span></div>
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-pending">
-              <div className={cn('h-full', c.points >= c.max * 0.75 ? 'bg-success' : c.points >= c.max * 0.4 ? 'bg-warning' : 'bg-destructive')}
-                style={{ width: `${(100 * c.points) / Math.max(1, c.max)}%` }} />
-            </div>
-            {c.note && <p className="mt-1.5 line-clamp-3 text-meta leading-snug text-muted-foreground">{c.note}</p>}
-          </div>
-        )
-      },
-      value: (r) => judged(r)?.criteria?.[i]?.points ?? null,
-      better: 'high',
-    })),
-    {
-      label: t('cmpSummary'),
-      cell: (r) => {
-        const j = judged(r)
-        return j?.summary ? <p className="line-clamp-6 text-meta leading-snug text-muted-foreground" title={j.summary}>{j.summary}</p> : <span className="text-faint">—</span>
-      },
+// One row per automatic check: passed or not, and why not.
+function checkRow(name: string): Row {
+  return {
+    label: name,
+    cell: (r) => {
+      const c = r.checks.find((x) => x.name === name)
+      if (!c) return <span className="text-faint">—</span>
+      return (
+        <span className="flex items-start gap-1.5" title={c.detail}>
+          {c.passed ? <Check className="mt-0.5 size-4 shrink-0 text-success" /> : <X className="mt-0.5 size-4 shrink-0 text-destructive" />}
+          {!c.passed && c.detail && <span className="line-clamp-2 text-meta leading-snug text-muted-foreground">{c.detail}</span>}
+        </span>
+      )
     },
-  ]
+  }
 }

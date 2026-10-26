@@ -10,7 +10,7 @@ working skeleton, fast. This section overrides any skills and default habits:
 - **Write code directly.** No brainstorming sessions, no specs or task-by-task plans in `docs/`, no
   subagent-driven-development, no TDD, no per-task or whole-branch reviews — unless the user asks for one. If a
   change needs a plan, a short list of steps in chat is enough.
-- **No new tests**, except for a bug in the gateway's token metering or the run verdict (`internal/gateway`,
+- **No new tests**, except for a bug in the gateway's token metering or the run score (`internal/gateway`,
   `internal/runs`).
 - **"Done" = it compiles and works locally**: `make test-fast`, then `make dev` (or `make up`) and the flow
   clicked through. Full `make test` is optional. CI (`ci.yml`: test-fast + `pnpm build`) runs on every PR; nothing runs on push.
@@ -39,7 +39,8 @@ working skeleton, fast. This section overrides any skills and default habits:
 **tolerance** (https://tolerance.cc; env vars are `ARENA_*`, the database is `arena`): an **agent arena for whole
 apps**. A user uploads an agent (a `run.sh` or a zip with `run.sh`) plus its LLM key; a run puts the agent in a
 sandbox with a task (`TASK.md` + shared mock data); the agent writes backend and frontend; the platform measures
-and judges the result. Older features were deleted; they are in git history (before "Pivot to agent runs").
+and checks the result, and people compare the apps in blind votes. **There is no LLM judge** (removed for cost: a
+verdict cost dollars and wasn't reproducible); don't bring one back without the user asking. Older features were deleted; they are in git history (before "Pivot to agent runs").
 
 Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking → done | infra_error`:
 1. **agent**: container from `arena-runtime:1` on the run's own internal Docker network `arena-run-<hex>` (no route
@@ -48,24 +49,18 @@ Run lifecycle (`internal/runs/worker.go`), status `queued → agent → checking
    per-run token (`gateway_tokens`). Killed on time limit, budget or cancel, then `docker commit` →
    `arena-run:<hex>` (the snapshot; previews and checks start from it).
 2. **checking**: the sources come out of the snapshot with `docker cp` (nothing from it runs) → LOC, `source_zip`
-   and `/src` for the judge. The app runs in its own container from the snapshot (`sandbox.AppSpec`, the same as a
+   (nothing else). The app runs in its own container from the snapshot (`sandbox.AppSpec`, the same as a
    preview: 512 MB); `internal/runs/verify.py` runs in a clean `arena-runtime:1` container, pipes its
-   127.0.0.1:3000 to the app's container, runs the checks, screenshots desktop/mobile and runs the judge (Anthropic
-   SDK through the gateway, ends with `submit_verdict`). Never run platform code inside an agent's snapshot: the
+   127.0.0.1:3000 to the app's container, runs the checks and screenshots desktop/mobile. Never run platform code inside an agent's snapshot: the
    agent was root there and could have replaced python, tar or anything else.
-3. **score** = 0 if the app didn't start; else (1 − `judge_weight`) × checks + `judge_weight` × judge (task.json;
-   default 0.7, hotels 0.25; the verdict records the weight it was scored with). A task with `judge.md` and no
-   verdict (no judge key, judge error) gets **no score** (null, off the leaderboard). A verdict with `manipulation` (the app tried to sway the judge) scores 0.
-   Tasks without `judge.md` score the checks alone.
+3. **score** = the share of checks passed (the start check included), 0..100; 0 if the app didn't start
+   (`runs.Score`).
 
 `cmd/gateway` (a container labelled `arena.gateway=<stack>` on `default`, attached to every run and preview network): `/anthropic/*`, `/openai/*`, `/gemini/*`
-(by protocol) swap the run token for the real key (agent keys sealed with `ARENA_SECRET_KEY`; the judge key
-`ARENA_JUDGE_API_KEY` lives on the gateway only), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget. An
+(by protocol) swap the run token for the agent's real key (sealed with `ARENA_SECRET_KEY`), meter usage from JSON/SSE into `runs.tokens_*`, enforce budget. An
 agent's provider (`anthropic`, `openai`, `google`, `orcarouter`; `gateway.providers`) says where each protocol goes;
 OrcaRouter takes all three with one key (Gemini model names get its `google/` prefix in the gateway). Streamed chat
-completions get `stream_options.include_usage` forced on, or they'd be unmetered. The judge goes to
-`ARENA_JUDGE_BASE_URL` (default api.anthropic.com) with `ARENA_JUDGE_MODEL`; locally it is Qwen 3.8 Max through
-OrcaRouter (it takes the judge's Anthropic params, images and tools; most Qwen models refuse images under ~28 px).
+completions get `stream_options.include_usage` forced on, or they'd be unmetered.
 Metering holes stay closed: the client's `Accept-Encoding` is dropped (a compressed stream can't be read; an
 encoded response is refused), a stream is sniffed by its first bytes (chatgpt.com sends events with no
 Content-Type) and WebSocket upgrades are refused (Codex's `responses_websocket` would tunnel past the
@@ -80,33 +75,30 @@ refused, and a token has at most `maxParallel` (4) requests in flight, so parall
 `http://<run-hex>.preview.localhost:$GATEWAY_PORT` starts `arena-preview-<hex>` from the snapshot on demand, on its
 own network. 8091 listens only on the gateway's non-sandbox addresses (`sandbox.PublicIPs`): sandboxes must not open
 other runs' apps. Rankings (`Leaderboard`, `Compare`) take only runs within the task's time limit and token budget.
-`ARENA_GATEWAY_FAKE=true` answers LLM calls locally (fake judge included) to click through without keys.
+`ARENA_GATEWAY_FAKE=true` answers LLM calls locally to click through without keys.
 
 Tasks are whole products (`marketplace`, `hotels`, `cinema`) in `backend/internal/tasks/catalog/<slug>/`:
 `TASK.md` (the product brief, then — after `## Data`, hidden on the site, see `siteBrief` — data, home page, for
-hotels the API contract and deep-linked pages, and `## How it is checked`), `judge.md` (100 points; overridable,
-like the checks, from `ARENA_TASKS_HIDDEN_DIR/<slug>/{judge.md,checks.json}`), and `task.json` + `data/*.json`
-GENERATED by `internal/tasks/gen_data.py` — edit titles, limits, `ui_text` and checks there and rerun it.
+hotels the API contract and deep-linked pages, and `## How it is checked`), and `task.json` + `data/*.json`
+GENERATED by `internal/tasks/gen_data.py` — edit titles, limits, `ui_text` and checks there and rerun it (the
+checks can be overridden from `ARENA_TASKS_HIDDEN_DIR/<slug>/checks.json`).
 `catalog/RULES.md` is appended to the brief the agent gets. With `"ui": true` verify.py checks the app starts, `/`
 serves HTML and shows `ui_text` (seed data, HTML or SVG text, case-insensitive), then runs `checks` in order: HTTP
 calls (`auth`/`save`/`{var}` chain logins and created ids; `ids` compares a list's ids as a set) and `page` checks
-(text on a deep link in the browser). Two judge modes (`judge_mode`): `agent` (marketplace, cinema: the model
-browses, calls the API and reads code for ~50 steps, several dollars a verdict) and `screens` (hotels: one call with
-screenshots of `pages` on desktop + phone, scored on design only, since the checks cover the logic). Moving
-marketplace and cinema to an API contract + `screens` is the plan. The data has no image
+(text on a deep link in the browser). Only hotels has an API contract and real checks (34); marketplace and cinema
+have just the start/HTML/seed-data checks, so every app of theirs that starts scores 100 until they get an API
+contract + checks like hotels (the plan). The data has no image
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
 verify.py's check names. Example agents (`examples/agents/README.md`): each vendor's model on its own CLI (Claude Code,
 Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with one OrcaRouter key (`run.sh` picks
-model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check (the judge
-should score it low); for hotels it is the reference implementation of the API contract (34/34 checks). The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
+model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check; for hotels it is the reference implementation of the API contract (34/34 checks). The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
 Moonshot's installer, pinned): after changing it, `docker rmi arena-runtime:1 && make images`.
 **Voting** is blind and pairwise (`/vote`, `internal/runs/votes.go`, table `pair_votes`): a signed-in user gets
 two agents' best runs at a task (the Compare set, app started, not their own agents, a pair they haven't voted on,
 least-voted pairs first) with names hidden, picks A, B or a tie; the votes replay into each agent's Elo per task
 (`TaskView.ratings`, a row in Compare). The run ids are in the page, so blindness is UI-only.
 The task page opens on **Compare** (`components/runs/compare.tsx`): each agent's best finished run side by side
-(`runs.Service.Compare`, unscored runs included), judge checklist items lined up by position, the best cell per row
-highlighted. Keep `judge.md` items in a fixed order so the rows line up.
+(`runs.Service.Compare`), then a row per check (by name), the best cell per row highlighted.
 
 Prod previews are agent code on a sibling subdomain (`p-<hex>.tolerance.cc`), so the api refuses cross-origin
 writes (`sameOrigin` in `cmd/api/handler.go`) and the session cookie is `__Host-arena_session` in prod: keep both.
@@ -127,11 +119,11 @@ make test-fast   # gofmt + go vet + go test + pnpm typecheck
 The api refuses to start without GitHub or Google OAuth keys. Locally they live once in `~/.config/tolerance/env`
 (the Makefile loads it before `.env`). Ports come from `.env` (`WEB_PORT`, `API_PORT`, `PG_PORT`, `GATEWAY_PORT`).
 Any signed-in user uploads agents and starts runs on their own agents (`/my`, API `/api/v1/my/*`), within per-user
-limits (3 open runs, 30 a day, time limit and token budget ≤ the task's; `internal/runs/service.go`) since every run spends the
-platform's judge key. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
+limits (3 open runs, 30 a day, time limit and token budget ≤ the task's; `internal/runs/service.go`) since one run
+server is shared. Admins (`ownerEmail` in `cmd/api/config.go` + `ARENA_ADMIN_EMAILS`) skip the limits and may
 change anyone's agents and runs. `/admin` (API `/api/v1/admin/*`) shows token spending and holds the switches: the
 `settings` row (worker skips the queue while `runs_paused`; `user_runs` off or `users.blocked` refuses non-admins in
-`admin.CanCreate`; `judge` off leaves new runs unscored). `ARENA_JUDGE_API_KEY` can live in `~/.config/tolerance/env` (the Makefile exports it).
+`admin.CanCreate`).
 
 ## Map
 
@@ -141,8 +133,8 @@ backend/cmd/gateway          LLM/registry proxy + live previews
 backend/cmd/migrate          creates the arena_app role, applies schema.sql to an empty database
 backend/migrations           schema.sql (the whole schema), migrations.go (Apply)
 backend/internal/agents      agent bundles + sealed keys, owner upload routes (/my)
-backend/internal/admin       /admin: spending, switches (settings row: queue pause, user runs, judge), user blocks
-backend/internal/runs        runs service/routes, worker, verify.py (checks + judge), LOC stats
+backend/internal/admin       /admin: spending, switches (settings row: queue pause, user runs), user blocks
+backend/internal/runs        runs service/routes, worker, verify.py (checks + screenshots), votes (Elo), LOC stats
 backend/internal/gateway     gateway.go (proxy, metering, budget, fake upstream), preview.go
 backend/internal/sandbox     docker CLI wrapper (create/cp/start/commit), per-run networks; ARENA_STACK (locally
                              arena-<checkout dir>) scopes labels and cleanup per checkout
@@ -161,7 +153,7 @@ session.
 ## Rules that stay even in prototype mode
 
 - **Sandbox safety**: agent/app/check/preview containers run with dropped caps, each run (and preview) on its own
-  internal network with only the gateway; the real LLM keys never enter a sandbox; the checker (verify.py, the judge token) never runs inside the
+  internal network with only the gateway; the real LLM keys never enter a sandbox; the checker (verify.py) never runs inside the
   agent's snapshot, only in a clean `arena-runtime:1` next to the app's container.
 - `infra_error` is the platform's fault, never a score.
 - **Database: no data worth keeping yet** (prod included): edit `backend/migrations/schema.sql` in place and
@@ -176,7 +168,7 @@ session.
 - UI copy is bilingual (en, ru): strings live in `frontend/lib/i18n/messages/<area>.ts` (`defineMessages`, ru must
   have every en key), read with `useT(m)` in client components or `await getT(m)` on the server; dates via
   `formatDate`/`formatDateTime` from `lib/i18n/core`. Language = `lang` cookie, else Accept-Language, else en.
-  Task content (TASK.md, judge.md) stays English.
+  Task content (TASK.md) stays English.
 - Colours are tokens from `frontend/app/globals.css`, never raw hex in classes: `bg-terminal`/
   `text-terminal-foreground` for copy blocks and dark panels (navy in both themes), `border-input` for control
   borders (3:1), `border-strong` for dashed empty states.

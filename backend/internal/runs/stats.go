@@ -11,8 +11,7 @@ import (
 	"strings"
 )
 
-// skipDirs are dependency, build and cache folders: left out of the line count, the source download and the copy the
-// judge reads, wherever they are in the tree. The top-level data/ (the seed data) is left out too.
+// skipDirs are dependency, build and cache folders: left out of the line count and the source download, wherever they are in the tree. The top-level data/ (the seed data) is left out too.
 var skipDirs = map[string]bool{"node_modules": true, ".git": true, ".next": true, ".nuxt": true, ".svelte-kit": true,
 	".turbo": true, ".cache": true, ".npm": true, "__pycache__": true, ".venv": true, "venv": true, ".pytest_cache": true,
 	"dist": true, "build": true, "out": true, "coverage": true}

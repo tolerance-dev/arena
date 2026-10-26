@@ -13,7 +13,7 @@ import (
 )
 
 // People compare two agents' apps at one task without seeing whose they are and pick the better one (or call it a
-// tie). Each pick moves the two agents' Elo at that task: a human ranking next to the judge's score.
+// tie). Each pick moves the two agents' Elo at that task: a human ranking next to the checks' score.
 
 // Contender is one side of a blind pair: only what shows the app, nothing that names the agent.
 type Contender struct {

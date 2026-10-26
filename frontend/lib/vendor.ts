@@ -52,11 +52,3 @@ export function stackOf(languages: Record<string, number> | undefined): string[]
   const total = langs.reduce((s, [, n]) => s + n, 0)
   return langs.filter(([, n]) => n >= total * 0.03).slice(0, 3).map(([l]) => l)
 }
-
-// The first sentence of the judge's summary: what the agent built, in one line.
-export function firstSentence(text: string | undefined): string {
-  const s = (text ?? '').trim()
-  if (!s) return ''
-  const m = s.match(/^[\s\S]+?[.!?](?=\s|$)/)
-  return (m ? m[0] : s).trim()
-}

@@ -1,10 +1,10 @@
-// Package gateway is the only way out of a sandbox. Agents (and the judge) on their run's internal network
+// Package gateway is the only way out of a sandbox. Agents on their run's internal network
 // reach it as http://gateway:8090:
 //
 //   - /anthropic/*, /openai/*, /gemini/*: LLM APIs by protocol, only the generation endpoints (allowedRoute). The
 //     agent's provider (providers) says where each protocol goes: Anthropic, OpenAI and Google directly, or OrcaRouter
 //     for all three. The run token the sandbox holds
-//     is swapped for the agent's real key (or the platform's judge key), usage is counted into the run, the run's
+//     is swapped for the agent's real key, usage is counted into the run, the run's
 //     token budget is enforced, and a run has at most maxParallel requests in flight (more wait their turn), so the
 //     budget can't be overrun by firing many requests at once.
 //   - /npm/*, /pypi/*, /pyfiles/*: read-only package registries, so agents can install dependencies.
@@ -36,8 +36,6 @@ import (
 )
 
 type Config struct {
-	JudgeKey string // Anthropic key the judge spends; "" = judging off
-	JudgeURL string // where the judge's Anthropic requests go ("" = api.anthropic.com), e.g. https://api.orcarouter.ai
 	// Subscriptions passes agents keyed with a personal Claude or ChatGPT subscription (ARENA_SUBSCRIPTIONS, local
 	// only; the api lets only admins create them).
 	Subscriptions bool
@@ -59,7 +57,7 @@ func New(pool *db.Pool, box *secretbox.Box, cfg Config, log *slog.Logger) *Gatew
 	return &Gateway{pool: pool, box: box, cfg: cfg, log: log.With("component", "gateway"), slots: map[string]*slot{}}
 }
 
-// maxParallel is how many LLM requests one token (one run's agent, or its judge) has in flight at once.
+// maxParallel is how many LLM requests one token (one run's agent) has in flight at once.
 const maxParallel = 4
 
 type slot struct {
@@ -251,10 +249,10 @@ func apiError(w http.ResponseWriter, provider string, status int, kind, msg stri
 }
 
 type grant struct {
-	runID, purpose, provider string
-	sealed                   []byte
-	budget, used             int64
-	status                   string
+	runID, provider string
+	sealed          []byte
+	budget, used    int64
+	status          string
 }
 
 func tokenFrom(r *http.Request) string {
@@ -273,11 +271,11 @@ func tokenFrom(r *http.Request) string {
 func (g *Gateway) lookup(ctx context.Context, token string) (grant, error) {
 	var gr grant
 	err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT t.run_id, t.purpose, a.provider, a.api_key, r.token_budget,
+		return tx.QueryRow(ctx, `SELECT t.run_id, a.provider, a.api_key, r.token_budget,
 				r.tokens_in + r.tokens_out + r.tokens_cache_write, r.status
 			FROM gateway_tokens t JOIN runs r ON r.id = t.run_id JOIN agents a ON a.id = r.agent_id
-			WHERE t.token_hash = $1 AND t.expires_at > now()`, runs.TokenHash(token)).
-			Scan(&gr.runID, &gr.purpose, &gr.provider, &gr.sealed, &gr.budget, &gr.used, &gr.status)
+			WHERE t.token_hash = $1 AND t.purpose = 'agent' AND t.expires_at > now()`, runs.TokenHash(token)).
+			Scan(&gr.runID, &gr.provider, &gr.sealed, &gr.budget, &gr.used, &gr.status)
 	})
 	return gr, err
 }
@@ -330,42 +328,26 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 		return
 	}
 	var realKey, base string
-	switch gr.purpose {
-	case "agent":
-		if gr.status != "agent" {
-			apiError(w, provider, http.StatusForbidden, "permission_error", "the run is no longer building")
-			return
-		}
-		if gr.used >= gr.budget {
-			apiError(w, provider, http.StatusTooManyRequests, "rate_limit_error", "token budget exhausted for this run")
-			return
-		}
-		if subscription(gr.provider) && !g.cfg.Subscriptions {
-			apiError(w, provider, http.StatusForbidden, "permission_error", "subscriptions are off on this gateway")
-			return
-		}
-		if base = providers[gr.provider][provider]; base == "" {
-			apiError(w, provider, http.StatusForbidden, "permission_error", "this agent's key is for "+gr.provider+", which doesn't speak the "+provider+" protocol")
-			return
-		}
-		if realKey, err = g.box.Open(gr.sealed); err != nil {
-			g.log.Error("open agent key", "run_id", gr.runID, "err", err)
-			apiError(w, provider, http.StatusBadGateway, "api_error", "cannot open the agent's key")
-			return
-		}
-	case "judge":
-		if provider != "anthropic" || gr.status != "checking" {
-			apiError(w, provider, http.StatusForbidden, "permission_error", "judge tokens are for anthropic while checking")
-			return
-		}
-		if g.cfg.JudgeKey == "" && !g.cfg.FakeUpstream {
-			apiError(w, provider, http.StatusServiceUnavailable, "judge_not_configured", "judge_not_configured: no ARENA_JUDGE_API_KEY on the gateway")
-			return
-		}
-		realKey, base = g.cfg.JudgeKey, g.cfg.JudgeURL
-		if base == "" {
-			base = providers["anthropic"]["anthropic"]
-		}
+	if gr.status != "agent" {
+		apiError(w, provider, http.StatusForbidden, "permission_error", "the run is no longer building")
+		return
+	}
+	if gr.used >= gr.budget {
+		apiError(w, provider, http.StatusTooManyRequests, "rate_limit_error", "token budget exhausted for this run")
+		return
+	}
+	if subscription(gr.provider) && !g.cfg.Subscriptions {
+		apiError(w, provider, http.StatusForbidden, "permission_error", "subscriptions are off on this gateway")
+		return
+	}
+	if base = providers[gr.provider][provider]; base == "" {
+		apiError(w, provider, http.StatusForbidden, "permission_error", "this agent's key is for "+gr.provider+", which doesn't speak the "+provider+" protocol")
+		return
+	}
+	if realKey, err = g.box.Open(gr.sealed); err != nil {
+		g.log.Error("open agent key", "run_id", gr.runID, "err", err)
+		apiError(w, provider, http.StatusBadGateway, "api_error", "cannot open the agent's key")
+		return
 	}
 	meter := &usage{}
 	defer func() { g.record(gr, meter) }()
@@ -391,11 +373,11 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 			pr.Out.Header.Del("X-Forwarded-For")
 			plainResponses(pr.Out.Header)
 			switch {
-			case gr.purpose == "agent" && gr.provider == "claude-sub":
+			case gr.provider == "claude-sub":
 				// Claude Code's OAuth token from `claude setup-token`.
 				pr.Out.Header.Set("Authorization", "Bearer "+realKey)
 				pr.Out.Header.Set("anthropic-beta", strings.Trim(pr.In.Header.Get("anthropic-beta")+",oauth-2025-04-20", ","))
-			case gr.purpose == "agent" && gr.provider == "chatgpt-sub":
+			case gr.provider == "chatgpt-sub":
 				var tok struct {
 					AccessToken string `json:"access_token"`
 					AccountID   string `json:"account_id"`
@@ -576,22 +558,14 @@ func (g *Gateway) record(gr grant, u *usage) {
 	u.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	var q string
-	var args []any
-	if gr.purpose == "judge" {
-		q = `UPDATE runs SET judge_tokens_in = judge_tokens_in + $2, judge_tokens_out = judge_tokens_out + $3 WHERE id = $1`
-		args = []any{gr.runID, in + cr + cw, out}
-	} else {
-		reqs := 0
-		if seen {
-			reqs = 1
-		}
-		q = `UPDATE runs SET tokens_in = tokens_in + $2, tokens_out = tokens_out + $3, tokens_cache_read = tokens_cache_read + $4,
-			tokens_cache_write = tokens_cache_write + $5, llm_requests = llm_requests + $6, updated_at = now() WHERE id = $1`
-		args = []any{gr.runID, in, out, cr, cw, reqs}
+	reqs := 0
+	if seen {
+		reqs = 1
 	}
 	if err := g.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, q, args...)
+		_, err := tx.Exec(ctx, `UPDATE runs SET tokens_in = tokens_in + $2, tokens_out = tokens_out + $3, tokens_cache_read = tokens_cache_read + $4,
+			tokens_cache_write = tokens_cache_write + $5, llm_requests = llm_requests + $6, updated_at = now() WHERE id = $1`,
+			gr.runID, in, out, cr, cw, reqs)
 		return err
 	}); err != nil {
 		g.log.Error("record usage", "run_id", gr.runID, "err", err)
@@ -642,16 +616,11 @@ func (g *Gateway) registry(w http.ResponseWriter, r *http.Request, name string) 
 
 // fake answers LLM calls without an upstream (ARENA_GATEWAY_FAKE=true, local runs without keys): one short text
 // answer in each protocol's shape, streamed when the client asked for a stream, so every agent CLI can be run end to
-// end for free. For the judge it plays a two-step session (look at the home page, then a verdict) so the whole
-// pipeline can be clicked through.
+// end for free.
 func fake(w http.ResponseWriter, r *http.Request, body []byte, provider, path string, meter *usage) {
 	var req struct {
-		Model    string            `json:"model"`
-		Stream   bool              `json:"stream"`
-		Messages []json.RawMessage `json:"messages"`
-		Tools    []struct {
-			Name string `json:"name"`
-		} `json:"tools"`
+		Model  string `json:"model"`
+		Stream bool   `json:"stream"`
 	}
 	_ = json.Unmarshal(body, &req)
 	in := len(body) / 4
@@ -730,32 +699,9 @@ func fake(w http.ResponseWriter, r *http.Request, body []byte, provider, path st
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	judge := false
-	for _, t := range req.Tools {
-		if t.Name == "submit_verdict" {
-			judge = true
-		}
-	}
-	content := []any{map[string]any{"type": "text", "text": "fake upstream: no real model was called"}}
-	stop := "end_turn"
-	if judge {
-		stop = "tool_use"
-		// The agent judge browses first; the screens judge has only submit_verdict and answers at once.
-		if len(req.Messages) < 3 && len(req.Tools) > 1 {
-			content = []any{map[string]any{"type": "tool_use", "id": "toolu_fake1", "name": "browser_goto", "input": map[string]any{"path": "/"}}}
-		} else {
-			content = []any{map[string]any{"type": "tool_use", "id": "toolu_fake2", "name": "submit_verdict", "input": map[string]any{
-				"summary": "Fake judge (ARENA_GATEWAY_FAKE): no model was called, these points are placeholders.",
-				"criteria": []any{
-					map[string]any{"title": "Functionality", "max": 60, "points": 30, "note": "placeholder"},
-					map[string]any{"title": "UI and UX", "max": 25, "points": 15, "note": "placeholder"},
-					map[string]any{"title": "Code", "max": 15, "points": 10, "note": "placeholder"},
-				}}}}
-		}
-	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id": "msg_fake", "type": "message", "role": "assistant", "model": req.Model, "content": content,
-		"stop_reason": stop, "stop_sequence": nil,
+		"id": "msg_fake", "type": "message", "role": "assistant", "model": req.Model,
+		"content": []any{map[string]any{"type": "text", "text": text}}, "stop_reason": "end_turn", "stop_sequence": nil,
 		"usage": map[string]any{"input_tokens": len(body) / 4, "output_tokens": 40},
 	})
 }
