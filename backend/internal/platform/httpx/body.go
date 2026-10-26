@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 // maxBodyBytes bounds ordinary JSON request bodies; uploads set their own limit.
@@ -19,8 +20,8 @@ func ReadBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	return raw, nil
 }
 
-// ValidText reports whether value, once trimmed, has length in [min, max] bytes.
+// ValidText reports whether value, once trimmed, has length in [min, max] characters.
 func ValidText(value string, min, max int) bool {
-	trimmed := strings.TrimSpace(value)
-	return len(trimmed) >= min && len(value) <= max
+	n := utf8.RuneCountInString(strings.TrimSpace(value))
+	return n >= min && n <= max
 }

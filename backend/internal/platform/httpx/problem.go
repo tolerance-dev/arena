@@ -56,8 +56,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if !errors.As(err, &p) {
 		p = Internal()
 	}
-	p.RequestID = RequestID(r.Context())
-	Respond(w, p.Status, p)
+	// Copy: the *Problem may be shared (a package-level error value).
+	out := *p
+	out.RequestID = RequestID(r.Context())
+	Respond(w, out.Status, &out)
 }
 
 type requestIDKey struct{}
