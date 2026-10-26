@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ type config struct {
 	allowNonLoopback bool
 	secretKey        string // ARENA_SECRET_KEY: seals agents' LLM keys (the gateway opens them)
 	publicURL        string
+	oauthRelay       string // ARENA_OAUTH_RELAY_URL: local only, see identity.AuthConfig.OAuthRelay
 	previewURL       string // ARENA_PREVIEW_URL: live preview address with {id}, e.g. http://{id}.preview.localhost:3023
 	runConcurrency   int
 	githubID         string
@@ -42,6 +44,7 @@ func loadConfig() (config, error) {
 		allowNonLoopback: os.Getenv("ARENA_ALLOW_NON_LOOPBACK") == "true",
 		secretKey:        os.Getenv("ARENA_SECRET_KEY"),
 		publicURL:        os.Getenv("ARENA_PUBLIC_URL"),
+		oauthRelay:       os.Getenv("ARENA_OAUTH_RELAY_URL"),
 		previewURL:       os.Getenv("ARENA_PREVIEW_URL"),
 		runConcurrency:   1,
 		githubID:         os.Getenv("ARENA_GITHUB_CLIENT_ID"),
@@ -89,6 +92,12 @@ func loadConfig() (config, error) {
 	}
 	if !strings.HasPrefix(cfg.publicURL, "http://") && !strings.HasPrefix(cfg.publicURL, "https://") {
 		return config{}, errors.New("ARENA_PUBLIC_URL (http:// or https://) is required when a sign-in provider is configured")
+	}
+	if cfg.oauthRelay != "" {
+		u, err := url.Parse(cfg.publicURL)
+		if err != nil || u.Scheme != "http" || u.Hostname() != "localhost" || u.Port() == "" || cfg.secureCookies {
+			return config{}, errors.New("ARENA_OAUTH_RELAY_URL is for local stacks only: ARENA_PUBLIC_URL must be http://localhost:<port>")
+		}
 	}
 	return cfg, nil
 }

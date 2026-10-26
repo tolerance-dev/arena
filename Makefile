@@ -1,4 +1,4 @@
-.PHONY: up down logs reset dev db gateway docker migrate run-api run-web images test test-fast
+.PHONY: oauth-relay up down logs reset dev db gateway docker migrate run-api run-web images test test-fast
 
 COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 # Secrets shared by every local checkout (OAuth keys): kept outside the repo so new workspaces don't need them
@@ -17,6 +17,10 @@ export ARENA_STACK
 # secure cookies, and deploy/ never sets it).
 ARENA_SUBSCRIPTIONS ?= true
 export ARENA_SUBSCRIPTIONS
+# Sign-in callbacks go through one fixed local port shared by every checkout (dev/oauth-relay.conf), so Google
+# and GitHub need one registered callback whatever WEB_PORT is. Set it empty to call back to WEB_PORT directly.
+ARENA_OAUTH_RELAY_URL ?= http://localhost:2999
+export ARENA_OAUTH_RELAY_URL
 WEB_PORT ?= 3000
 API_PORT ?= 8080
 PG_PORT ?= 5432
@@ -24,7 +28,7 @@ GATEWAY_PORT ?= 3023
 ARENA_SECRET_KEY ?= dev-only-secret-key-change-me
 
 # Everything in Docker.
-up: .env docker images
+up: .env docker images oauth-relay
 	$(COMPOSE) up --build -d
 	@echo
 	@echo "  site:  http://localhost:$(WEB_PORT)"
@@ -43,7 +47,7 @@ logs:
 
 # Fastest loop: postgres in Docker, api and web on the host (web hot-reloads;
 # restart `make dev` after Go changes). Ctrl-C stops both.
-dev: .env docker images db migrate gateway
+dev: .env docker images oauth-relay db migrate gateway
 	@trap 'kill 0' INT TERM; \
 	$(MAKE) --no-print-directory run-api & \
 	$(MAKE) --no-print-directory run-web & \
@@ -66,7 +70,7 @@ run-api:
 	cd backend && ARENA_ADDR=127.0.0.1:$(API_PORT) \
 		ARENA_APP_DATABASE_URL="postgres://arena_app:$(ARENA_APP_ROLE_PASSWORD)@127.0.0.1:$(PG_PORT)/arena?sslmode=disable" \
 		ARENA_ADMIN_EMAILS="$(ARENA_ADMIN_EMAILS)" ARENA_SECRET_KEY="$(ARENA_SECRET_KEY)" \
-		ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) \
+		ARENA_PUBLIC_URL=$(or $(ARENA_PUBLIC_URL),http://localhost:$(WEB_PORT)) ARENA_OAUTH_RELAY_URL="$(ARENA_OAUTH_RELAY_URL)" \
 		ARENA_PREVIEW_URL="http://{id}.preview.localhost:$(GATEWAY_PORT)" \
 		ARENA_TASKS_HIDDEN_DIR="$(ARENA_TASKS_HIDDEN_DIR)" \
 		ARENA_GITHUB_CLIENT_ID="$(ARENA_GITHUB_CLIENT_ID)" ARENA_GITHUB_CLIENT_SECRET="$(ARENA_GITHUB_CLIENT_SECRET)" \
@@ -75,6 +79,18 @@ run-api:
 
 run-web:
 	cd frontend && API_URL=http://127.0.0.1:$(API_PORT) pnpm dev -p $(WEB_PORT)
+
+# One container for all checkouts, outside any compose project, so stopping a stack leaves it up for the others.
+# Recreated when dev/oauth-relay.conf changes.
+OAUTH_RELAY := tolerance-oauth-relay
+oauth-relay: docker
+	@[ -z "$(ARENA_OAUTH_RELAY_URL)" ] || { \
+	  sum=$$(shasum dev/oauth-relay.conf | cut -c1-12); \
+	  [ "$$(docker inspect -f '{{index .Config.Labels "conf"}} {{.State.Running}}' $(OAUTH_RELAY) 2>/dev/null)" = "$$sum true" ] || { \
+	    docker rm -f $(OAUTH_RELAY) >/dev/null 2>&1; \
+	    docker create --name $(OAUTH_RELAY) --label conf=$$sum --restart unless-stopped -p 127.0.0.1:2999:80 nginx:1.27-alpine >/dev/null && \
+	    docker cp dev/oauth-relay.conf $(OAUTH_RELAY):/etc/nginx/conf.d/default.conf && \
+	    docker start $(OAUTH_RELAY) >/dev/null && echo "  oauth relay: http://localhost:2999"; }; }
 
 # The sandbox runtime every agent, check and preview container starts from. Built only when missing;
 # `docker rmi arena-runtime:1` to force a rebuild.

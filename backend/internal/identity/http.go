@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -30,7 +31,11 @@ func clientIP(r *http.Request, trustProxy bool) string {
 type AuthConfig struct {
 	Providers map[string]Provider // "github", "google": only the configured ones
 	PublicURL string              // base of redirect_uri, e.g. https://tolerance.cc
-	Secure    bool                // Secure flag on cookies
+	// OAuthRelay, when set (local stacks: http://localhost:2999), replaces PublicURL in redirect_uri, so the
+	// providers need one registered callback for every checkout's port. The relay (dev/oauth-relay.conf) sends
+	// the browser on to the port that prefixes state ("3100-<random>").
+	OAuthRelay string
+	Secure     bool // Secure flag on cookies
 	// TrustProxy must only be true when a reverse proxy in front sets
 	// X-Real-IP itself (never trust it otherwise) — see clientip.FromRequest.
 	TrustProxy bool
@@ -64,7 +69,11 @@ func RegisterAuthRoutes(mux *http.ServeMux, s *Service, limiter *ratelimit.Limit
 }
 
 func (c AuthConfig) redirectURL(provider string) string {
-	return strings.TrimRight(c.PublicURL, "/") + "/api/v1/auth/" + provider + "/callback"
+	base := c.PublicURL
+	if c.OAuthRelay != "" {
+		base = c.OAuthRelay
+	}
+	return strings.TrimRight(base, "/") + "/api/v1/auth/" + provider + "/callback"
 }
 
 func setOAuthCookie(w http.ResponseWriter, value string, maxAge int, secure bool) {
@@ -90,6 +99,11 @@ func oauthStart(limiter *ratelimit.Limiter, cfg AuthConfig) http.HandlerFunc {
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
+		}
+		if cfg.OAuthRelay != "" {
+			if u, err := url.Parse(cfg.PublicURL); err == nil {
+				state = u.Port() + "-" + state
+			}
 		}
 		st := oauthState{Provider: name, State: state, Verifier: oauth2.GenerateVerifier(), Next: safeNext(r.URL.Query().Get("next"))}
 		setOAuthCookie(w, encodeState(st), 600, cfg.Secure)
