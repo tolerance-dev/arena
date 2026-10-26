@@ -28,6 +28,14 @@ var Stack = func() string {
 	return "arena"
 }()
 
+// Runtime is the OCI runtime for every sandbox container (ARENA_SANDBOX_RUNTIME, e.g. "runsc" for gVisor: the
+// container's syscalls go to a user-space kernel instead of the host's). "" = Docker's default (runc).
+var Runtime = os.Getenv("ARENA_SANDBOX_RUNTIME")
+
+// DiskLimit caps each sandbox container's writable layer (ARENA_SANDBOX_DISK, e.g. "20G"): Docker's
+// --storage-opt size=, which needs overlay2 on XFS mounted with pquota. "" = no cap beyond the per-file ulimit.
+var DiskLimit = os.Getenv("ARENA_SANDBOX_DISK")
+
 // GatewayURL is how a sandbox reaches the gateway.
 const GatewayURL = "http://gateway:8090"
 
@@ -74,6 +82,12 @@ func (s Spec) createArgs() []string {
 		// Caps a single file's size everywhere (storage-opt size= works on few storage drivers).
 		"--ulimit", "fsize=524288000",
 		"--label", "arena.sandbox=1", "--label", "arena.stack="+Stack)
+	if Runtime != "" {
+		args = append(args, "--runtime", Runtime)
+	}
+	if DiskLimit != "" {
+		args = append(args, "--storage-opt", "size="+DiskLimit)
+	}
 	for _, c := range s.CapAdd {
 		args = append(args, "--cap-add", c)
 	}

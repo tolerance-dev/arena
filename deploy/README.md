@@ -23,3 +23,13 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   Cloudflare Origin CA cert for `*.tolerance.cc` in `/opt/tolerance/origin-tls/` (both made once by hand, not by
   deploys; `server.sh` refuses to deploy without the cert).
 - `/opt/tolerance/.env` holds the OAuth keys.
+- **Sandbox hardening** (off until done by hand on the host; `ARENA_SANDBOX_RUNTIME`, `ARENA_SANDBOX_DISK` in
+  `/opt/tolerance/.env`, read by api and gateway, `internal/sandbox`). Pause the queue in /admin first: restarting
+  Docker kills running containers.
+  - gVisor: install runsc from gVisor's apt repo (gvisor.dev/docs/user_guide/install), `sudo runsc install &&
+    sudo systemctl restart docker`, check `docker run --rm --runtime=runsc --network none arena-runtime:1 node -v`,
+    then set `ARENA_SANDBOX_RUNTIME=runsc` and deploy. Afterwards run the demo agent on each task and check it still
+    gets every check (Chromium screenshots included); unset the variable to go back to runc.
+  - Disk cap per container (`ARENA_SANDBOX_DISK=20G` → `--storage-opt size=`): only works when Docker's data dir is
+    overlay2 on XFS mounted with `pquota`; on ext4 Docker refuses to create the containers, so every run would fail.
+    Without it a single file is capped at 500 MB (`--ulimit fsize`).
