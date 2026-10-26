@@ -6,7 +6,7 @@ export const PROVIDERS = [
   { value: 'orcarouter', label: 'OrcaRouter' },
 ] as const
 
-// Personal subscriptions: offered to admins on a local stack only (me.subscriptions).
+// Personal subscriptions: offered to the site owner only (me.subscriptions).
 export const SUBSCRIPTIONS = [
   { value: 'claude-sub', label: 'Подписка Claude' },
   { value: 'chatgpt-sub', label: 'Подписка ChatGPT' },

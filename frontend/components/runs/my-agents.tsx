@@ -207,10 +207,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
           ) : (
             <Input id="api_key" name="api_key" type="password" required {...noAutofill} placeholder="sk-…" />
           )}
-          <p className="text-xs text-muted-foreground">
-            {providerValue === 'claude-sub' ? 'Ваша подписка Claude: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.' : providerValue === 'chatgpt-sub' ? 'Ваша подписка ChatGPT, только на этом локальном стенде: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).' : 'Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.'}{' '}
-            <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">Как хранятся ключи</Link>
-          </p>
+          <KeyHint provider={providerValue} />
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
           <Button type="submit" disabled={busy}><Upload /> {busy ? 'Загружаем…' : 'Загрузить агента'}</Button>
@@ -219,6 +216,28 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
         </div>
       </form>
     </section>
+  )
+}
+
+// Where to get a key of this kind and what it costs; under both key fields.
+const KEY_PAGES: Record<string, [string, string]> = {
+  anthropic: ['console.anthropic.com', 'https://console.anthropic.com/settings/keys'],
+  openai: ['platform.openai.com', 'https://platform.openai.com/api-keys'],
+  google: ['aistudio.google.com', 'https://aistudio.google.com/apikey'],
+  orcarouter: ['orcarouter.ai', 'https://orcarouter.ai'],
+}
+
+function KeyHint({ provider }: { provider: string }) {
+  const page = KEY_PAGES[provider]
+  return (
+    <p className="text-xs text-muted-foreground">
+      {provider === 'claude-sub' ? 'Ваша подписка Claude: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.'
+        : provider === 'chatgpt-sub' ? 'Ваша подписка ChatGPT: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).'
+        : <>{page && <>Ключ берётся на{' '}
+            <a href={page[1]} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2">{page[0]} <ExternalLink className="size-3" /></a>.{' '}</>}
+          Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.</>}{' '}
+      <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">Как хранятся ключи</Link>
+    </p>
   )
 }
 
@@ -331,6 +350,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
               <Input type="password" {...noAutofill} className="min-w-0 flex-1" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-…" />
               <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20}>Сохранить</Button>
             </div>
+            <KeyHint provider={provider} />
           </div>
           <div className="sm:col-span-2">
             <Button variant="destructive" size="sm" onClick={() => void remove()} onBlur={() => setArmed(false)}>{armed ? 'Нажмите ещё раз для подтверждения' : 'Удалить'}</Button>
