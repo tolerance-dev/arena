@@ -97,3 +97,19 @@ func TestStreamWithoutContentType(t *testing.T) {
 		t.Errorf("metered in=%d out=%d seen=%v", meter.in, meter.out, meter.seen)
 	}
 }
+
+// The model a request asked for is recorded per run: from Gemini's path, from the others' body, and only when it
+// looks like a model id (it is the agent's input and shows on the site).
+func TestRequestedModel(t *testing.T) {
+	for _, c := range []struct{ protocol, path, body, want string }{
+		{"anthropic", "/v1/messages", `{"model":"claude-opus-5-5","max_tokens":10}`, "claude-opus-5-5"},
+		{"openai", "/v1/chat/completions", `{"model":"openai/gpt-6.1-sol"}`, "openai/gpt-6.1-sol"},
+		{"gemini", "/v1beta/models/google/gemini-3.8-flash:streamGenerateContent", `{}`, "google/gemini-3.8-flash"},
+		{"openai", "/v1/responses", `{"model":"<script>"}`, ""},
+		{"openai", "/v1/responses", `not json`, ""},
+	} {
+		if got := requestedModel(c.protocol, c.path, []byte(c.body)); got != c.want {
+			t.Errorf("%s %s %s: got %q, want %q", c.protocol, c.path, c.body, got, c.want)
+		}
+	}
+}

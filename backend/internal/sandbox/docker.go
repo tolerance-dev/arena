@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -565,6 +566,21 @@ func RemoveImage(image string) {
 func ImageExists(ctx context.Context, image string) bool {
 	_, err := docker(ctx, nil, "image", "inspect", image)
 	return err == nil
+}
+
+// ImageOf is the id (sha256:…) and the labels of the image a container was created from.
+func ImageOf(ctx context.Context, container string) (string, map[string]string, error) {
+	id, err := docker(ctx, nil, "container", "inspect", "--format", "{{.Image}}", container)
+	if err != nil {
+		return "", nil, err
+	}
+	raw, err := docker(ctx, nil, "image", "inspect", "--format", "{{json .Config.Labels}}", id)
+	if err != nil {
+		return "", nil, err
+	}
+	labels := map[string]string{}
+	_ = json.Unmarshal([]byte(raw), &labels)
+	return id, labels, nil
 }
 
 // Tail keeps the last Max bytes written to it; safe to read while a container writes.

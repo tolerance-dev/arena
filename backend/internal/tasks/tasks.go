@@ -8,7 +8,9 @@ package tasks
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -54,6 +56,29 @@ type Task struct {
 	TaskMD    string            `json:"-"` // TASK.md with RULES.md appended: exactly what the agent reads
 	Brief     string            `json:"-"` // what the site shows: the product part of TASK.md (see siteBrief)
 	DataFiles map[string][]byte `json:"-"` // name → content, from data/
+
+	// Hashes of what a run gets, set by Load (a run's manifest keeps them): TASK.md as the agent reads it, the data
+	// files, and the check spec (Checks, UI, UIText) verify.py runs.
+	TaskMDHash, DataHash, ChecksHash string `json:"-"`
+}
+
+func sum(b []byte) string {
+	s := sha256.Sum256(b)
+	return hex.EncodeToString(s[:])
+}
+
+// hash fills the task's hashes.
+func (t *Task) hash() error {
+	t.TaskMDHash = sum([]byte(t.TaskMD))
+	var data bytes.Buffer
+	for _, n := range t.DataNames() {
+		fmt.Fprintf(&data, "%s\x00%d\x00", n, len(t.DataFiles[n]))
+		data.Write(t.DataFiles[n])
+	}
+	t.DataHash = sum(data.Bytes())
+	spec, err := json.Marshal(map[string]any{"checks": t.Checks, "ui": t.UI, "ui_text": t.UIText})
+	t.ChecksHash = sum(spec)
+	return err
 }
 
 var all []*Task
@@ -128,6 +153,9 @@ func Load(hiddenDir string) error {
 		}
 		if t.TimeLimitS <= 0 || t.TokenBudget <= 0 {
 			return fmt.Errorf("tasks: %s: time_limit_s and token_budget are required", slug)
+		}
+		if err := t.hash(); err != nil {
+			return fmt.Errorf("tasks: %s: %w", slug, err)
 		}
 		out = append(out, t)
 	}

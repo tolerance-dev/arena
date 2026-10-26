@@ -45,6 +45,18 @@ export interface Run {
   preview_url?: string; agent_log?: string; check_log?: string; log_tail?: string
   created_at: string; started_at: string | null; finished_at: string | null
   queue_position?: number; queue_wait_s?: number // a queued run's place (1 = next) and estimated wait
+  manifest: RunManifest // fixed at creation: agent.provider and agent.model come from it
+  models: Record<string, number> // model id the agent called → metered requests
+  checks_version: string | null; checks_current: boolean // the checks that scored it; current = ranked
+}
+
+// What a run was set up with (runs.Manifest): hashes are sha256 hex.
+export interface RunManifest {
+  bundle_sha256: string; provider: string; model?: string; model_id?: string
+  key_rotation: string // same_provider: a new key of the same provider applies, another provider is refused
+  task_md_sha256: string; data_sha256: string; checks_sha256: string; verifier_sha256: string
+  scoring_version: number; checks_version: string
+  runtime?: { image: string; versions?: Record<string, string> } // set when the agent's container starts
 }
 
 export interface TaskSummary {

@@ -105,24 +105,32 @@ type Run struct {
 	// A queued run's place (1 = next) and estimated seconds until it starts (absent while the queue is paused).
 	QueuePosition *int `json:"queue_position,omitempty"`
 	QueueWaitS    *int `json:"queue_wait_s,omitempty"`
+	// Manifest is what the run was set up with; Agent.Provider and Agent.Model come from it, not from the agent now.
+	Manifest Manifest `json:"manifest"`
+	// Models is each model id the agent called, with its metered requests.
+	Models map[string]int `json:"models"`
+	// ChecksVersion is the checks that produced the score; ChecksCurrent says they are the task's current ones (only
+	// such runs are ranked).
+	ChecksVersion *string `json:"checks_version"`
+	ChecksCurrent bool    `json:"checks_current"`
 }
 
-const runColumns = `r.id, r.task, a.id, a.name, a.description, a.provider, a.model, u.handle, r.status, r.failure_reason, r.agent_exit,
+const runColumns = `r.id, r.task, a.id, a.name, a.description, r.manifest->>'provider', coalesce(r.manifest->>'model', ''), u.handle, r.status, r.failure_reason, r.agent_exit,
 	r.time_limit_s, r.token_budget, r.tokens_in, r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, r.llm_requests,
 	r.agent_seconds, r.stats, r.checks, r.score, r.app_started,
 	r.shot IS NOT NULL, r.shot_mobile IS NOT NULL, r.source_zip IS NOT NULL, r.image IS NOT NULL, r.rechecks,
-	r.created_at, r.started_at, r.finished_at, right(r.agent_log, 800)`
+	r.created_at, r.started_at, r.finished_at, right(r.agent_log, 800), r.manifest, r.models, r.checks_version`
 
 const runFrom = ` FROM runs r JOIN agents a ON a.id = r.agent_id JOIN users u ON u.id = a.owner_id`
 
 func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	var r Run
-	var stats, checks []byte
+	var stats, checks, manifest, models []byte
 	dest := []any{&r.ID, &r.Task, &r.Agent.ID, &r.Agent.Name, &r.Agent.Description, &r.Agent.Provider, &r.Agent.Model, &r.Agent.Owner,
 		&r.Status, &r.FailureReason, &r.AgentExit, &r.TimeLimitS, &r.TokenBudget, &r.Tokens.In, &r.Tokens.Out,
 		&r.Tokens.CacheRead, &r.Tokens.CacheWrite, &r.Tokens.Requests,
 		&r.AgentSeconds, &stats, &checks, &r.Score, &r.AppStarted, &r.HasShot, &r.HasShotMobile, &r.HasSource,
-		&r.HasSnapshot, &r.Rechecks, &r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail}
+		&r.HasSnapshot, &r.Rechecks, &r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.LogTail, &manifest, &models, &r.ChecksVersion}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return r, httpx.NotFound()
@@ -139,6 +147,9 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 	}
 	r.Checks = []Check{}
 	_ = json.Unmarshal(checks, &r.Checks)
+	_ = json.Unmarshal(manifest, &r.Manifest)
+	r.Models = map[string]int{}
+	_ = json.Unmarshal(models, &r.Models)
 	r.CreatedAt = r.CreatedAt.UTC()
 	for _, t := range []**time.Time{&r.StartedAt, &r.FinishedAt} {
 		if *t != nil {
@@ -160,6 +171,7 @@ func (s *Service) decorate(r *Run) {
 	t := tasks.BySlug(r.Task)
 	if t != nil {
 		r.TaskTitle = t.Title
+		r.ChecksCurrent = r.ChecksVersion != nil && *r.ChecksVersion == checksVersion(t)
 	}
 	if s.PreviewURL != "" && r.Status == "done" && r.AppStarted && t != nil && t.UI {
 		r.PreviewURL = strings.ReplaceAll(s.PreviewURL, "{id}", PreviewHost(r.ID))
@@ -229,32 +241,33 @@ func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, e
 }
 
 // rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
-// time or tokens is an experiment, not a result to compare.
-const rankedLimits = ` AND time_limit_s <= $2 AND token_budget <= $3`
+// time or tokens is an experiment, not a result to compare. And to runs scored by the task's current checks ($4):
+// scores from other checks aren't comparable (an admin can re-check an older run's snapshot to bring it back).
+const rankedLimits = ` AND time_limit_s <= $2 AND token_budget <= $3 AND checks_version = $4`
 
-func taskLimits(task string) (int, int64) {
+func taskLimits(task string) (int, int64, string) {
 	if t := tasks.BySlug(task); t != nil {
-		return t.TimeLimitS, t.TokenBudget
+		return t.TimeLimitS, t.TokenBudget, checksVersion(t)
 	}
-	return 0, 0
+	return 0, 0, ""
 }
 
 // Compare is each agent's best finished run at the task: best score first, then the newest.
 func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
-	limit, budget := taskLimits(task)
+	limit, budget, checks := taskLimits(task)
 	return s.query(ctx, `WHERE r.id IN (
 			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done'`+rankedLimits+`
 			ORDER BY agent_id, score DESC NULLS LAST, created_at DESC)
-		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task, limit, budget)
+		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task, limit, budget, checks)
 }
 
 // Leaderboard is each agent's best finished run at the task, best first (ties: fewer tokens, then faster).
 func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
-	limit, budget := taskLimits(task)
+	limit, budget, checks := taskLimits(task)
 	return s.query(ctx, `WHERE r.id IN (
 			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done' AND score IS NOT NULL`+rankedLimits+`
 			ORDER BY agent_id, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)
-		ORDER BY r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`, task, limit, budget)
+		ORDER BY r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`, task, limit, budget, checks)
 }
 
 // TaskSummary is a task with its standing, for the home page.
@@ -370,12 +383,21 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You have started 30 runs in the last 24 hours: try again later")
 			}
 		}
-		tag, err := tx.Exec(ctx, `INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget)
-			SELECT $1, id, $3, $4, $5 FROM agents WHERE id = $2 AND ($6 = '' OR owner_id = $6)`,
-			id, agentID, task, timeLimitS, tokenBudget, ownerID)
-		if err == nil && tag.RowsAffected() == 0 {
+		var provider, model, bundleHash string
+		err := tx.QueryRow(ctx, `SELECT provider, model, encode(sha256(bundle), 'hex') FROM agents WHERE id = $1 AND ($2 = '' OR owner_id = $2)`,
+			agentID, ownerID).Scan(&provider, &model, &bundleHash)
+		if errors.Is(err, pgx.ErrNoRows) {
 			return invalid("Unknown agent")
 		}
+		if err != nil {
+			return err
+		}
+		manifest, err := json.Marshal(newManifest(t, provider, model, bundleHash))
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO runs (id, agent_id, task, time_limit_s, token_budget, manifest) VALUES ($1, $2, $3, $4, $5, $6)`,
+			id, agentID, task, timeLimitS, tokenBudget, manifest)
 		if err == nil && ownerID != "" {
 			_, err = tx.Exec(ctx, `INSERT INTO run_quota (run_id, user_id) VALUES ($1, $2)`, id, ownerID)
 		}

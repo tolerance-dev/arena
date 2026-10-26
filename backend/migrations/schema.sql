@@ -73,6 +73,13 @@ CREATE TABLE runs (
     image              text,
     recheck            boolean NOT NULL DEFAULT false, -- queued again to check its snapshot only (runs.Service.Recheck)
     rechecks           int NOT NULL DEFAULT 0,         -- how many times the snapshot was checked again
+    -- manifest: what the run was set up with (runs.Manifest: hashes, provider, model, versions), written at creation
+    -- and never rewritten; only its runtime is added, once, when the agent's container starts.
+    manifest           jsonb NOT NULL,
+    -- models: each model id the agent called → the metered LLM requests to it (the gateway).
+    models             jsonb NOT NULL DEFAULT '{}'::jsonb,
+    -- checks_version: the checks that produced score (runs.checksVersion); rankings take only the task's current one.
+    checks_version     text,
     stats              jsonb NOT NULL DEFAULT '{}'::jsonb,
     checks             jsonb NOT NULL DEFAULT '[]'::jsonb,
     score              int,
