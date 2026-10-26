@@ -16,6 +16,20 @@
  2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
 		client_ip_headers CF-Connecting-IP X-Forwarded-For
 
+		# Russian visitors come through the relay on Selectel (139.100.217.119, deploy/README.md): it passes TCP
+		# here with PROXY protocol v2, so Caddy still terminates TLS and sees the real client. Only the relay may
+		# send the header; everyone else connects as usual.
+		listener_wrappers {
+			proxy_protocol {
+				timeout 5s
+				allow 139.100.217.119/32
+				fallback_policy skip
+			}
+			tls
+		}
+		# No HTTP/3: the relay carries TCP only, and a QUIC attempt to it would only delay the page.
+		protocols h1 h2
+
 		timeouts {
 			read_header 10s
 			read_body 30s

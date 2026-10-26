@@ -36,6 +36,13 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   up to `ARENA_WORKER_DRAIN` = 60m) and is then removed: `/opt/tolerance/worker-swap.log`. The runs cap
   (`ARENA_RUN_CONCURRENCY`) counts both. Runs belong to the worker that claimed them (`runs.worker_id`, heartbeats in
   `workers`); one whose worker stopped beating for a minute becomes `infra_error` and its containers are removed.
+- **Relay in Russia** (since 2026-10-26): the DNS records (tolerance.cc, www, `*`) point at `139.100.217.119`, a
+  Selectel VM (project "My First Project", ru-1b, SL1.1-1024 + 8 GB basic disk, `tolerance-relay`; SSH as root with
+  the owner's key, from a non-Russian-VPN address). Russian ISPs choke connections to foreign hosting after ~16 KB,
+  but not to Selectel, and Selectel to UpCloud is a clean datacenter link. HAProxy there passes TCP 443 to this host
+  with PROXY protocol v2 (Caddy trusts the header only from that IP, see the Caddyfile) and TCP 80 as is. TLS stays
+  here; the relay holds no certificate or secret. Back to direct: point the records at 81.27.103.131. The Selectel
+  account is prepaid in rubles: keep the balance up or the relay stops and the site with it.
 - **Live previews** are `https://p-<hex>.tolerance.cc`: a DNS-only wildcard `*` A record in Cloudflare (made once by
   hand) and the wildcard certificate above.
 - `/opt/tolerance/.env` holds the OAuth keys.
