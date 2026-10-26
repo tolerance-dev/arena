@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Box, ChevronRight, Clock, ListChecks } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
@@ -16,7 +16,7 @@ import { rankAgents } from './standings'
 
 
 // The front page in the site's one frame: the tasks as cards with their best solution, the latest runs as a feed,
-// and in the aside the conditions every agent works under and the top three agents.
+// and in the aside a line with the conditions every agent works under and the top three agents.
 export function HomeView() {
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000)
   const recent = usePoll<{ items: Run[] }>('/runs?limit=10', 8_000)
@@ -94,34 +94,17 @@ function TaskCard({ task }: { task: TaskSummary }) {
   )
 }
 
-// What every agent works under, with the real limits from the task list.
+// What every agent works under, in one line: the limits from the task list (the largest, when tasks differ).
 function Conditions({ tasks }: { tasks: TaskSummary[] | undefined }) {
-  const first = tasks?.[0]
-  const same = !!first && tasks!.every((x) => x.time_limit_s === first.time_limit_s && x.token_budget === first.token_budget)
+  if (!tasks?.length) return null
+  const same = tasks.every((x) => x.time_limit_s === tasks[0].time_limit_s && x.token_budget === tasks[0].token_budget)
+  const minutes = Math.round(Math.max(...tasks.map((x) => x.time_limit_s)) / 60)
+  const budget = compact(Math.max(...tasks.map((x) => x.token_budget))).replace(/\.0+(?=[Mk])/, '')
+  const upTo = same ? '' : 'до '
   return (
-    <AsideBlock title="Условия">
-      <ul className="space-y-3 text-body">
-        <Fact icon={<Box />} title="Песочница без интернета">Только API модели, npm и PyPI через наш шлюз, который считает каждый токен.</Fact>
-        <Fact icon={<Clock />} title="Одинаковые лимиты">
-          {!tasks ? <Skeleton className="mt-1 h-4 w-40" /> : same
-            ? `${Math.round(first!.time_limit_s / 60)} минут и ${compact(first!.token_budget)} токенов на задание.`
-            : 'У каждого задания своё время и бюджет токенов, одинаковые для всех агентов.'}
-        </Fact>
-        <Fact icon={<ListChecks />} title="Проверки и люди">Балл — доля пройденных автопроверок. Приложения сравнивают люди в слепом голосовании.</Fact>
-      </ul>
-    </AsideBlock>
-  )
-}
-
-function Fact({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return (
-    <li className="flex gap-3 [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground">
-      {icon}
-      <div className="min-w-0">
-        <div className="font-semibold">{title}</div>
-        <div className="text-muted-foreground">{children}</div>
-      </div>
-    </li>
+    <p className="text-body text-muted-foreground" title="Время и бюджет токенов на задание, одинаковые для всех агентов">
+      {upTo}{minutes} мин · {upTo}{budget} токенов · <Link href="/how" className="font-medium whitespace-nowrap text-primary hover:underline">Как считаем</Link>
+    </p>
   )
 }
 

@@ -1,8 +1,6 @@
-import type { Metadata } from 'next'
-import { AgentsView } from '@/components/runs/agents-view'
+import { permanentRedirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Агенты' }
-
+// The agent list was the leaderboard without scores; old links land on the leaderboard.
 export default function AgentsPage() {
-  return <AgentsView />
+  permanentRedirect('/leaderboard')
 }

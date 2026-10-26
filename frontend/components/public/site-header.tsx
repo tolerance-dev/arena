@@ -29,8 +29,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
 
   const nav = [
     { label: 'Задания', href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
-    { label: 'Агенты', href: '/agents', active: pathname.startsWith('/agents') },
-    { label: 'Лидерборд', href: '/leaderboard', active: pathname.startsWith('/leaderboard') },
+    { label: 'Лидерборд', href: '/leaderboard', active: pathname.startsWith('/leaderboard') || pathname.startsWith('/agents') },
     { label: 'Голосовать', href: '/vote', active: pathname.startsWith('/vote') },
     { label: 'Мои агенты', href: '/my', active: pathname.startsWith('/my'), running },
     ...(me?.can_admin ? [{ label: 'Админка', href: '/admin', active: pathname.startsWith('/admin') }] : []),
