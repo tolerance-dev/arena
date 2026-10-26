@@ -1,7 +1,7 @@
 name: deploy
 
 # One button: Actions → deploy → Run workflow (or `gh workflow run deploy [-f ref=<sha>] [-f reset_db=true]`).
-# Builds the backend, web and sandbox runtime images at the chosen commit (default: HEAD of main), pushes them to
+# Builds the backend, web, caddy and sandbox runtime images at the chosen commit (default: HEAD of main), pushes them to
 # GHCR, ships deploy/compose.yml, deploy/Caddyfile, deploy/config.alloy and deploy/server.sh to /opt/tolerance on the server, then runs
 # `server.sh deploy <sha>` there: DB dump, migrations, api/gateway/web swap, health check, automatic return to the
 # previous tag if the new one is unhealthy, then a new runs worker while the old one drains in the background. Rollback by hand = run it again with an older sha in `ref`.
@@ -84,6 +84,17 @@ jobs:
           cache-from: type=gha,scope=runtime
           cache-to: type=gha,mode=max,scope=runtime
 
+      - name: caddy image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./deploy/caddy
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/tolerance-caddy:${{ steps.sha.outputs.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+
       - name: set up SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -112,15 +123,6 @@ jobs:
       - name: registry logout on the server
         if: always()
         run: ssh prod "docker logout ghcr.io" || true
-
-      - name: purge Cloudflare cache
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        run: |
-          curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H "Content-Type: application/json" \
-            --data '{"purge_everything":true}' | jq -c '{success, errors}'
 
       - name: public check
         run: |

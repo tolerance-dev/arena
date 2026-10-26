@@ -174,19 +174,19 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
 
+  # caddy + the Cloudflare DNS module (caddy/Dockerfile): Let's Encrypt certificates through DNS-01, see the Caddyfile.
   caddy:
-    image: caddy:2-alpine
+    image: ghcr.io/tolerance-dev/tolerance-caddy:${TAG:?}
     restart: unless-stopped
     logging: *logging
     environment:
       ARENA_DOMAIN: ${ARENA_DOMAIN:?}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Cloudflare Origin CA certificate for *.${ARENA_DOMAIN} (the previews); made once, see the Caddyfile.
-      - ./origin-tls:/etc/caddy/origin-tls:ro
       - arena-caddy-data:/data
     depends_on:
       - web

@@ -24,16 +24,20 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   A failed copy warns and doesn't fail the backup.
 - `compose.yml` and `Caddyfile` are the server's source of truth. The Caddyfile also serves `mentor.nualimov.dev`
   (its stack is `/root/nualimov.dev`): keep that block.
-- Ports 80/443 accept only Cloudflare (iptables chain `TOLERANCE-CF-LOCK`), so the bare IP doesn't answer.
+- **Cloudflare is DNS only** for tolerance.cc (since 2026-10-26: its proxy is slowed down in Russia and the site
+  needed a VPN there). Browsers reach the host directly; Caddy (`tolerance-caddy`, `caddy/Dockerfile` = caddy + the
+  Cloudflare DNS module) gets Let's Encrypt certificates for tolerance.cc, www and the `*.tolerance.cc` wildcard
+  through DNS-01 with `CLOUDFLARE_API_TOKEN` in `/opt/tolerance/.env` (Zone.DNS edit + Zone read on tolerance.cc;
+  `server.sh` refuses to deploy without it). No CDN, no Cloudflare DDoS shield. mentor.nualimov.dev is still proxied
+  (Authenticated Origin Pulls in the Caddyfile). The old Cloudflare-only lock (`tolerance-cf-lock.service`) is off.
 - Stack: api + worker + gateway + web + postgres + caddy.
 - **Runs worker** (`cmd/worker`, service `worker`): its own container, so an api deploy leaves runs going. A deploy
   starts the new worker next to the old one, which drains in the background (no new runs; the ones in flight finish,
   up to `ARENA_WORKER_DRAIN` = 60m) and is then removed: `/opt/tolerance/worker-swap.log`. The runs cap
   (`ARENA_RUN_CONCURRENCY`) counts both. Runs belong to the worker that claimed them (`runs.worker_id`, heartbeats in
   `workers`); one whose worker stopped beating for a minute becomes `infra_error` and its containers are removed.
-- **Live previews** are `https://p-<hex>.tolerance.cc`: a proxied wildcard `*` A record in Cloudflare and a
-  Cloudflare Origin CA cert for `*.tolerance.cc` in `/opt/tolerance/origin-tls/` (both made once by hand, not by
-  deploys; `server.sh` refuses to deploy without the cert).
+- **Live previews** are `https://p-<hex>.tolerance.cc`: a DNS-only wildcard `*` A record in Cloudflare (made once by
+  hand) and the wildcard certificate above.
 - `/opt/tolerance/.env` holds the OAuth keys.
 - **Hidden checks**: `/opt/tolerance/tasks-hidden/<task>/checks.json` (mounted into the worker and the api as
   `ARENA_TASKS_HIDDEN_DIR`, read at start). They run after the public checks on other records of the same data

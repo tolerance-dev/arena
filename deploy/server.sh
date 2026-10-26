@@ -165,9 +165,9 @@ healthy() {
 
 cmd_deploy() {
   local tag=$1 reset=${2:-} prev
-  # The previews' certificate (see the Caddyfile): without it Caddy can't load its config.
-  if [ ! -s origin-tls/cert.pem ] || [ ! -s origin-tls/key.pem ]; then
-    echo "origin-tls/cert.pem and key.pem are missing (the Cloudflare Origin CA certificate for the previews, see the Caddyfile)" >&2
+  # Caddy gets the certificates through Cloudflare DNS (see the Caddyfile): without the token it can't.
+  if ! grep -q '^CLOUDFLARE_API_TOKEN=.' .env; then
+    echo "CLOUDFLARE_API_TOKEN is missing from .env (Zone.DNS edit on the zone, for Caddy's certificates; see the Caddyfile)" >&2
     exit 1
   fi
   # The hidden checks (README.md), copied in by hand; made here so the api's bind mount isn't a root-owned dir.
@@ -177,7 +177,7 @@ cmd_deploy() {
   grep -q '^ARENA_SECRET_KEY=.' .env || setenv ARENA_SECRET_KEY "$(openssl rand -hex 32)"
 
   echo "--- pull $tag"
-  for img in backend web runtime; do
+  for img in backend web runtime caddy; do
     docker pull -q "$REGISTRY/tolerance-$img:$tag"
   done
   runtime_image "$tag"

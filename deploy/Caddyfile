@@ -3,7 +3,9 @@
 # made by hand on the server are overwritten on the next deploy.
 {
 	# Cloudflare's edge ranges (https://www.cloudflare.com/ips-v4, ips-v6) as
-	# of 2026-09-25: CF-Connecting-IP is trusted only from them.
+	# of 2026-09-25: CF-Connecting-IP is trusted only from them. tolerance.cc
+	# is DNS-only (Cloudflare's proxy is slowed down in Russia), so this is
+	# for mentor.nualimov.dev, still proxied.
 	servers {
 		trusted_proxies static \
  173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
@@ -24,10 +26,9 @@
 	}
 }
 
-# Authenticated Origin Pulls: only Cloudflare's proxy for our zone can
-# complete a TLS handshake (zone setting tls_client_auth=on). CA:
-# origin-pull.cloudflare.net, valid until 2029-11-01. Direct HTTPS to the
-# origin fails by design; ACME HTTP-01 on :80 is unaffected.
+# Authenticated Origin Pulls for mentor.nualimov.dev: only Cloudflare's proxy
+# can complete a TLS handshake. CA: origin-pull.cloudflare.net, valid until
+# 2029-11-01. ACME HTTP-01 on :80 is unaffected.
 (cloudflare_client_auth) {
 	client_auth {
 		mode require_and_verify
@@ -43,8 +44,18 @@
 	}
 }
 
+# tolerance.cc is DNS-only in Cloudflare: browsers reach this host directly.
+# Its certificates, the *.tolerance.cc wildcard for the previews among them,
+# come from Let's Encrypt through DNS-01 (caddy-dns/cloudflare, built into
+# tolerance-caddy; CLOUDFLARE_API_TOKEN in .env: Zone.DNS edit on the zone).
+(acme_cloudflare_dns) {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+}
+
 {$ARENA_DOMAIN} {
-	import cloudflare_origin_pull
+	import acme_cloudflare_dns
 
 	encode zstd gzip
 
@@ -91,19 +102,16 @@
 }
 
 www.{$ARENA_DOMAIN} {
-	import cloudflare_origin_pull
+	import acme_cloudflare_dns
 	redir https://{$ARENA_DOMAIN}{uri} permanent
 }
 
 # Live previews: p-<run>.{$ARENA_DOMAIN} → the gateway, which starts the run's app from its snapshot on demand.
 # This is agent-written code, so each preview is its own origin and the api refuses writes from other origins.
-# Cloudflare serves *.tolerance.cc from a proxied wildcard A record; the origin side uses a Cloudflare Origin CA
-# certificate for *.tolerance.cc (valid to 2041) in /opt/tolerance/origin-tls, made once, not by deploys.
+# A wildcard A record (DNS-only) in Cloudflare points them here; one wildcard certificate covers them all.
 # The gateway sets frame-ancestors to the site, so previews open only inside tolerance.cc or on their own.
 *.{$ARENA_DOMAIN} {
-	tls /etc/caddy/origin-tls/cert.pem /etc/caddy/origin-tls/key.pem {
-		import cloudflare_client_auth
-	}
+	import acme_cloudflare_dns
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
