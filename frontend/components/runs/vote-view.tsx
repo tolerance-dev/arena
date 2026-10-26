@@ -15,7 +15,8 @@ import { errorText } from '@/lib/errors'
 import type { Contender, Pair, Reveal, TaskSummary, Winner } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, usePoll } from './bits'
+import { usePoll } from '@/lib/use-poll'
+import { AgentAvatar } from './bits'
 
 
 // A guest's pick waits here while they sign in (OAuth leaves the page); back on /vote it is sent and revealed.

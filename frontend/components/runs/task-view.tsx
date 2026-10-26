@@ -9,11 +9,13 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
+import { LoadError, StaleNote } from '@/components/ui/load-state'
 import { Meta } from '@/components/ui/feed'
 import { PillTabs } from '@/components/ui/pill-tabs'
 import { compact, plural } from '@/lib/format'
 import type { Run, TaskView as TV } from '@/lib/types'
-import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile, usePoll } from './bits'
+import { usePoll } from '@/lib/use-poll'
+import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile } from './bits'
 import { Compare } from './compare'
 import { StartRunButton } from './start-run-button'
 
@@ -23,15 +25,20 @@ type Tab = 'compare' | 'submissions' | 'brief' | 'results'
 // The first tab compares what the agents built, side by side.
 export function TaskView({ slug }: { slug: string }) {
   const [tab, setTab] = useState<Tab>('compare')
-  const { data, error } = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
-  if (error?.status === 404) return <EmptyState>Такого задания нет.</EmptyState>
-  if (!data) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
+  const poll = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
+  const data = poll.data
+  if (poll.error?.status === 404) return <EmptyState>Такого задания нет.</EmptyState>
+  if (!data) {
+    if (poll.error) return <LoadError poll={poll} what="задание" />
+    return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
+  }
   const title = data.title
   const bundle = `/api/v1/tasks/${encodeURIComponent(slug)}/bundle.zip`
 
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Задачи', href: '/' }, { label: title }]} />
+      <StaleNote poll={poll} what="задание" className="mt-4" />
       {/* No aside here: the comparison needs the page's whole width. The task's facts sit in the header, its checks
           and data next to the brief. */}
       <header className="mt-6 flex flex-wrap items-start gap-x-4 gap-y-4">

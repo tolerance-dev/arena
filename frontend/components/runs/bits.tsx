@@ -1,101 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { api, ApiError } from '@/lib/api'
 import { compact, duration, plural, usd, usedTokens } from '@/lib/format'
+import { PROVIDERS, SUBSCRIPTIONS } from '@/lib/providers'
 import type { Check, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { stackOf, VENDOR_CLASS, VENDOR_LABEL, vendorOf } from '@/lib/vendor'
 import { EmptyState } from '@/components/ui/empty-state'
 import { TaskGlyph } from './task-glyph'
 
-
-// Where an agent's key is spent (the gateway's providers). OrcaRouter takes one key for many vendors' models.
-export const PROVIDERS = [
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'google', label: 'Google Gemini' },
-  { value: 'orcarouter', label: 'OrcaRouter' },
-] as const
-
-// Personal subscriptions: offered to admins on a local stack only (me.subscriptions).
-export const SUBSCRIPTIONS = [
-  { value: 'claude-sub', label: 'Подписка Claude' },
-  { value: 'chatgpt-sub', label: 'Подписка ChatGPT' },
-] as const
-
-export const providerLabel = (p: string) => [...PROVIDERS, ...SUBSCRIPTIONS].find((x) => x.value === p)?.label ?? p
-
 // only: the providers to offer (a ready agent works with some keys only).
 export function ProviderOptions({ subscriptions, only }: { subscriptions?: boolean; only?: string[] }) {
   return <>{[...PROVIDERS, ...(subscriptions ? SUBSCRIPTIONS : [])].filter((p) => !only || only.includes(p.value))
     .map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
-}
-
-// A failed load worth retrying on its own: no network, a 5xx, a 429 or a timeout. Other 4xx (404, 403) won't
-// change by asking again.
-function transient(e: ApiError) {
-  return e.status === 0 || e.status >= 500 || e.status === 429 || e.status === 408
-}
-
-// Fetches path now and every `ms` while `active(data)` holds (or always, when active is omitted). A transient
-// failure is retried with backoff (3 s doubling up to 30 s, sooner when the browser comes back online) and keeps
-// the last data, so the page can show it as stale next to `error`. A 4xx stops polling until reload(). A response
-// for an old path (after navigation or unmount) is dropped.
-export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean) {
-  const [state, setState] = useState<{ path: string | null; data: T | null; error: ApiError | null }>(
-    { path, data: null, error: null })
-  const [loading, setLoading] = useState(false)
-  const [nonce, setNonce] = useState(0)
-  const activeRef = useRef(active)
-  activeRef.current = active
-  useEffect(() => {
-    if (!path) return
-    let live = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    let busy = false
-    let failures = 0
-    const ctrl = new AbortController()
-    const tick = async () => {
-      if (busy) return
-      busy = true
-      clearTimeout(timer)
-      timer = undefined
-      setLoading(true)
-      try {
-        const d = await api<T>(path, { signal: ctrl.signal })
-        if (!live) return
-        failures = 0
-        setState({ path, data: d, error: null })
-        if (!activeRef.current || activeRef.current(d)) timer = setTimeout(tick, ms)
-      } catch (err) {
-        if (!live) return
-        const e = err instanceof ApiError ? err : new ApiError(0, 'network', String(err))
-        setState((s) => ({ path, data: s.path === path ? s.data : null, error: e }))
-        if (!transient(e)) return
-        failures++
-        const wait = Math.max(Math.min(30_000, Math.min(ms, 3_000) * 2 ** (failures - 1)), (e.retryAfterSec ?? 0) * 1000)
-        timer = setTimeout(tick, wait)
-      } finally {
-        busy = false
-        if (live) setLoading(false)
-      }
-    }
-    const online = () => { if (failures > 0 && timer) void tick() }
-    window.addEventListener('online', online)
-    void tick()
-    return () => {
-      live = false
-      ctrl.abort()
-      clearTimeout(timer)
-      window.removeEventListener('online', online)
-      setLoading(false)
-    }
-  }, [path, ms, nonce])
-  const reload = useCallback(() => setNonce((n) => n + 1), [])
-  const mine = path != null && state.path === path
-  return { data: mine ? state.data : null, error: mine ? state.error : null, loading, reload }
 }
 
 export const ACTIVE: RunStatus[] = ['queued', 'agent', 'checking']

@@ -3,7 +3,7 @@
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Skeleton } from '@/components/ui/empty-state'
 import type { TaskSummary } from '@/lib/types'
-import { usePoll } from './bits'
+import { usePoll } from '@/lib/use-poll'
 import { rankAgents, StandingsTable } from './standings'
 
 // Every agent against every challenge, ranked by the average best score.
