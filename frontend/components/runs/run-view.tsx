@@ -216,8 +216,7 @@ function Numbers({ run, t }: { run: Run; t: RT }) {
             {used > 0 && <span className="block">{t('metricTokensDetail', { in: compact(run.tokens.in + run.tokens.cache_write), out: compact(run.tokens.out), cached: compact(run.tokens.cache_read) })}</span>}
           </>} />
         <Line label={t('metricCost')} value={run.cost_usd == null ? '—' : usd(run.cost_usd)}
-          sub={run.cost_usd == null ? t('costUnknown') : run.agent.provider.endsWith('-sub') ? t('costSubscription', { model: run.agent.model_name ?? '' })
-            : t('costModel', { model: run.agent.model_name ?? '' })} />
+          sub={run.cost_usd == null ? t('costUnknown') : run.agent.provider.endsWith('-sub') ? t('costSub') : undefined} />
         <Line label={t('metricLoc')} value={done ? grouped(run.stats.loc, t.locale) : '—'} sub={done ? t('metricFiles', { n: run.stats.files }) : undefined} />
         <Line label={t('metricStart')} value={run.stats.start_seconds ? `${run.stats.start_seconds} s` : '—'} />
       </dl>

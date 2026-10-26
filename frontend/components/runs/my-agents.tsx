@@ -316,20 +316,21 @@ function CostEstimate({ agent, minutes, budget, t }: { agent: Agent; minutes: nu
   if (p.in + p.out + p.cache_read + p.cache_write === 0) return note(t('costFree'))
   if (!agent.rate) return note(t('costNoRuns'))
   const e = runEstimate(p, agent.rate, minutes, budget)
-  // Agents often finish before the limit: what a run of the usual length costs.
-  const usual = Math.min(minutes, agent.rate.avg_minutes)
-  const parts = [
-    usual < minutes - 0.5 && t('costUsual', { m: Math.max(1, Math.round(usual)), usd: usd(runEstimate(p, agent.rate, usual, budget).total) }),
+  // Agents often finish before the limit: the usual run, and the most it can cost; the details hide in the tooltip.
+  const usual = runEstimate(p, agent.rate, Math.min(minutes, agent.rate.avg_minutes), budget).total
+  const detail = [
     t('costPerMin', { usd: usd(e.perMin) }),
     agent.rate.all_models ? t('costBasisAll', { n: agent.rate.runs }) : t('costBasisModel', { n: agent.rate.runs }),
+    t('costUsualMin', { m: Math.max(1, Math.round(agent.rate.avg_minutes)) }),
     e.budgetMin != null && t('costBudgetEnds', { m: Math.max(1, Math.round(e.budgetMin)) }),
     agent.provider.endsWith('-sub') && t('costSubNote'),
-  ].filter(Boolean)
+  ].filter(Boolean).join(' · ')
+  const tail = [usd(e.total) !== usd(usual) && t('costMax', { usd: usd(e.total) }), agent.rate.all_models && t('costRough'),
+    agent.provider.endsWith('-sub') && t('costSub')].filter(Boolean)
   return (
-    <span className="text-body">
-      <span className="text-muted-foreground">{t('costUpTo')}</span> <span className="font-semibold tnum">≈ {usd(e.total)}</span>{' '}
-      <span className="text-muted-foreground">{t('costFor', { m: minutes })}</span>
-      <span className="block text-meta text-muted-foreground">{parts.join(' · ')}</span>
+    <span className="cursor-help text-body" title={detail}>
+      <span className="font-semibold tnum">≈ {usd(usual)}</span>
+      {tail.length > 0 && <span className="text-muted-foreground"> · {tail.join(' · ')}</span>}
     </span>
   )
 }
