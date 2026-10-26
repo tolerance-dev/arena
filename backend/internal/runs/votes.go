@@ -28,11 +28,11 @@ type Contender struct {
 }
 
 type Pair struct {
-	ID        string    `json:"id"` // what the vote names (POST /api/v1/my/votes)
-	Task      string    `json:"task"`
-	TaskTitle string    `json:"task_title"`
-	A         Contender `json:"a"`
-	B         Contender `json:"b"`
+	ID        string     `json:"id"` // what the vote names (POST /api/v1/my/votes)
+	Task      string     `json:"task"`
+	TaskTitle tasks.Text `json:"task_title"`
+	A         Contender  `json:"a"`
+	B         Contender  `json:"b"`
 	// Left counts the pairs at this task the voter hasn't voted on yet, this one included.
 	Left int `json:"left"`
 }

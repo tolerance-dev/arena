@@ -143,8 +143,11 @@ owner's keys and subscription. Its runs are ordinary ranked runs (`runs.tourname
 - Errors go through `httpx.WriteError` (`{code, message, request_id}`); timestamps are UTC (`.UTC()` after
   scanning: pgx returns local time).
 - Frontend: no mocks, data from the API, the browser calls same-origin `/api/v1/*`.
-- UI copy is Russian only, inline in the components; plurals via `plural()` (`lib/format`), API errors via
-  `errorText()` (`lib/errors`). Task content (TASK.md) stays English.
+- UI copy is in Russian and English, both inline at the spot: `t('Голосовать', 'Vote')` with `useT()`
+  (`lib/i18n-client`) or `await getT()` on the server (`lib/i18n-server`); plurals `t.plural(n, [3 ru], [2 en])`,
+  `{en, ru}` fields from the API (task titles) via `t.text()`, API errors via `errorText(err, t)`. Language = the
+  `lang` cookie (EN/RU switch in the header), else Accept-Language, else English, so pages render per request.
+  Task content (TASK.md) stays English.
 - Colours are tokens from `globals.css`, never raw hex: `bg-terminal`/`text-terminal-foreground` for code blocks
   and dark panels, `border-input` for control borders, `border-strong` for dashed empty states.
 - Commit subjects in English, imperative, sentence case, no `feat:` prefixes. Code and comments in English.

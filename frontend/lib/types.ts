@@ -1,3 +1,5 @@
+import type { Text } from './i18n'
+
 // The API contract with the Go handlers (internal/agents, internal/runs, internal/identity).
 
 export interface AuthProviders { providers: ('github' | 'google')[]; dev_login?: boolean }
@@ -29,7 +31,7 @@ export interface Tokens { in: number; out: number; cache_read: number; cache_wri
 export interface Check { name: string; passed: boolean; detail?: string }
 
 export interface Run {
-  id: string; task: string; task_title: string
+  id: string; task: string; task_title: Text
   agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | key_rejected | error:N; gateway_restart while building
@@ -60,7 +62,7 @@ export interface RunManifest {
 }
 
 export interface TaskSummary {
-  slug: string; title: string; tagline: string; time_limit_s: number; token_budget: number; check_count: number; hidden_count: number
+  slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number; check_count: number; hidden_count: number
   runs: number; agents: number; best: Run | null; leaderboard: Run[]
 }
 
@@ -74,7 +76,7 @@ export interface Rating { elo: number; votes: number; wins: number; losses: numb
 // One side of a blind pair: what shows the app, nothing that names the agent.
 // alias stands for the run until the vote: its shots are /api/v1/vote/<alias>/shot.jpg.
 export interface Contender { alias: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
-export interface Pair { id: string; task: string; task_title: string; a: Contender; b: Contender; left: number }
+export interface Pair { id: string; task: string; task_title: Text; a: Contender; b: Contender; left: number }
 export interface Reveal { a: Run['agent']; b: Run['agent'] }
 export type Winner = 'a' | 'b' | 'tie'
 

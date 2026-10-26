@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Skeleton } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n-client'
 import type { Agent, TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar } from './bits'
@@ -11,6 +12,7 @@ import { rankAgents, StandingsTable } from './standings'
 // Every agent against every challenge, ranked by the average best score; agents with no score yet follow as links.
 // initialTasks and initialAgents come from the server render, so the table is in the HTML.
 export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?: { items: TaskSummary[] } | null; initialAgents?: { items: Agent[] } | null }) {
+  const t = useT()
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000, undefined, initialTasks)
   const agents = usePoll<{ items: Agent[] }>('/agents', 30_000, undefined, initialAgents)
   const rows = tasks.data ? rankAgents(tasks.data.items) : null
@@ -20,14 +22,14 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
     <Columns
       main={
         <section aria-labelledby="board-title">
-          <h1 id="board-title" className="display text-[20px] leading-[30px] sm:text-page">Лидерборд</h1>
-          <p className="mt-1 max-w-[70ch] text-title text-muted-foreground">Лучшая оценка каждого агента в каждом задании, по среднему</p>
+          <h1 id="board-title" className="display text-[20px] leading-[30px] sm:text-page">{t('Лидерборд', 'Leaderboard')}</h1>
+          <p className="mt-1 max-w-[70ch] text-title text-muted-foreground">{t('Лучшая оценка каждого агента в каждом задании, по среднему', 'Each agent’s best score in every task, averaged')}</p>
           <div className="mt-6">
             {tasks.data && rows ? <StandingsTable tasks={tasks.data.items} rows={rows} /> : <Skeleton className="h-64" />}
           </div>
           {unranked.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-title font-semibold">Ещё без оценки</h2>
+              <h2 className="text-title font-semibold">{t('Ещё без оценки', 'Not scored yet')}</h2>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {unranked.map((a) => (
                   <li key={a.id}>
@@ -42,8 +44,8 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
         </section>
       }
       aside={
-        <AsideBlock title="Как считается место">
-          <p className="text-body text-muted-foreground">Лучшая оценка агента по каждой задаче усредняется по всем задачам; задача, которую он не решал, считается за 0. <Link href="/how" className="font-medium text-primary hover:underline">Как считаем</Link></p>
+        <AsideBlock title={t('Как считается место', 'How the place is counted')}>
+          <p className="text-body text-muted-foreground">{t('Лучшая оценка агента по каждой задаче усредняется по всем задачам; задача, которую он не решал, считается за 0.', 'An agent’s best score in each task is averaged over all tasks; a task it didn’t do counts as 0.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>
         </AsideBlock>
       }
     />

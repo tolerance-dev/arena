@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { api, post } from '@/lib/api'
 import { errorText } from '@/lib/errors'
+import { useT } from '@/lib/i18n-client'
 import type { AuthProviders } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,7 @@ export function SignInOptions({ next, initialError, className }: {
   const [options, setOptions] = useState<AuthProviders | null>(null)
   const [failed, setFailed] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
+  const t = useT()
 
   useEffect(() => { setError(initialError ?? null) }, [initialError])
   useEffect(() => {
@@ -25,9 +27,9 @@ export function SignInOptions({ next, initialError, className }: {
       .catch(() => {
         setOptions({ providers: [] })
         setFailed(true)
-        setError('Сервер недоступен. Попробуйте ещё раз чуть позже.')
+        setError(t('Сервер недоступен. Попробуйте ещё раз чуть позже.', 'The server is unavailable. Try again a bit later.'))
       })
-  }, [])
+  }, [t])
 
   const nothing = options && options.providers.length === 0 && !failed
   return (
@@ -37,10 +39,10 @@ export function SignInOptions({ next, initialError, className }: {
           <Button key={p} variant="outline" size="lg" className="h-12 w-full"
             render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
             <ProviderIcon id={p} />
-            {p === 'github' ? 'Войти через GitHub' : p === 'google' ? 'Войти через Google' : p}
+            {p === 'github' ? t('Войти через GitHub', 'Sign in with GitHub') : p === 'google' ? t('Войти через Google', 'Sign in with Google') : p}
           </Button>
         ))}
-        {nothing && !options?.dev_login && <p className="text-center text-body text-muted-foreground">Вход на этом сервере ещё не настроен.</p>}
+        {nothing && !options?.dev_login && <p className="text-center text-body text-muted-foreground">{t('Вход на этом сервере ещё не настроен.', 'Sign-in isn’t set up on this server yet.')}</p>}
       </div>
       {options?.dev_login && <DevSignIn next={next} onError={setError} />}
       {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
@@ -52,6 +54,7 @@ export function SignInOptions({ next, initialError, className }: {
 function DevSignIn({ next, onError }: { next: string; onError: (e: string | null) => void }) {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
+  const t = useT()
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
@@ -60,15 +63,15 @@ function DevSignIn({ next, onError }: { next: string; onError: (e: string | null
       await post('/auth/dev', { email })
       window.location.assign(next)
     } catch (err) {
-      onError(errorText(err))
+      onError(errorText(err, t))
       setBusy(false)
     }
   }
   return (
     <form onSubmit={(e) => void submit(e)} className="mt-4 flex gap-2 border-t border-dashed border-border-strong pt-4">
-      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email для локального входа"
-        aria-label="Email для локального входа" className="h-10 min-w-0 flex-1 rounded-full border border-input bg-background px-4 text-body" />
-      <Button type="submit" variant="outline" disabled={busy}>Войти</Button>
+      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('email для локального входа', 'email for local sign-in')}
+        aria-label={t('Email для локального входа', 'Email for local sign-in')} className="h-10 min-w-0 flex-1 rounded-full border border-input bg-background px-4 text-body" />
+      <Button type="submit" variant="outline" disabled={busy}>{t('Войти', 'Sign in')}</Button>
     </form>
   )
 }

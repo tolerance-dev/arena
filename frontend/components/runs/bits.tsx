@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { compact, duration, plural, usd, usedTokens } from '@/lib/format'
+import { compact, duration, usd, usedTokens } from '@/lib/format'
+import type { T } from '@/lib/i18n'
+import { useT } from '@/lib/i18n-client'
 import { PROVIDERS, SUBSCRIPTIONS } from '@/lib/providers'
 import type { Check, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -12,39 +14,51 @@ import { TaskGlyph } from './task-glyph'
 
 // only: the providers to offer (a ready agent works with some keys only).
 export function ProviderOptions({ subscriptions, only }: { subscriptions?: boolean; only?: string[] }) {
-  return <>{[...PROVIDERS, ...(subscriptions ? SUBSCRIPTIONS : [])].filter((p) => !only || only.includes(p.value))
+  const t = useT()
+  return <>{[...PROVIDERS.map((p) => ({ value: p.value, label: p.label })), ...(subscriptions ? SUBSCRIPTIONS.map((p) => ({ value: p.value, label: t.text(p.label) })) : [])]
+    .filter((p) => !only || only.includes(p.value))
     .map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</>
 }
 
 export const ACTIVE: RunStatus[] = ['queued', 'agent', 'checking']
 
-const STATUS: Record<RunStatus, string> = {
-  queued: 'В очереди', agent: 'Строит', checking: 'Проверка', done: 'Готово', infra_error: 'Ошибка платформы',
+function statusLabel(s: RunStatus, t: T) {
+  switch (s) {
+    case 'queued': return t('В очереди', 'Queued')
+    case 'agent': return t('Строит', 'Building')
+    case 'checking': return t('Проверка', 'Checking')
+    case 'done': return t('Готово', 'Done')
+    case 'infra_error': return t('Ошибка платформы', 'Platform error')
+  }
 }
 
 // What an active run is doing, for its page and the live cards.
-export const PHASE: Partial<Record<RunStatus, string>> = {
-  queued: 'Ждёт свободного места', agent: 'Агент пишет приложение', checking: 'Проверка: запуск, проверки, скриншоты',
+export function phase(s: RunStatus, t: T) {
+  switch (s) {
+    case 'queued': return t('Ждёт свободного места', 'Waiting for a free slot')
+    case 'agent': return t('Агент пишет приложение', 'The agent is writing the app')
+    case 'checking': return t('Проверка: запуск, проверки, скриншоты', 'Checking: start, checks, screenshots')
+    default: return ''
+  }
 }
-
-const EXIT: Record<string, string> = { ok: 'закончил сам', timeout: 'упёрся в лимит времени', budget: 'кончились токены', key_rejected: 'провайдер отклонил ключ', gateway_restart: 'платформа перезапускалась' }
 export const isActive = (r: Pick<Run, 'status'>) => ACTIVE.includes(r.status)
 
 // A queued run's place and wait: "Place in the queue: 3 · starts in about 40 min". null when it isn't queued.
-export function queueLine(run: Run): string | null {
+export function queueLine(run: Run, t: T): string | null {
   if (run.status !== 'queued' || run.queue_position == null) return null
-  const place = run.queue_position === 1 ? 'Следующий в очереди' : `Место в очереди: ${run.queue_position}`
+  const place = run.queue_position === 1 ? t('Следующий в очереди', 'Next in the queue') : t(`Место в очереди: ${run.queue_position}`, `Place in the queue: ${run.queue_position}`)
   const w = run.queue_wait_s
-  const wait = w == null ? 'очередь на паузе'
-    : w < 90 ? 'старт примерно через минуту'
-    : w < 2 * 3600 ? `старт примерно через ${Math.round(w / 60)} мин`
-    : `старт примерно через ${Math.round(w / 3600)} ч`
+  const wait = w == null ? t('очередь на паузе', 'the queue is paused')
+    : w < 90 ? t('старт примерно через минуту', 'starts in about a minute')
+    : w < 2 * 3600 ? t(`старт примерно через ${Math.round(w / 60)} мин`, `starts in about ${Math.round(w / 60)} min`)
+    : t(`старт примерно через ${Math.round(w / 3600)} ч`, `starts in about ${Math.round(w / 3600)} h`)
   return `${place} · ${wait}`
 }
 
 export function StatusPill({ run, className }: { run: Pick<Run, 'status' | 'failure_reason'>; className?: string }) {
   const active = isActive(run)
   const cancelled = run.status === 'infra_error' && run.failure_reason === 'cancelled'
+  const t = useT()
   return (
     <span className={cn('inline-flex h-5 items-center gap-1.5 rounded-sm border border-border bg-card px-1.5 text-meta font-medium whitespace-nowrap text-muted-foreground',
       className)}>
@@ -52,7 +66,7 @@ export function StatusPill({ run, className }: { run: Pick<Run, 'status' | 'fail
         active && 'animate-status-pulse bg-primary',
         run.status === 'done' && 'bg-success',
         run.status === 'infra_error' && (cancelled ? 'bg-faint' : 'bg-destructive'))} />
-      {cancelled ? 'Отменён' : STATUS[run.status]}
+      {cancelled ? t('Отменён', 'Cancelled') : statusLabel(run.status, t)}
     </span>
   )
 }
@@ -70,10 +84,11 @@ export function Score({ score, className }: { score: number | null; className?: 
 // The run's checks in the order they ran, one cell each: the arena's signature. Small in tables, large on a
 // run page (with each check's name on hover).
 export function CheckStrip({ checks, size = 'sm', className }: { checks: Check[]; size?: 'xs' | 'sm' | 'lg'; className?: string }) {
+  const t = useT()
   if (checks.length === 0) return null
   const ok = checks.filter((c) => c.passed).length
   return (
-    <span role="img" aria-label={plural(checks.length, `Пройдено ${ok} из {n} проверки`, `Пройдено ${ok} из {n} проверок`, `Пройдено ${ok} из {n} проверок`)}
+    <span role="img" aria-label={t.plural(checks.length, [`Пройдено ${ok} из {n} проверки`, `Пройдено ${ok} из {n} проверок`, `Пройдено ${ok} из {n} проверок`], [`${ok} of {n} check passed`, `${ok} of {n} checks passed`])}
       className={cn('flex', size === 'xs' ? 'gap-px' : size === 'sm' ? 'gap-[2px]' : 'flex-wrap gap-[3px]', className)}>
       {checks.map((c, i) => (
         <span key={`${i}-${c.name}`} title={size === 'lg' ? `${i + 1}. ${c.name}` : undefined}
@@ -84,15 +99,22 @@ export function CheckStrip({ checks, size = 'sm', className }: { checks: Check[]
   )
 }
 
-export function exitLabel(exit: string | null) {
+export function exitLabel(exit: string | null, t: T) {
   if (!exit) return ''
-  if (exit.startsWith('error:')) return `упал (код ${exit.slice(6)})`
-  return EXIT[exit] ?? exit
+  if (exit.startsWith('error:')) return t(`упал (код ${exit.slice(6)})`, `crashed (code ${exit.slice(6)})`)
+  switch (exit) {
+    case 'ok': return t('закончил сам', 'finished on its own')
+    case 'timeout': return t('упёрся в лимит времени', 'hit the time limit')
+    case 'budget': return t('кончились токены', 'ran out of tokens')
+    case 'key_rejected': return t('провайдер отклонил ключ', 'the provider rejected the key')
+    case 'gateway_restart': return t('платформа перезапускалась', 'the platform restarted')
+    default: return exit
+  }
 }
 
 // The run's task as the catalog names it; the slug when the task has left the catalog.
-export function taskTitle(run: Pick<Run, 'task' | 'task_title'>) {
-  return run.task_title || run.task
+export function taskTitle(run: Pick<Run, 'task' | 'task_title'>, t: T) {
+  return t.text(run.task_title) || run.task
 }
 
 function passed(r: Run) {
@@ -104,21 +126,22 @@ const td = 'px-3 py-2.5'
 
 // Runs as a table: the leaderboard (ranked) or a plain list. Scrolls sideways inside itself on phones.
 export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boolean; showTask?: boolean }) {
-  if (runs.length === 0) return <EmptyState>Прогонов пока нет.</EmptyState>
+  const t = useT()
+  if (runs.length === 0) return <EmptyState>{t('Прогонов пока нет.', 'No runs yet.')}</EmptyState>
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full min-w-[680px] text-body">
         <thead>
           <tr className="border-b border-border bg-muted text-left text-meta text-faint">
             {ranked && <th className={cn(th, 'w-10 pl-4')}>#</th>}
-            <th className={cn(th, !ranked && 'pl-4')}>Агент</th>
-            <th className={cn(th, 'text-right')}>Оценка</th>
-            <th className={th}>Проверки</th>
-            <th className={cn(th, 'text-right')}>Строк</th>
-            <th className={cn(th, 'text-right')}>Время</th>
-            <th className={cn(th, 'text-right')}>Токены</th>
-            <th className={cn(th, 'text-right')}>Стоимость</th>
-            <th className={cn(th, 'pr-4 text-right')}>Когда</th>
+            <th className={cn(th, !ranked && 'pl-4')}>{t('Агент', 'Agent')}</th>
+            <th className={cn(th, 'text-right')}>{t('Оценка', 'Score')}</th>
+            <th className={th}>{t('Проверки', 'Checks')}</th>
+            <th className={cn(th, 'text-right')}>{t('Строк', 'Lines')}</th>
+            <th className={cn(th, 'text-right')}>{t('Время', 'Time')}</th>
+            <th className={cn(th, 'text-right')}>{t('Токены', 'Tokens')}</th>
+            <th className={cn(th, 'text-right')}>{t('Стоимость', 'Cost')}</th>
+            <th className={cn(th, 'pr-4 text-right')}>{t('Когда', 'When')}</th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +154,7 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
                 <td className={cn(td, !ranked && 'pl-4')}>
                   <Link href={`/r/${r.id}`} className="font-medium whitespace-nowrap after:absolute after:inset-0">{r.agent.name}</Link>
                   <div className="mt-0.5 flex items-center gap-1.5 text-meta whitespace-nowrap text-faint">
-                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r)}</span><span aria-hidden>·</span></>}
+                    {showTask && <><TaskGlyph slug={r.task} className="size-3.5" /><span>{taskTitle(r, t)}</span><span aria-hidden>·</span></>}
                     <span>{r.agent.owner}</span>
                   </div>
                 </td>
@@ -197,16 +220,18 @@ export function Stack({ run, pill, className }: { run: Pick<Run, 'stats'>; pill?
 
 // What the run built, as the checker saw it after start; a quiet placeholder when there is no screenshot.
 export function RunShot({ run, className }: { run: Pick<Run, 'id' | 'has_shot' | 'agent'>; className?: string }) {
+  const t = useT()
   if (!run.has_shot) {
-    return <div className={cn('flex items-center justify-center bg-muted text-ui text-faint', className)}>Нет скриншота</div>
+    return <div className={cn('flex items-center justify-center bg-muted text-ui text-faint', className)}>{t('Нет скриншота', 'No screenshot')}</div>
   }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/api/v1/runs/${run.id}/shot.jpg`} alt={`Страница, которую построил ${run.agent.name}`} loading="lazy"
+  return <img src={`/api/v1/runs/${run.id}/shot.jpg`} alt={t(`Страница, которую построил ${run.agent.name}`, `The page ${run.agent.name} built`)} loading="lazy"
     className={cn('bg-muted object-cover object-top', className)} />
 }
 
 export function Ago({ iso }: { iso: string }) {
   const [now, setNow] = useState<number | null>(null)
+  const t = useT()
   useEffect(() => {
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 30_000)
@@ -214,8 +239,8 @@ export function Ago({ iso }: { iso: string }) {
   }, [])
   if (now == null) return null
   const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
-  if (s < 60) return <>{`${s} с назад`}</>
-  if (s < 3600) return <>{`${Math.round(s / 60)} мин назад`}</>
-  if (s < 86400) return <>{`${Math.round(s / 3600)} ч назад`}</>
-  return <>{`${Math.round(s / 86400)} дн назад`}</>
+  if (s < 60) return <>{t(`${s} с назад`, `${s}s ago`)}</>
+  if (s < 3600) return <>{t(`${Math.round(s / 60)} мин назад`, `${Math.round(s / 60)} min ago`)}</>
+  if (s < 86400) return <>{t(`${Math.round(s / 3600)} ч назад`, `${Math.round(s / 3600)} h ago`)}</>
+  return <>{t(`${Math.round(s / 86400)} дн назад`, `${Math.round(s / 86400)} d ago`)}</>
 }

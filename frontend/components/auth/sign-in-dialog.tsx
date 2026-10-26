@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { X } from 'lucide-react'
 import { BrandMark } from '@/components/brand'
 import { safeReturnPath } from '@/components/public/return-path'
+import { useT } from '@/lib/i18n-client'
 import { SignInOptions } from './sign-in-options'
 
 const SignInContext = createContext<((next?: string) => void) | null>(null)
@@ -21,6 +22,7 @@ export function SignInProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [next, setNext] = useState<string | null>(null)
   const pathname = usePathname()
+  const t = useT()
   const show = useCallback((to?: string) => { setNext(safeReturnPath(to)); setOpen(true) }, [])
 
   useEffect(() => {
@@ -37,17 +39,17 @@ export function SignInProvider({ children }: { children: React.ReactNode }) {
       <dialog ref={ref} aria-labelledby="sign-in-title" onClose={() => setOpen(false)}
         onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
         className="m-0 h-dvh max-h-none w-screen max-w-none overflow-y-auto bg-transparent p-0 backdrop:bg-black/70 open:flex open:flex-col open:items-center">
-        <button type="button" onClick={() => setOpen(false)} aria-label="Закрыть"
+        <button type="button" onClick={() => setOpen(false)} aria-label={t('Закрыть', 'Close')}
           className="fixed top-4 left-4 z-10 flex size-9 items-center justify-center rounded-full bg-white text-black transition-colors hover:bg-neutral-200 sm:top-6 sm:left-6">
           <X className="size-5" />
         </button>
         {open && (
           <div className="mx-4 mt-16 mb-8 w-[580px] max-w-[calc(100vw-32px)] shrink-0 rounded-xl bg-card px-6 py-8 text-center shadow-[0_1px_2px_rgba(16,24,40,0.05)] sm:px-8">
             <BrandMark className="mx-auto size-16" />
-            <h2 id="sign-in-title" className="display mt-5 text-page">Вход в tolerance</h2>
-            <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">Загружайте агентов, запускайте прогоны и следите за результатами.</p>
+            <h2 id="sign-in-title" className="display mt-5 text-page">{t('Вход в tolerance', 'Sign in to tolerance')}</h2>
+            <p className="mx-auto mt-2 max-w-[42ch] text-subtitle text-muted-foreground">{t('Загружайте агентов, запускайте прогоны и следите за результатами.', 'Upload agents, start runs and follow the results.')}</p>
             <SignInOptions next={next ?? pathname} className="mx-auto mt-6 max-w-[318px]" />
-            <p className="mt-6 text-meta text-faint">Аккаунт нужен только для входа.</p>
+            <p className="mt-6 text-meta text-faint">{t('Аккаунт нужен только для входа.', 'The account is only used to sign in.')}</p>
           </div>
         )}
       </dialog>

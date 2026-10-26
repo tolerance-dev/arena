@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation'
 import { LogOut, Menu, Plus, X } from 'lucide-react'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { Brand } from '@/components/brand'
+import { LocaleSwitch } from '@/components/public/locale-switch'
 import { loginHref } from '@/components/public/return-path'
 import { Button } from '@/components/ui/button'
 import { post } from '@/lib/api'
+import { useT } from '@/lib/i18n-client'
 import { useMe } from '@/lib/use-me'
 import { isActive } from '@/components/runs/bits'
 import { usePoll } from '@/lib/use-poll'
@@ -22,17 +24,18 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const signIn = useSignIn()
+  const t = useT()
   // How many of the user's runs are going right now: a live dot on "My agents".
   const mine = usePoll<{ items: Run[] }>(me ? '/my/runs' : null, 10_000)
   const running = mine.data?.items.filter(isActive).length ?? 0
   useEffect(() => setOpen(false), [pathname])
 
   const nav = [
-    { label: 'Задания', href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
-    { label: 'Лидерборд', href: '/leaderboard', active: pathname.startsWith('/leaderboard') || pathname.startsWith('/agents') },
-    { label: 'Голосовать', href: '/vote', active: pathname.startsWith('/vote') },
-    { label: 'Мои агенты', href: '/my', active: pathname.startsWith('/my'), running },
-    ...(me?.can_admin ? [{ label: 'Админка', href: '/admin', active: pathname.startsWith('/admin') }] : []),
+    { label: t('Задания', 'Tasks'), href: '/', active: pathname === '/' || pathname.startsWith('/t/') || pathname.startsWith('/r/') },
+    { label: t('Лидерборд', 'Leaderboard'), href: '/leaderboard', active: pathname.startsWith('/leaderboard') || pathname.startsWith('/agents') },
+    { label: t('Голосовать', 'Vote'), href: '/vote', active: pathname.startsWith('/vote') },
+    { label: t('Мои агенты', 'My agents'), href: '/my', active: pathname.startsWith('/my'), running },
+    ...(me?.can_admin ? [{ label: t('Админка', 'Admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
   ]
 
   async function signOut() {
@@ -54,25 +57,26 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
           ))}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          <LocaleSwitch className="max-md:hidden" />
           {!pathname.startsWith('/my') && (
-            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label="Загрузить агента"
+            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label={t('Загрузить агента', 'Upload agent')}
               render={<Link href="/my" />} nativeButton={false}>
-              <Plus /><span className="max-sm:hidden">Загрузить агента</span>
+              <Plus /><span className="max-sm:hidden">{t('Загрузить агента', 'Upload agent')}</span>
             </Button>
           )}
           {loading ? <span className="block h-9 w-20" /> : me ? (
             <>
               <span className="hidden max-w-[10rem] truncate text-body font-semibold sm:block">{me.user.handle}</span>
-              <Button variant="outline" size="icon" onClick={() => void signOut()} aria-label="Выйти" title="Выйти">
+              <Button variant="outline" size="icon" onClick={() => void signOut()} aria-label={t('Выйти', 'Sign out')} title={t('Выйти', 'Sign out')}>
                 <LogOut />
               </Button>
             </>
           ) : (
             signIn
-              ? <Button onClick={() => signIn()}>Войти</Button>
-              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>Войти</Button>
+              ? <Button onClick={() => signIn()}>{t('Войти', 'Sign in')}</Button>
+              : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>{t('Войти', 'Sign in')}</Button>
           )}
-          <Button variant="outline" size="icon" className="md:hidden" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <Button variant="outline" size="icon" className="md:hidden" aria-label={t('Меню', 'Menu')} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             {open ? <X /> : <Menu />}
           </Button>
         </div>
@@ -86,6 +90,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
               {item.label}{!!item.running && <Running n={item.running} />}
             </Link>
           ))}
+          <LocaleSwitch className="mt-3 ml-3" />
         </nav>
       )}
     </header>
