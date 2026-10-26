@@ -10,7 +10,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"regexp"
-	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +32,8 @@ type Previews struct {
 	domain    string // e.g. preview.localhost
 	prefix    string // before the run hex in the first label, e.g. "p-"; "" = the label is the hex
 	ancestors string // origin allowed to frame previews (the site)
+	site      string // the site's origin, for the busy page's screenshot and link; "" when unknown
+	max       int    // previews running (or starting) at once
 	log       *slog.Logger
 
 	mu      sync.Mutex
@@ -47,21 +49,28 @@ type preview struct {
 }
 
 const (
-	// Prod has 4 GB of RAM shared with the runs: a few small previews at a time, gone soon after the last view.
-	previewIdle  = 10 * time.Minute
-	previewMax   = 3
+	// A preview nobody has asked for in this long is stopped.
+	previewIdle = 10 * time.Minute
+	// A preview asked for within this long is being watched: when all slots are taken, a new viewer gets the busy
+	// page instead of stopping it under someone.
+	previewInUse = 2 * time.Minute
 	previewStart = 120 * time.Second
 )
 
+// errBusy: every slot holds a preview someone is watching.
+var errBusy = errors.New("all previews are busy")
+
 var labelRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
-func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, log *slog.Logger) *Previews {
-	anc := "'self'"
+// NewPreviews serves previews, at most limit at once (each takes up to sandbox.AppSpec's memory).
+func NewPreviews(pool *db.Pool, domain, prefix, siteURL string, limit int, log *slog.Logger) *Previews {
+	anc, site := "'self'", ""
 	if u, err := url.Parse(siteURL); err == nil && u.Scheme != "" && u.Host != "" {
-		anc = u.Scheme + "://" + u.Host
+		site = u.Scheme + "://" + u.Host
+		anc = site
 	}
-	return &Previews{pool: pool, domain: strings.ToLower(domain), prefix: strings.ToLower(prefix), ancestors: anc, log: log.With("component", "preview"),
-		running: map[string]*preview{}}
+	return &Previews{pool: pool, domain: strings.ToLower(domain), prefix: strings.ToLower(prefix), ancestors: anc, site: site,
+		max: max(1, limit), log: log.With("component", "preview"), running: map[string]*preview{}}
 }
 
 // containerName is the preview's container and its network.
@@ -120,16 +129,21 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pv, err := p.ensure(r.Context(), label)
+	if errors.Is(err, errBusy) {
+		page(w, http.StatusServiceUnavailable, "All previews are busy", "Other people are watching the apps that run right now. "+
+			"This page tries again by itself; meanwhile, here is how this app looked when it was checked.", 15, p.busyExtra(label))
+		return
+	}
 	if err != nil {
-		page(w, http.StatusNotFound, "Preview unavailable", err.Error(), false)
+		page(w, http.StatusNotFound, "Preview unavailable", err.Error(), 0, "")
 		return
 	}
 	if pv.failed != "" {
-		page(w, http.StatusBadGateway, "The app did not start", pv.failed, false)
+		page(w, http.StatusBadGateway, "The app did not start", pv.failed, 0, "")
 		return
 	}
 	if !pv.ready {
-		page(w, http.StatusServiceUnavailable, "Starting the app…", "The agent's app is booting from its snapshot. This page refreshes by itself.", true)
+		page(w, http.StatusServiceUnavailable, "Starting the app…", "The agent's app is booting from its snapshot. This page refreshes by itself.", 2, "")
 		return
 	}
 	target, _ := url.Parse("http://" + containerName(label) + ":" + sandbox.AppPort)
@@ -150,7 +164,7 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.mu.Lock()
 			delete(p.running, label)
 			p.mu.Unlock()
-			page(w, http.StatusBadGateway, "The app stopped", "It will be started again on the next request.", true)
+			page(w, http.StatusBadGateway, "The app stopped", "It will be started again on the next request.", 2, "")
 		},
 	}
 	proxy.ServeHTTP(w, r)
@@ -186,8 +200,8 @@ func (p *Previews) ensure(ctx context.Context, label string) (*preview, error) {
 	if pv, ok := p.running[label]; ok {
 		return pv, nil
 	}
-	if len(p.running) >= previewMax {
-		p.evictOldest()
+	if len(p.running) >= p.max && !p.makeRoom() {
+		return nil, errBusy
 	}
 	pv := &preview{label: label, lastUsed: time.Now(), starting: true}
 	p.running[label] = pv
@@ -195,19 +209,39 @@ func (p *Previews) ensure(ctx context.Context, label string) (*preview, error) {
 	return pv, nil
 }
 
-func (p *Previews) evictOldest() {
-	var ls []*preview
+// makeRoom frees one slot (p.mu held): a preview that failed to start, else the least recently used one nobody has
+// watched for previewInUse. Starting previews keep their slot. It reports whether a slot was freed.
+func (p *Previews) makeRoom() bool {
+	var failed, idle *preview
 	for _, pv := range p.running {
-		if !pv.starting {
-			ls = append(ls, pv)
+		switch {
+		case pv.starting:
+		case pv.failed != "":
+			failed = pv
+		case time.Since(pv.lastUsed) >= previewInUse && (idle == nil || pv.lastUsed.Before(idle.lastUsed)):
+			idle = pv
 		}
 	}
-	if len(ls) == 0 {
-		return
+	victim := failed
+	if victim == nil {
+		victim = idle
 	}
-	sort.Slice(ls, func(i, j int) bool { return ls[i].lastUsed.Before(ls[j].lastUsed) })
-	delete(p.running, ls[0].label)
-	go drop(ls[0].label)
+	if victim == nil {
+		return false
+	}
+	delete(p.running, victim.label)
+	go drop(victim.label)
+	return true
+}
+
+// busyExtra is the busy page's screenshot of the run and a link to its page (HTML; label is checked hex).
+func (p *Previews) busyExtra(label string) string {
+	if p.site == "" {
+		return ""
+	}
+	run := p.site + "/r/run_" + label
+	return `<img src="` + p.site + `/api/v1/runs/run_` + label + `/shot.jpg" alt="" onerror="this.remove()">` +
+		`<p><a href="` + run + `" target="_top">Open the run page</a></p>`
 }
 
 func (p *Previews) start(pv *preview, image string) {
@@ -258,16 +292,19 @@ func (p *Previews) start(pv *preview, image string) {
 	set(false, "nothing answered on port 3000 within two minutes")
 }
 
-func page(w http.ResponseWriter, status int, title, text string, refresh bool) {
+// page is the gateway's own page in place of the app: refresh > 0 reloads it after that many seconds; extra is
+// trusted HTML put under the text.
+func page(w http.ResponseWriter, status int, title, text string, refresh int, extra string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	meta := ""
-	if refresh {
-		meta = `<meta http-equiv="refresh" content="2">`
+	if refresh > 0 {
+		meta = `<meta http-equiv="refresh" content="` + strconv.Itoa(refresh) + `">`
 	}
 	_, _ = w.Write([]byte(`<!doctype html><html><head><meta charset="utf-8">` + meta + `<title>` + html.EscapeString(title) +
 		`</title><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#f2f3f0;color:#1b1f1d}` +
-		`h1{font-size:1.4rem;font-weight:600;letter-spacing:-.01em}main{max-width:28rem;padding:1.5rem;text-align:center}p{color:#5a625d}</style></head><body><main><h1>` + html.EscapeString(title) +
-		`</h1><p>` + html.EscapeString(text) + `</p></main></body></html>`))
+		`h1{font-size:1.4rem;font-weight:600;letter-spacing:-.01em}main{max-width:40rem;padding:1.5rem;text-align:center}p{color:#5a625d}` +
+		`img{display:block;max-width:100%;margin:1.25rem auto 0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.15)}a{color:inherit;font-weight:600}` +
+		`</style></head><body><main><h1>` + html.EscapeString(title) + `</h1><p>` + html.EscapeString(text) + `</p>` + extra + `</main></body></html>`))
 }
