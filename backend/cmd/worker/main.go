@@ -80,7 +80,7 @@ func run(log *slog.Logger) error {
 		return fmt.Errorf("check schema: %w", err)
 	}
 	if name == nil {
-		return errors.New("database schema is out of date: the workers table is missing; recreate the database (make reset)")
+		return errors.New("database schema is out of date: the workers table is missing; run the migrations (make migrate)")
 	}
 	host, _ := os.Hostname()
 	return runs.NewWorker(pool, log, cfg).Run(stop, abort, host)

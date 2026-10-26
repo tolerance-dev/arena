@@ -23,7 +23,7 @@ default habits:
 - **Throw code away** when the concept changes (code, routes, pages, tests) rather than keeping it compatible.
 - **No deploys or prod work by you**: never run `gh workflow run deploy` or touch the server or DNS (Bunny,
   Cloudflare; how they fit: `deploy/README.md` → Domains). When a change needs a deploy, give the user the command
-  (`gh workflow run deploy`; `-f ref=<sha>` rolls back, `-f reset_db=true` after a schema change). A hand change on
+  (`gh workflow run deploy`; `-f ref=<sha>` rolls back; schema changes need no flag, `-f reset_db=true` only wipes). A hand change on
   the server that must survive goes into `deploy/` (`deploy/README.md`).
 - **Git: PRs merged by you.** `main` is protected. Branch from fresh `origin/main`, push, `gh pr create`, and once
   it is clean against `main`, test-fast passes and CI is green (`gh pr checks --watch`), `gh pr merge --squash`.
@@ -130,9 +130,10 @@ owner's keys and subscription. Its runs are ordinary ranked runs (`runs.tourname
   network with only the gateway; real LLM keys never enter a sandbox; never run platform code (verify.py, tar,
   python) inside an agent's snapshot — the agent was root there.
 - `infra_error` is the platform's fault, never a score.
-- **Database**: edit `backend/migrations/schema.sql` in place and recreate the DB (`make reset`, `reset_db=true` on
-  prod) instead of adding migrations or compatibility code. A `reset_db` deploy loads users, identities, sessions
-  and agents back from the dump: changing those tables' columns breaks that (watch the deploy log for the WARNING).
+- **Database**: a schema change is a new migration `backend/migrations/NNNN_name.sql` (`make migrate`, every deploy
+  applies it); never edit an applied one (its hash is checked). Deploy migrates before swapping, and the old worker
+  drains on the new schema for up to an hour: add tables and nullable/defaulted columns, drop or rename only one
+  release after the code stopped using them. New tables need their `GRANT ... TO arena_app`.
 - Agent-written logs are sanitized server-side (`internal/platform/sanitize`).
 - Errors go through `httpx.WriteError` (`{code, message, request_id}`); timestamps are UTC (`.UTC()` after
   scanning: pgx returns local time).

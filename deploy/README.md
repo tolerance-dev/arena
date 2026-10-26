@@ -3,7 +3,7 @@
 Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 
 - **Deploy** = Actions → deploy → Run workflow (`gh workflow run deploy`; `-f ref=<sha>` rolls back,
-  `-f reset_db=true` wipes the DB — needed after any schema change). It builds backend, web and
+  `-f reset_db=true` wipes the DB — only to start over: schema changes are migrations, applied by every deploy). It builds backend, web and
   `tolerance-runtime` (= `arena-runtime:1`) into `ghcr.io/tolerance-dev` and runs `server.sh` on the host over SSH
   (secrets in the `production` environment).
 - **Host**: UpCloud `STARTER-4xCPU-16GB` (pl-waw1, 3 GB swap, ~$34/month for the plan plus disk and IP; was
@@ -12,7 +12,7 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   stack about 1 GB. A third needs more memory first. The account is prepaid: the API reports `credits` in cents. Nothing else lives there.
 - **Backups**: `server.sh backup` dumps the DB to `/opt/tolerance/backups/` (newest 30 kept, same disk, not
   off-site): daily at 03:17 UTC from the `deploy` crontab (installed by every deploy) and before every deploy, so a
-  `reset_db` deploy leaves `arena-<time>-pre-<sha>.dump` behind. After migrating, a reset loads users,
+  deploy (a `reset_db` one too) leaves `arena-<time>-pre-<sha>.dump` behind. After migrating, a reset loads users,
   user_identities, sessions and agents back from that dump (all or nothing; if the columns changed it warns in the
   deploy log and leaves them in the dump). By hand: `bash server.sh restore backups/<dump> [table...]`.
 - **Off-site copies** (off until set in `/opt/tolerance/.env`): each dump is also encrypted (`openssl`, AES-256,
