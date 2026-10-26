@@ -31,8 +31,8 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   can't reach Selectel at all, which is why the relay isn't everyone's address. Caddy (`tolerance-caddy`,
   `caddy/Dockerfile` = caddy + the Bunny DNS module) gets Let's Encrypt certificates for tolerance.cc, www and the
   `*.tolerance.cc` wildcard through DNS-01 with `BUNNY_API_KEY` in `/opt/tolerance/.env`; `server.sh` refuses to
-  deploy without it. No CDN, no DDoS shield. mentor.nualimov.dev is still behind Cloudflare (Authenticated Origin
-  Pulls in the Caddyfile).
+  deploy without it. No CDN, no DDoS shield. mentor.nualimov.dev (Cloudflare zone nualimov.dev, not proxied) is a
+  CNAME to `edge.tolerance.cc`, a script record like the others, so it gets the same split.
 - **Relay in Russia**: `139.100.217.119`, a Selectel VM (project "My First Project", ru-1b, SL1.1-1024 + 8 GB basic
   disk, `tolerance-relay`; SSH as root with the owner's key, from an address Selectel lets in). Selectel to UpCloud
   is a clean datacenter link. HAProxy there passes TCP 443 to this host with PROXY protocol v2 (Caddy trusts the
