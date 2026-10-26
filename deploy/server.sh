@@ -170,6 +170,8 @@ cmd_deploy() {
     echo "origin-tls/cert.pem and key.pem are missing (the Cloudflare Origin CA certificate for the previews, see the Caddyfile)" >&2
     exit 1
   fi
+  # The hidden checks (README.md), copied in by hand; made here so the api's bind mount isn't a root-owned dir.
+  mkdir -p tasks-hidden
   prev=$(grep '^TAG=' .env | cut -d= -f2 || true)
   # Seals agents' LLM keys at rest; must survive restarts (a new one makes stored agent keys unreadable).
   grep -q '^ARENA_SECRET_KEY=.' .env || setenv ARENA_SECRET_KEY "$(openssl rand -hex 32)"

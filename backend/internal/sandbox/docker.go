@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -496,9 +497,13 @@ func State(ctx context.Context, name string) (running bool, exitCode int, err er
 	return r == "true", exitCode, err
 }
 
-// Logs returns the tail (at most max bytes) of a container's output, best effort.
-func Logs(ctx context.Context, id string, max int) string {
-	out, _ := docker(ctx, nil, "logs", "--tail", "2000", id)
+// Logs returns the tail (at most max bytes) of a container's output, best effort; until > 0 (unix time) cuts it there.
+func Logs(ctx context.Context, id string, max int, until float64) string {
+	args := []string{"logs", "--tail", "2000"}
+	if until > 0 {
+		args = append(args, "--until", strconv.FormatFloat(until, 'f', 3, 64))
+	}
+	out, _ := docker(ctx, nil, append(args, id)...)
 	return tail(out, max)
 }
 

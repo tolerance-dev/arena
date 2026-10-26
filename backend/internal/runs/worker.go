@@ -544,6 +544,7 @@ type verifyResult struct {
 	} `json:"start"`
 	Checks        []Check `json:"checks"`
 	ConsoleErrors int     `json:"console_errors"`
+	HiddenFrom    float64 `json:"hidden_from"` // unix time the hidden checks started (0 = none ran)
 }
 
 // check measures the code, then runs the app and verify.py side by side: the app in its own container from the
@@ -611,7 +612,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	}
 	defer sandbox.Remove(id)
 	spec, err := json.Marshal(map[string]any{
-		"task": c.task, "checks": task.Checks, "ui": task.UI, "ui_text": task.UIText,
+		"task": c.task, "checks": task.AllChecks(), "ui": task.UI, "ui_text": task.UIText,
 		"app_host": appName, "app_port": sandbox.AppPort, "app_started_at": appStart, "start_error": startError,
 	})
 	if err != nil {
@@ -643,7 +644,8 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 		if running, code, err := sandbox.State(ctx, appID); err == nil && !running && !vr.Start.OK {
 			vr.Start.Error = fmt.Sprintf("start.sh exited with code %d", code)
 		}
-		checkLog += "\n--- app output ---\n" + sandbox.Logs(ctx, appID, maxLog/2)
+		// The app's own output stops where the hidden checks start: an app could log the requests they make.
+		checkLog += "\n--- app output ---\n" + sandbox.Logs(ctx, appID, maxLog/2, vr.HiddenFrom)
 	}
 	shot, shotMobile := files["shot.jpg"], files["shot-mobile.jpg"]
 	if len(shot) > maxShot {

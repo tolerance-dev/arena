@@ -35,6 +35,15 @@ Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
   Cloudflare Origin CA cert for `*.tolerance.cc` in `/opt/tolerance/origin-tls/` (both made once by hand, not by
   deploys; `server.sh` refuses to deploy without the cert).
 - `/opt/tolerance/.env` holds the OAuth keys.
+- **Hidden checks**: `/opt/tolerance/tasks-hidden/<task>/checks.json` (mounted into the worker and the api as
+  `ARENA_TASKS_HIDDEN_DIR`, read at start). They run after the public checks on other records of the same data
+  (picked at random when generated) and count in the score; the site shows them only as `hidden check N`, with no
+  details. The repo is public, so these files are the secret: never commit them. Make a new set and copy it, then restart the worker
+  and the api (the worker first finishes the runs in flight, up to an hour) or deploy:
+  `python3 backend/internal/tasks/gen_data.py --hidden ~/tolerance-hidden && chmod -R a+rX ~/tolerance-hidden &&
+  scp -r ~/tolerance-hidden/. deploy@81.27.103.131:/opt/tolerance/tasks-hidden/ &&
+  ssh deploy@81.27.103.131 'cd /opt/tolerance && docker compose restart api worker'`.
+  A new set changes the score of later runs only: compare runs checked with the same set.
 - **Sandbox hardening** (off until done by hand on the host; `ARENA_SANDBOX_RUNTIME`, `ARENA_SANDBOX_DISK` in
   `/opt/tolerance/.env`, read by worker and gateway, `internal/sandbox`). Pause the queue in /admin first: restarting
   Docker kills running containers.
