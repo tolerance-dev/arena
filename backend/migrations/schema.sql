@@ -71,6 +71,8 @@ CREATE TABLE runs (
     llm_requests       int NOT NULL DEFAULT 0,
     agent_seconds      int,
     image              text,
+    recheck            boolean NOT NULL DEFAULT false, -- queued again to check its snapshot only (runs.Service.Recheck)
+    rechecks           int NOT NULL DEFAULT 0,         -- how many times the snapshot was checked again
     stats              jsonb NOT NULL DEFAULT '{}'::jsonb,
     checks             jsonb NOT NULL DEFAULT '[]'::jsonb,
     score              int,

@@ -51,6 +51,8 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
       return null
     }
   }, [path])
+  // Bumped when a reload finds the data active again (a run queued for a recheck): polling resumes.
+  const [restart, setRestart] = useState(0)
   useEffect(() => {
     let live = true
     let timer: ReturnType<typeof setTimeout>
@@ -61,8 +63,13 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
     }
     void tick()
     return () => { live = false; clearTimeout(timer) }
-  }, [load, ms])
-  return { data, error, reload: load }
+  }, [load, ms, restart])
+  const reload = useCallback(async () => {
+    const d = await load()
+    if (d && activeRef.current?.(d)) setRestart((n) => n + 1)
+    return d
+  }, [load])
+  return { data, error, reload }
 }
 
 export const ACTIVE: RunStatus[] = ['queued', 'agent', 'checking']

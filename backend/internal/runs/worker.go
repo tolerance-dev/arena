@@ -305,8 +305,10 @@ func (w *Worker) claim(ctx context.Context) (string, error) {
 			return err
 		}
 		// The concurrency caps runs in flight across every worker, so one starting while another drains doesn't
-		// put twice the agents on the host.
-		return tx.QueryRow(ctx, `UPDATE runs SET status = 'agent', worker_id = $1, started_at = now(), updated_at = now()
+		// put twice the agents on the host. A recheck skips the agent: straight to checking, keeping when the agent
+		// started.
+		return tx.QueryRow(ctx, `UPDATE runs SET status = CASE WHEN recheck THEN 'checking' ELSE 'agent' END, worker_id = $1,
+				started_at = CASE WHEN recheck THEN started_at ELSE now() END, updated_at = now()
 			WHERE status = 'queued' AND NOT coalesce((SELECT runs_paused FROM settings), false)
 				AND (SELECT count(*) FROM runs WHERE status IN ('agent', 'checking')) < $2
 				AND id = (SELECT id FROM (`+queueOrder+`) head ORDER BY `+queueSort+` LIMIT 1)
@@ -326,6 +328,7 @@ type claimed struct {
 	timeLimit         time.Duration
 	budget            int64
 	bundle            []byte
+	recheck           bool // only check the kept snapshot (Service.Recheck)
 }
 
 func (w *Worker) process(ctx context.Context, id string) {
@@ -334,8 +337,8 @@ func (w *Worker) process(ctx context.Context, id string) {
 	c.id = id
 	var limitS int
 	err := w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, a.model, r.time_limit_s, r.token_budget, a.bundle
-			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &c.model, &limitS, &c.budget, &c.bundle)
+		return tx.QueryRow(ctx, `SELECT r.task, r.agent_id, a.provider, a.model, r.time_limit_s, r.token_budget, a.bundle, r.recheck
+			FROM runs r JOIN agents a ON a.id = r.agent_id WHERE r.id = $1`, id).Scan(&c.task, &c.agentID, &c.provider, &c.model, &limitS, &c.budget, &c.bundle, &c.recheck)
 	})
 	c.timeLimit = time.Duration(limitS) * time.Second
 	// The agent, and later the app and the checker, live on the run's own network with only the gateway.
@@ -345,7 +348,7 @@ func (w *Worker) process(ctx context.Context, id string) {
 			defer sandbox.RemoveNetwork(c.network)
 		}
 	}
-	if err == nil {
+	if err == nil && !c.recheck {
 		err = w.build(ctx, c, log)
 	}
 	if err == nil {
@@ -657,7 +660,7 @@ func (w *Worker) check(ctx context.Context, c claimed, log *slog.Logger) error {
 	checksJSON, _ := json.Marshal(checks)
 	log.Info("run checked", "score", score, "loc", stats.LOC)
 	return w.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', stats = $2, checks = $3, score = $4, app_started = $5,
+		_, err := tx.Exec(ctx, `UPDATE runs SET status = 'done', recheck = false, stats = $2, checks = $3, score = $4, app_started = $5,
 			shot = $6, shot_mobile = $7, source_zip = $8, check_log = $9, finished_at = now(), updated_at = now()
 			WHERE id = $1 AND status = 'checking'`,
 			c.id, statsJSON, checksJSON, score, vr.Start.OK, shot, shotMobile, sourceZip, sanitize.CleanLog(checkLog, maxLog))

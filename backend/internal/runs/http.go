@@ -147,6 +147,17 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/vote/{alias}/shot-mobile.jpg", voteShot("shot_mobile"))
 }
 
+// RegisterAdminRoutes mounts what only admins do with runs (the caller wraps it in RequireSession + RequireAdmin).
+func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
+	mux.HandleFunc("POST /api/v1/admin/runs/{id}/recheck", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.Recheck(r.Context(), r.PathValue("id")); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 // RegisterOwnerRoutes mounts starting, cancelling and deleting runs for any signed-in user, on their own agents
 // (an admin: on any agent).
 func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
