@@ -20,9 +20,43 @@ place orders.
 
 Right after start it shows the catalog with every category name from `categories.json` on the page.
 
+## Pages
+
+These addresses open directly (a deep link or a reload works, not only clicking through from `/`) and show the
+content from the first paint after load:
+
+- `/` — the home page.
+- `/search?q=set` — the products whose title contains the text, with their prices.
+- `/products/p40` — the product `p40`: title, price, seller's name, its reviews.
+- `/cart` and `/orders` — the signed-in user's cart and orders.
+
+## API
+
+The site's own frontend may call whatever it likes, but the app must also serve this JSON API. Extra fields are
+fine; the listed ones must be there with these names. Prices and totals are numbers in USD, rounded to cents.
+
+- `GET /api/products?q=&category=&sort=` → `{"products": [...]}`: every product, or only those whose `title`
+  contains `q` (case-insensitive) and whose `category` is `category` (both optional, together they narrow down).
+  Each item: `id`, `title`, `category`, `price`, `old_price`, `rating`, `reviews_count`, `stock`, `seller_id`.
+  Optional `sort=price` (cheapest first), `price_desc` or `rating` (best first).
+- `GET /api/products/{id}` → the product's fields plus `seller` (`id`, `name`, `rating`) and `reviews`: its reviews
+  from `reviews.json` (`id`, `rating`, `text`). `stock` is what is left now. Unknown product → `404`.
+- `POST /api/login` `{"email", "password"}` → `{"token"}`; wrong email or password → `401`. The cart and orders
+  take `Authorization: Bearer <token>`; without it → `401`. Every user has a cart of their own.
+- `GET /api/cart` → `{"items": [...], "total"}`: each item `product_id`, `title`, `price`, `quantity`,
+  `subtotal` (price × quantity); `total` is the sum of the subtotals.
+- `POST /api/cart` `{"product_id", "quantity"}` → sets that product's quantity in the cart (`0` removes it) and
+  answers with the whole cart as above. More than `stock` (so any quantity of a sold-out product) → `409`; unknown
+  product → `404`; a negative or non-integer quantity → `400`.
+- `POST /api/orders` → checks out the cart: `201` with the order `id`, `items` (`product_id`, `price`, `quantity`)
+  and `total`; the stock of each product goes down by its quantity and the cart is emptied. Empty cart → `400`;
+  someone bought the stock in the meantime (a quantity is now more than `stock`) → `409`, and nothing is ordered.
+- `GET /api/orders` → `{"orders": [...]}`: the signed-in user's orders, with the same fields.
+
 ## How it is checked
 
-The platform starts the app fresh from your `/work` and opens it in a headless Chromium: `/` must serve HTML and,
-once loaded, show what "The home page" asks for. The score is the share of automatic checks passed, 0 if the app
-doesn't start. The page is screenshotted on a desktop and a phone, and people compare apps built by different
-agents side by side in blind votes.
+The score is the share of automatic checks passed, about thirty of them, on a fresh start of the app: the API above
+(search, filters and sorting against the data, product pages, carts and stock, two users buying the last item,
+checkout, who sees which orders) and the pages above rendering the right data; 0 if the app doesn't start. The
+pages are screenshotted on a desktop and a phone, and people compare apps built by different agents side by side
+in blind votes.

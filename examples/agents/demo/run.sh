@@ -2,8 +2,8 @@
 # A pipeline smoke test: makes one LLM call through the gateway (to show up in the token count), then writes a
 # hand-made storefront for whichever task it got: a Python standard-library server that serves the data as JSON and
 # one plain HTML page per task. It passes the automatic checks and gives the preview something to show; it is not a
-# full product (no cart or player). For hotels it implements the API contract and the pages from TASK.md: the
-# reference the hotels checks are tested against; the same for cinema. No real agent work.
+# full product. For every task it implements the API contract and the pages from TASK.md: the reference the checks
+# are tested against. No real agent work.
 set -eu
 cd /work
 curl -s -m 30 "$ANTHROPIC_BASE_URL/v1/messages" -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
@@ -203,7 +203,84 @@ class CinemaAPI:
         return None
 
 
-API = {"hotels": HotelsAPI, "cinema": CinemaAPI}.get(TASK, lambda: None)()
+class MarketAPI:
+    """The marketplace API contract from TASK.md, in memory."""
+
+    def __init__(self):
+        self.products = {p["id"]: p for p in json.loads(DATA["products"])}
+        self.sellers = {s["id"]: s for s in json.loads(DATA["sellers"])}
+        self.reviews = json.loads(DATA["reviews"])
+        self.users = json.loads(DATA["users"])
+        self.carts, self.orders, self.tokens, self.lock = {}, [], {}, threading.Lock()
+
+    def cart(self, uid):
+        items = [{"product_id": pid, "title": self.products[pid]["title"], "price": self.products[pid]["price"], "quantity": n,
+                  "subtotal": round(self.products[pid]["price"] * n, 2)} for pid, n in self.carts.get(uid, {}).items()]
+        return {"items": items, "total": round(sum(i["subtotal"] for i in items), 2)}
+
+    def handle(self, method, path, q, body, auth):
+        user = self.tokens.get(auth.removeprefix("Bearer ").strip()) if auth else None
+        if method == "GET" and path == "/api/products":
+            text, cat = q.get("q", "").lower(), q.get("category")
+            out = [p for p in self.products.values() if text in p["title"].lower() and (not cat or p["category"] == cat)]
+            key = {"price": lambda p: p["price"], "price_desc": lambda p: -p["price"], "rating": lambda p: -p["rating"]}.get(q.get("sort"))
+            return 200, {"products": sorted(out, key=key) if key else out}
+        if method == "GET" and path.startswith("/api/products/"):
+            p = self.products.get(path.rsplit("/", 1)[1])
+            if not p:
+                return 404, {"error": "no such product"}
+            return 200, {**p, "seller": self.sellers.get(p["seller_id"]),
+                         "reviews": [r for r in self.reviews if r["product_id"] == p["id"]]}
+        if method == "POST" and path == "/api/login":
+            u = next((u for u in self.users if u["email"] == body.get("email") and u["password"] == body.get("password")), None)
+            if not u:
+                return 401, {"error": "wrong email or password"}
+            token = secrets.token_hex(16)
+            self.tokens[token] = u
+            return 200, {"token": token, "user": {"id": u["id"], "name": u["name"]}}
+        if not (path.startswith("/api/cart") or path.startswith("/api/orders")):
+            return None
+        if not user:
+            return 401, {"error": "sign in first"}
+        uid = user["id"]
+        if method == "GET" and path == "/api/cart":
+            return 200, self.cart(uid)
+        if method == "POST" and path == "/api/cart":
+            p, n = self.products.get(body.get("product_id")), body.get("quantity")
+            if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+                return 400, {"error": "quantity must be a whole number, 0 or more"}
+            if not p:
+                return 404, {"error": "no such product"}
+            if n > p["stock"]:
+                return 409, {"error": f"only {p['stock']} in stock"}
+            cart = self.carts.setdefault(uid, {})
+            if n:
+                cart[p["id"]] = n
+            else:
+                cart.pop(p["id"], None)
+            return 200, self.cart(uid)
+        if method == "GET" and path == "/api/orders":
+            return 200, {"orders": [o for o in self.orders if o["user_id"] == uid]}
+        if method == "POST" and path == "/api/orders":
+            with self.lock:
+                cart = self.carts.get(uid) or {}
+                if not cart:
+                    return 400, {"error": "the cart is empty"}
+                short = [pid for pid, n in cart.items() if n > self.products[pid]["stock"]]
+                if short:
+                    return 409, {"error": "not enough stock for " + ", ".join(short)}
+                for pid, n in cart.items():
+                    self.products[pid]["stock"] -= n
+                c = self.cart(uid)
+                o = {"id": "o-" + secrets.token_hex(4), "user_id": uid, "total": c["total"],
+                     "items": [{k: i[k] for k in ("product_id", "title", "price", "quantity")} for i in c["items"]]}
+                self.orders.append(o)
+                self.carts[uid] = {}
+            return 201, o
+        return None
+
+
+API = {"hotels": HotelsAPI, "marketplace": MarketAPI, "cinema": CinemaAPI}.get(TASK, lambda: None)()
 
 
 class H(BaseHTTPRequestHandler):
@@ -303,9 +380,20 @@ function draw() {
     <div><span class="price">\$\${p.price}</span>\${p.old_price ? \`<span class="old">\$\${p.old_price}</span>\` : ""}</div>
     <div class="muted">\${p.stock ? p.stock + " in stock" : "Sold out"}</div></div></div>\`).join("")
 }
-\$("#cats").onclick = (e) => { if (e.target.dataset.id !== undefined) { cat = e.target.dataset.id; draw() } }
-\$("#q").oninput = draw
-Promise.all([get("products"), get("categories")]).then(([p, c]) => { products = p; cats = c; draw() })
+const params = new URLSearchParams(location.search)
+if (location.pathname.startsWith("/products/")) {
+  fetch("/api/products/" + location.pathname.split("/")[2]).then((r) => r.json()).then((p) => {
+    \$("#heading").textContent = p.title
+    \$("#grid").innerHTML = \`<div class="card" style="grid-column:1/-1"><div class="body"><div class="price">\$\${p.price}</div>
+      <div>\${esc(p.description)}</div><div class="muted">Sold by \${esc(p.seller.name)} · \${p.stock ? p.stock + " in stock" : "Sold out"}</div>
+      \${p.reviews.map((r) => \`<p>\${"★".repeat(r.rating)} \${esc(r.text)}</p>\`).join("")}</div></div>\`
+  })
+} else {
+  \$("#q").value = params.get("q") || ""
+  \$("#cats").onclick = (e) => { if (e.target.dataset.id !== undefined) { cat = e.target.dataset.id; draw() } }
+  \$("#q").oninput = draw
+  Promise.all([get("products"), get("categories")]).then(([p, c]) => { products = p.products || p; cats = c; draw() })
+}
 </script></body></html>
 HTML
 

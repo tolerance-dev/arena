@@ -19,5 +19,575 @@
     "Books",
     "Toys & Games"
   ],
-  "checks": []
+  "checks": [
+    {
+      "name": "search page lists the matching products with their prices",
+      "page": "/search?q=set",
+      "text": [
+        "Juniper Linen Bedding Set",
+        "Polar Ceramic Mug Set",
+        "Oakline Building Blocks Set",
+        "Oakline Watercolor Set",
+        "14"
+      ]
+    },
+    {
+      "name": "product page shows the product, its seller and reviews",
+      "page": "/products/p40",
+      "text": [
+        "Acme Jump Rope",
+        "99.99",
+        "Paper Lantern",
+        "Good quality for the price."
+      ]
+    },
+    {
+      "name": "catalog: every product",
+      "method": "GET",
+      "path": "/api/products",
+      "expect": [
+        {
+          "path": "products",
+          "len": 60
+        }
+      ]
+    },
+    {
+      "name": "catalog: filter by category",
+      "method": "GET",
+      "path": "/api/products?category=books",
+      "expect": [
+        {
+          "path": "products",
+          "ids": [
+            "p41",
+            "p42",
+            "p43",
+            "p44",
+            "p45",
+            "p46",
+            "p47",
+            "p48",
+            "p49",
+            "p50"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: search the titles, any case",
+      "method": "GET",
+      "path": "/api/products?q=SeT",
+      "expect": [
+        {
+          "path": "products",
+          "ids": [
+            "p15",
+            "p16",
+            "p52",
+            "p59"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: search within a category",
+      "method": "GET",
+      "path": "/api/products?q=set&category=toys",
+      "expect": [
+        {
+          "path": "products",
+          "ids": [
+            "p52",
+            "p59"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by price",
+      "method": "GET",
+      "path": "/api/products?sort=price",
+      "expect": [
+        {
+          "path": "products",
+          "len": 60
+        },
+        {
+          "path": "products",
+          "sorted_by": "price"
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by price_desc",
+      "method": "GET",
+      "path": "/api/products?sort=price_desc",
+      "expect": [
+        {
+          "path": "products",
+          "len": 60
+        },
+        {
+          "path": "products",
+          "sorted_by": "-price"
+        }
+      ]
+    },
+    {
+      "name": "catalog: sort by rating",
+      "method": "GET",
+      "path": "/api/products?sort=rating",
+      "expect": [
+        {
+          "path": "products",
+          "len": 60
+        },
+        {
+          "path": "products",
+          "sorted_by": "-rating"
+        }
+      ]
+    },
+    {
+      "name": "product: price, stock and seller",
+      "method": "GET",
+      "path": "/api/products/p40",
+      "expect": [
+        {
+          "path": "price",
+          "equals": 99.99
+        },
+        {
+          "path": "stock",
+          "equals": 0
+        },
+        {
+          "path": "seller.name",
+          "equals": "Paper Lantern"
+        }
+      ]
+    },
+    {
+      "name": "product: its reviews",
+      "method": "GET",
+      "path": "/api/products/p40",
+      "expect": [
+        {
+          "path": "reviews",
+          "ids": [
+            "r32",
+            "r37",
+            "r39",
+            "r46",
+            "r62",
+            "r95"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "product: an unknown product is 404",
+      "method": "GET",
+      "path": "/api/products/p999",
+      "status": 404
+    },
+    {
+      "name": "sign in: a wrong password is refused",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "wrong"
+      },
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "sign in: Anna",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "anna.novak@example.com",
+        "password": "pass001"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "anna": "token"
+      }
+    },
+    {
+      "name": "sign in: Boris",
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "boris.rossi@example.com",
+        "password": "pass002"
+      },
+      "expect": [
+        {
+          "path": "token",
+          "exists": true
+        }
+      ],
+      "save": {
+        "boris": "token"
+      }
+    },
+    {
+      "name": "cart: needs a signed-in user",
+      "method": "GET",
+      "path": "/api/cart",
+      "status_in": [
+        401,
+        403
+      ]
+    },
+    {
+      "name": "cart: add two of a product",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p1",
+        "quantity": 2
+      },
+      "expect": [
+        {
+          "path": "items[product_id=p1].subtotal",
+          "equals": 38
+        },
+        {
+          "path": "total",
+          "equals": 38
+        }
+      ]
+    },
+    {
+      "name": "cart: a second product adds to the total",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p19",
+        "quantity": 2
+      },
+      "expect": [
+        {
+          "path": "items",
+          "len": 2
+        },
+        {
+          "path": "total",
+          "equals": 436
+        }
+      ]
+    },
+    {
+      "name": "cart: no more than the stock",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p19",
+        "quantity": 3
+      },
+      "status": 409
+    },
+    {
+      "name": "cart: a sold-out product can't be added",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p6",
+        "quantity": 1
+      },
+      "status": 409
+    },
+    {
+      "name": "cart: an unknown product is 404",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p999",
+        "quantity": 1
+      },
+      "status": 404
+    },
+    {
+      "name": "cart: a negative quantity is refused",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p1",
+        "quantity": -1
+      },
+      "status_in": [
+        400,
+        422
+      ]
+    },
+    {
+      "name": "cart: changing a quantity",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p1",
+        "quantity": 1
+      },
+      "expect": [
+        {
+          "path": "items[product_id=p1].quantity",
+          "equals": 1
+        },
+        {
+          "path": "total",
+          "equals": 417
+        }
+      ]
+    },
+    {
+      "name": "cart: quantity 0 removes the product",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p19",
+        "quantity": 0
+      },
+      "expect": [
+        {
+          "path": "items",
+          "len": 1
+        },
+        {
+          "path": "items[product_id=p19]",
+          "absent": true
+        }
+      ]
+    },
+    {
+      "name": "cart: every user has their own",
+      "method": "GET",
+      "path": "/api/cart",
+      "auth": "boris",
+      "expect": [
+        {
+          "path": "items",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "name": "last item: Anna puts it in her cart",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p10",
+        "quantity": 1
+      },
+      "status_in": [
+        200,
+        201
+      ]
+    },
+    {
+      "name": "last item: so does Boris",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "boris",
+      "body": {
+        "product_id": "p10",
+        "quantity": 1
+      },
+      "status_in": [
+        200,
+        201
+      ]
+    },
+    {
+      "name": "checkout: Anna's order",
+      "method": "POST",
+      "path": "/api/orders",
+      "auth": "anna",
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 28.5
+        },
+        {
+          "path": "items",
+          "len": 2
+        }
+      ],
+      "save": {
+        "order1": "id"
+      }
+    },
+    {
+      "name": "checkout: the cart is empty afterwards",
+      "method": "GET",
+      "path": "/api/cart",
+      "auth": "anna",
+      "expect": [
+        {
+          "path": "items",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "name": "checkout: the stock goes down",
+      "method": "GET",
+      "path": "/api/products/p1",
+      "expect": [
+        {
+          "path": "stock",
+          "equals": 19
+        }
+      ]
+    },
+    {
+      "name": "last item: Boris can't check out what is gone",
+      "method": "POST",
+      "path": "/api/orders",
+      "auth": "boris",
+      "status": 409
+    },
+    {
+      "name": "last item: his failed checkout ordered nothing",
+      "method": "GET",
+      "path": "/api/orders",
+      "auth": "boris",
+      "expect": [
+        {
+          "path": "orders",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "name": "last item: the catalog shows it sold out",
+      "method": "GET",
+      "path": "/api/products?category=electronics",
+      "expect": [
+        {
+          "path": "products[id=p10].stock",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "name": "last item: it can't go into a cart any more",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p10",
+        "quantity": 1
+      },
+      "status": 409
+    },
+    {
+      "name": "checkout: an empty cart is refused",
+      "method": "POST",
+      "path": "/api/orders",
+      "auth": "anna",
+      "status_in": [
+        400,
+        409,
+        422
+      ]
+    },
+    {
+      "name": "checkout: Anna takes the last two of a product",
+      "method": "POST",
+      "path": "/api/cart",
+      "auth": "anna",
+      "body": {
+        "product_id": "p19",
+        "quantity": 2
+      },
+      "status_in": [
+        200,
+        201
+      ]
+    },
+    {
+      "name": "checkout: Anna's second order",
+      "method": "POST",
+      "path": "/api/orders",
+      "auth": "anna",
+      "status_in": [
+        200,
+        201
+      ],
+      "expect": [
+        {
+          "path": "total",
+          "equals": 398
+        }
+      ],
+      "save": {
+        "order2": "id"
+      }
+    },
+    {
+      "name": "orders: Anna sees both",
+      "method": "GET",
+      "path": "/api/orders",
+      "auth": "anna",
+      "expect": [
+        {
+          "path": "orders",
+          "len": 2
+        },
+        {
+          "path": "orders[id={order1}].total",
+          "equals": 28.5
+        },
+        {
+          "path": "orders[id={order2}]",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "name": "orders: Boris doesn't see Anna's",
+      "method": "GET",
+      "path": "/api/orders",
+      "auth": "boris",
+      "expect": [
+        {
+          "path": "orders[id={order1}]",
+          "absent": true
+        }
+      ]
+    },
+    {
+      "name": "orders: a signed-out list is refused",
+      "method": "GET",
+      "path": "/api/orders",
+      "status_in": [
+        401,
+        403
+      ]
+    }
+  ]
 }
