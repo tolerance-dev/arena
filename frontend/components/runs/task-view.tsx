@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Download, ExternalLink, FileJson, Play, Scale } from 'lucide-react'
+import { Download, ExternalLink, FileJson, Scale } from 'lucide-react'
 import { Markdown } from '@/components/markdown'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
@@ -11,49 +11,51 @@ import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
 import { Meta } from '@/components/ui/feed'
 import { PillTabs } from '@/components/ui/pill-tabs'
+import { Segmented } from '@/components/ui/segmented'
 import { compact, plural } from '@/lib/format'
 import type { Run, TaskView as TV } from '@/lib/types'
-import { useMe } from '@/lib/use-me'
 import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile, usePoll } from './bits'
 import { Compare } from './compare'
+import { StartRunButton } from './start-run-button'
 
-type Tab = 'compare' | 'submissions' | 'brief' | 'results'
+type Tab = 'brief' | 'solutions' | 'runs'
 
-// A challenge, laid out like a Product Hunt product page: header, pill tabs, and the challenge's facts in the aside.
-// The first tab compares what the agents built, side by side.
+// Show the brief until there are solutions; keep the chosen tab while live data refreshes.
 export function TaskView({ slug }: { slug: string }) {
-  const [tab, setTab] = useState<Tab>('compare')
-  const { me } = useMe()
+  const [tab, setTab] = useState<{ slug: string; value: Tab } | null>(null)
+  const [view, setView] = useState<'cards' | 'compare'>('cards')
   const { data, error } = usePoll<TV>(`/tasks/${encodeURIComponent(slug)}`, 8_000)
+  useEffect(() => {
+    if (data && tab?.slug !== slug) setTab({ slug, value: data.compare.length ? 'solutions' : 'brief' })
+  }, [data, slug, tab])
   if (error?.status === 404) return <EmptyState>Такого задания нет.</EmptyState>
   if (!data) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>
   const title = data.title
   const bundle = `/api/v1/tasks/${encodeURIComponent(slug)}/bundle.zip`
+  const activeTab = tab?.slug === slug ? tab.value : data.compare.length ? 'solutions' : 'brief'
+  const tabsId = `task-${slug}-tabs`
+  const panelId = `task-${slug}-panel`
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Задачи', href: '/' }, { label: title }]} />
+      <Breadcrumbs items={[{ label: "Задачи", href: '/' }, { label: title }]} />
       {/* No aside here: the comparison needs the page's whole width. The task's facts sit in the header, its checks
           and data next to the brief. */}
       <header className="mt-6 flex flex-wrap items-start gap-x-4 gap-y-4">
-        <TaskTile slug={slug} size="lg" />
-        <div className="min-w-0 flex-1 basis-72">
+        <TaskTile slug={slug} size="md" className="sm:size-16 sm:[&>svg]:size-9" />
+        <div className="min-w-0 flex-1 sm:basis-72">
           <h1 className="display text-page break-words">{title}</h1>
           <p className="text-subtitle text-muted-foreground">{data.tagline}</p>
           <Meta className="mt-1" items={[
             `${Math.round(data.time_limit_s / 60)} мин`,
             `${compact(data.token_budget)} токенов`,
-            'Без интернета',
-            plural(data.runs, '{n} прогон', '{n} прогона', '{n} прогонов'),
-            plural(data.agents, '{n} агент', '{n} агента', '{n} агентов'),
+            "Без интернета",
+            ...(data.runs ? [plural(data.runs, "{n} прогон", "{n} прогона", "{n} прогонов")] : []),
+            ...(data.agents ? [plural(data.agents, "{n} агент", "{n} агента", "{n} агентов")] : []),
           ]} />
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
-          {me && (
-            <Button size="lg" render={<Link href={`/my?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
-              <Play /> Запустить своего агента
-            </Button>
-          )}
+          <StartRunButton task={slug} />
           {data.compare.length >= 2 && (
             <Button variant="outline" size="lg" render={<Link href={`/vote?task=${encodeURIComponent(slug)}`} />} nativeButton={false}>
               <Scale /> Голосовать
@@ -65,33 +67,39 @@ export function TaskView({ slug }: { slug: string }) {
         </div>
       </header>
 
-      <PillTabs className="mt-6" value={tab} onChange={setTab} options={[
-        { value: 'compare', label: 'Сравнение', count: data.compare.length },
-        { value: 'submissions', label: 'Решения', count: data.compare.length },
-        { value: 'brief', label: 'Задание' },
-        { value: 'results', label: 'Результаты', count: data.recent.length },
+      <PillTabs id={tabsId} panelId={panelId} label={title} className="mt-6" value={activeTab} onChange={(value) => setTab({ slug, value })} options={[
+        { value: 'brief', label: "Задание" },
+        { value: 'solutions', label: "Решения", count: data.compare.length || undefined },
+        { value: 'runs', label: "Прогоны", count: data.recent.length || undefined },
       ]} />
 
-      <div className="mt-6">
-        {tab === 'compare' && <Compare runs={data.compare} ratings={data.ratings} />}
-        {tab === 'submissions' && (
-          data.compare.length === 0 ? <EmptyState>Прогонов пока нет.</EmptyState> : (
-            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {data.compare.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} /></li>)}
-            </ul>
-          )
+      <div id={panelId} role="tabpanel" aria-labelledby={`${tabsId}-${activeTab}`} tabIndex={0} className="mt-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+        {activeTab === 'solutions' && (
+          data.compare.length === 0 ? <EmptyState action={<StartRunButton task={slug} />}>Станьте первым, кто построит приложение на этом задании.</EmptyState> : <>
+            {data.compare.length > 1 && <div className="mb-5"><Segmented label="Вид решений" value={view} onChange={setView} options={[
+              { value: 'cards', label: "Решения" }, { value: 'compare', label: "Сравнение" },
+            ]} /></div>}
+            {view === 'compare' && data.compare.length > 1 ? <Compare runs={data.compare} ratings={data.ratings} /> : (
+              <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {data.compare.map((r, i) => <li key={r.id}><Submission run={r} place={i + 1} /></li>)}
+              </ul>
+            )}
+          </>
         )}
-        {tab === 'brief' && (
+        {activeTab === 'brief' && (
           <Columns
             main={<div className="max-w-[72ch]"><Markdown>{data.brief}</Markdown></div>}
             aside={<>
               <AsideBlock title="Автоматические проверки">
                 {data.checks.length ? (
-                  <ol className="space-y-1.5 text-body">
-                    {data.checks.map((c, i) => (
-                      <li key={c} className="flex gap-2.5"><span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span><span>{c}</span></li>
-                    ))}
-                  </ol>
+                  <details>
+                    <summary className="cursor-pointer text-body font-medium text-foreground focus-visible:outline-2 focus-visible:outline-ring">{`Показать все проверки: ${data.checks.length}`}</summary>
+                    <ol className="mt-3 space-y-1.5 text-body">
+                      {data.checks.map((c, i) => (
+                        <li key={c} className="flex gap-2.5"><span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span><span>{c}</span></li>
+                      ))}
+                    </ol>
+                  </details>
                 ) : <p className="text-body text-muted-foreground">Проверяются только запуск, главная страница и скриншоты.</p>}
                 <p className="mt-3 text-body text-muted-foreground">Балл — доля пройденных проверок; приложения сравнивают люди в слепом голосовании. <Link href="/how" className="font-medium text-primary hover:underline">Как считаем</Link></p>
               </AsideBlock>
@@ -106,17 +114,13 @@ export function TaskView({ slug }: { slug: string }) {
               )}
             </>} />
         )}
-        {tab === 'results' && (
-          <div className="space-y-10">
-            <section>
-              <SectionTitle>Лучший прогон каждого агента</SectionTitle>
-              <RunTable runs={data.leaderboard} ranked />
-            </section>
+        {activeTab === 'runs' && (
+          data.recent.length === 0 ? <EmptyState action={<StartRunButton task={slug} />}>Станьте первым, кто построит приложение на этом задании.</EmptyState> : (
             <section>
               <SectionTitle>Все прогоны</SectionTitle>
               <RunTable runs={data.recent} />
             </section>
-          </div>
+          )
         )}
       </div>
     </div>

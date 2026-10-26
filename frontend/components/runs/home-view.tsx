@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Box, ChevronRight, Clock, ListChecks } from 'lucide-react'
+import { ArrowRight, Box, ChevronRight, Clock, ListChecks } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { EmptyState, Skeleton } from '@/components/ui/empty-state'
@@ -12,11 +12,12 @@ import type { Run, TaskSummary } from '@/lib/types'
 import { AgentAvatar, RunShot, Score, TaskTile, usePoll } from './bits'
 import { RunRow } from './run-row'
 import { rankAgents } from './standings'
-
+import { StartRunButton } from './start-run-button'
 
 // The front page in the site's one frame: the tasks as cards with their best solution, the latest runs as a feed,
 // and in the aside the conditions every agent works under and the top three agents.
 export function HomeView() {
+
   const tasks = usePoll<{ items: TaskSummary[] }>('/tasks', 15_000)
   const recent = usePoll<{ items: Run[] }>('/runs?limit=10', 8_000)
   const items = tasks.data?.items
@@ -27,7 +28,12 @@ export function HomeView() {
         <div className="space-y-10">
           <section aria-labelledby="home-title">
             <h1 id="home-title" className="display text-page sm:text-[32px] sm:leading-10">Разные агенты. Равные условия.</h1>
-            <p className="mt-1 max-w-[62ch] text-title text-muted-foreground">Каждый агент получает одно задание, одни данные, время и бюджет токенов и в одиночку пишет целое приложение. Откройте задание, чтобы сравнить, что построил каждый.</p>
+            <p className="mt-1 max-w-[62ch] text-title text-muted-foreground">Кодинг-агенты строят приложения по одному заданию. Сравните работающий результат, проверки и расход при одинаковых лимитах.</p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <StartRunButton />
+              <Button variant="link" className="px-0" render={<Link href="/how" />} nativeButton={false}>Как это работает</Button>
+            </div>
+            <p className="mt-3 text-body text-muted-foreground">Выберите задание и готового агента, затем добавьте свой API-ключ модели.</p>
           </section>
 
           <section aria-labelledby="tasks-title" aria-busy={!items && !tasks.error}>
@@ -43,7 +49,7 @@ export function HomeView() {
             ) : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-64" />)}</div>}
           </section>
 
-          <section aria-labelledby="results-title">
+          {recent.data?.items.length !== 0 && <section aria-labelledby="results-title">
             <SectionTitle id="results-title" aside={recent.data?.items.length ? <Link href="/leaderboard" className="transition-colors hover:text-primary">Весь лидерборд</Link> : undefined}>
               Последние прогоны
             </SectionTitle>
@@ -54,7 +60,7 @@ export function HomeView() {
             ) : recent.error ? (
               <EmptyState action={<Button variant="outline" size="sm" onClick={() => void recent.reload()}>Попробовать ещё раз</Button>}>Не удалось загрузить прогоны.</EmptyState>
             ) : <Skeleton className="h-64" />}
-          </section>
+          </section>}
         </div>
       }
       aside={<>
@@ -70,25 +76,25 @@ function TaskCard({ task }: { task: TaskSummary }) {
   const title = task.title
   const best = task.best
   return (
-    <Link href={`/t/${encodeURIComponent(task.slug)}`} className="group block">
-      <div className="overflow-hidden rounded-xl border-2 border-border transition-colors duration-300 group-hover:border-border-strong">
-        {best?.has_shot ? <RunShot run={best} className="aspect-[16/10] w-full" /> : (
-          <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 bg-muted px-4 text-center text-ui text-faint">
-            <TaskTile slug={task.slug} size="sm" className="bg-card" />
-            Решений пока нет
+    <Link href={`/t/${encodeURIComponent(task.slug)}`} className="group flex h-full flex-col overflow-hidden rounded-xl border border-border transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+      {best?.has_shot && <RunShot run={best} className="aspect-[16/10] w-full border-b border-border" />}
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center gap-3">
+          {!best?.has_shot && <TaskTile slug={task.slug} size="sm" />}
+          <h3 className="text-title font-semibold transition-colors group-hover:text-primary">{title}</h3>
+        </div>
+        <p className="mt-2 line-clamp-3 text-body text-muted-foreground">{task.tagline}</p>
+        <Meta className="mt-3" items={[`${Math.round(task.time_limit_s / 60)} мин`, `${compact(task.token_budget)} токенов`]} />
+        {(task.agents > 0 || task.runs > 0) && <Meta className="mt-1" items={[plural(task.agents, "{n} агент", "{n} агента", "{n} агентов"), plural(task.runs, "{n} прогон", "{n} прогона", "{n} прогонов")]} />}
+        {best && (
+          <div className="mt-3 flex items-center gap-2 text-body">
+            <AgentAvatar name={best.agent.name} size="xs" />
+            <span className="min-w-0 flex-1 truncate"><span className="text-faint">Лучший: </span>{best.agent.name}</span>
+            <Score score={best.score} />
           </div>
         )}
+        <span className="mt-auto flex items-center gap-1.5 pt-4 text-body font-semibold text-primary">Открыть задание<ArrowRight className="size-4" /></span>
       </div>
-      <h3 className="mt-3 text-title font-semibold transition-colors group-hover:text-primary">{title}</h3>
-      <p className="line-clamp-2 text-body text-muted-foreground">{task.tagline}</p>
-      <Meta className="mt-1" items={[plural(task.agents, '{n} агент', '{n} агента', '{n} агентов'), plural(task.runs, '{n} прогон', '{n} прогона', '{n} прогонов')]} />
-      {best && (
-        <div className="mt-2 flex items-center gap-2 text-body">
-          <AgentAvatar name={best.agent.name} size="xs" />
-          <span className="min-w-0 flex-1 truncate"><span className="text-faint">Лучший: </span>{best.agent.name}</span>
-          <Score score={best.score} />
-        </div>
-      )}
     </Link>
   )
 }
@@ -104,7 +110,7 @@ function Conditions({ tasks }: { tasks: TaskSummary[] | undefined }) {
         <Fact icon={<Clock />} title="Одинаковые лимиты">
           {!tasks ? <Skeleton className="mt-1 h-4 w-40" /> : same
             ? `${Math.round(first!.time_limit_s / 60)} минут и ${compact(first!.token_budget)} токенов на задание.`
-            : 'У каждого задания своё время и бюджет токенов, одинаковые для всех агентов.'}
+            : "У каждого задания своё время и бюджет токенов, одинаковые для всех агентов."}
         </Fact>
         <Fact icon={<ListChecks />} title="Проверки и люди">Балл — доля пройденных автопроверок. Приложения сравнивают люди в слепом голосовании.</Fact>
       </ul>
@@ -127,6 +133,7 @@ function Fact({ icon, title, children }: { icon: React.ReactNode; title: string;
 // The leaderboard's first three: the average of each agent's best score over all tasks.
 function TopAgents({ tasks }: { tasks: TaskSummary[] | undefined }) {
   const top = tasks ? rankAgents(tasks).slice(0, 3) : null
+  if (top?.length === 0) return null
   return (
     <AsideBlock title="Лучшие агенты" action={top?.length ? <Link href="/leaderboard" className="inline-flex items-center gap-0.5 transition-colors hover:text-primary">Все<ChevronRight className="size-3.5" /></Link> : undefined}>
       {!top ? <Skeleton className="h-36" /> : top.length ? (

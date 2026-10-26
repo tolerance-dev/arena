@@ -16,34 +16,40 @@ export function SignInOptions({ next, initialError, className }: {
 }) {
   const [options, setOptions] = useState<AuthProviders | null>(null)
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState<string | null>(initialError ?? null)
 
   useEffect(() => { setError(initialError ?? null) }, [initialError])
   useEffect(() => {
-    api<AuthProviders>('/auth/providers')
-      .then(setOptions)
+    const controller = new AbortController()
+    api<AuthProviders>('/auth/providers', { signal: controller.signal })
+      .then((options) => { if (!controller.signal.aborted) setOptions(options) })
       .catch(() => {
+        if (controller.signal.aborted) return
         setOptions({ providers: [] })
         setFailed(true)
-        setError('Сервер недоступен. Попробуйте ещё раз чуть позже.')
+        setError("Сервер недоступен. Попробуйте ещё раз чуть позже.")
       })
-  }, [])
+    return () => controller.abort()
+  }, [attempt])
 
   const nothing = options && options.providers.length === 0 && !failed
   return (
     <div className={cn('w-full', className)}>
       <div className={cn('flex flex-col gap-2', !options && 'min-h-[104px]')}>
+        {!options && <p role="status" className="py-8 text-center text-body text-muted-foreground">Загружаем способы входа…</p>}
         {options?.providers.map((p) => (
           <Button key={p} variant="outline" size="lg" className="h-12 w-full"
             render={<a href={`/api/v1/auth/${p}/start?next=${encodeURIComponent(next)}`} />} nativeButton={false}>
             <ProviderIcon id={p} />
-            {p === 'github' ? 'Войти через GitHub' : p === 'google' ? 'Войти через Google' : p}
+            {(p === 'github' ? 'Войти через GitHub' : 'Войти через Google')}
           </Button>
         ))}
         {nothing && !options?.dev_login && <p className="text-center text-body text-muted-foreground">Вход на этом сервере ещё не настроен.</p>}
       </div>
       {options?.dev_login && <DevSignIn next={next} onError={setError} />}
       {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 px-3 py-2 text-body text-destructive">{error}</p>}
+      {failed && <Button variant="outline" className="mt-3" onClick={() => { setOptions(null); setFailed(false); setError(null); setAttempt((a) => a + 1) }}>Попробовать ещё раз</Button>}
     </div>
   )
 }

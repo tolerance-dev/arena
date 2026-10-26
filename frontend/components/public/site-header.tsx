@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Menu, Plus, X } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { Brand } from '@/components/brand'
 import { loginHref } from '@/components/public/return-path'
@@ -13,6 +13,7 @@ import { useMe } from '@/lib/use-me'
 import { isActive, usePoll } from '@/components/runs/bits'
 import type { Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { StartRunButton } from '@/components/runs/start-run-button'
 
 // Product Hunt's header: logo, 16px semibold nav that takes the accent colour on hover, pill buttons on the right.
 // Phones get a menu button instead of the nav. returnTo overrides the post-sign-in destination (404).
@@ -55,10 +56,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           {!pathname.startsWith('/my') && (
-            <Button variant={me ? 'default' : 'outline'} className="max-sm:w-9 max-sm:px-0" aria-label="Загрузить агента"
-              render={<Link href="/my" />} nativeButton={false}>
-              <Plus /><span className="max-sm:hidden">Загрузить агента</span>
-            </Button>
+            <StartRunButton size="default" className="hidden sm:inline-flex" />
           )}
           {loading ? <span className="block h-9 w-20" /> : me ? (
             <>
@@ -69,7 +67,7 @@ export function SiteHeader({ returnTo }: { returnTo?: string }) {
             </>
           ) : (
             signIn
-              ? <Button onClick={signIn}>Войти</Button>
+              ? <Button variant="ghost" onClick={() => signIn(returnTo)}>Войти</Button>
               : <Button render={<Link href={loginHref(returnTo ?? pathname)} />} nativeButton={false}>Войти</Button>
           )}
           <Button variant="outline" size="icon" className="md:hidden" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((v) => !v)}>

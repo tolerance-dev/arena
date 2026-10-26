@@ -87,7 +87,7 @@ export function VoteView() {
         <h1 className="display text-page">Какое приложение лучше?</h1>
         <p className="text-muted-foreground">Войдите, чтобы голосовать: один голос за пару от человека делает рейтинг честным.</p>
         {signIn
-          ? <Button onClick={signIn}>Войти</Button>
+          ? <Button onClick={() => signIn()}>Войти</Button>
           : <Button render={<Link href={loginHref('/vote')} />} nativeButton={false}>Войти</Button>}
       </div>
     )
