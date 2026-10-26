@@ -133,7 +133,8 @@ func TestVoteGuestPair(t *testing.T) {
 	}
 }
 
-// Elo moves 16 points between equals on one vote; votes from blocked or day-old accounts don't count.
+// Elo moves 16 points between equals on one vote; votes of blocked accounts never count, of accounts under a day old
+// not yet, and a settled account's first-day votes do.
 func TestRatings(t *testing.T) {
 	pool := dbtest.New(t)
 	f := fixture{t, pool}
@@ -155,16 +156,21 @@ func TestRatings(t *testing.T) {
 	f.exec(`UPDATE users SET blocked = true WHERE id = $1`, blocked)
 	vote(blocked, winY)
 	vote(f.user("judge", 48*time.Hour), winX)
+	// Cast in the account's first hour, two days ago: the account is a day old now, so it counts (and counts first).
+	settled := f.user("settled", 48*time.Hour)
+	f.exec(`INSERT INTO pair_votes (user_id, task, run_a, run_b, winner, created_at) VALUES ($1, 'marketplace', $2, $3, $4, now() - interval '47 hours')`,
+		settled, a, b, winX)
 
 	r, err := s.Ratings(ctx, "marketplace")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := r[x]; got.Elo != 1016 || got.Votes != 1 || got.Wins != 1 {
-		t.Errorf("winner: %+v, want elo 1016 after one counted win", got)
+	// 1000 → 1016 on the first win, then +14.5 against a 984 (expected score 0.546).
+	if got := r[x]; got.Elo != 1031 || got.Votes != 2 || got.Wins != 2 {
+		t.Errorf("winner: %+v, want elo 1031 after two counted wins", got)
 	}
-	if got := r[y]; got.Elo != 984 || got.Votes != 1 || got.Losses != 1 {
-		t.Errorf("loser: %+v, want elo 984 after one counted loss", got)
+	if got := r[y]; got.Elo != 969 || got.Votes != 2 || got.Losses != 2 {
+		t.Errorf("loser: %+v, want elo 969 after two counted losses", got)
 	}
 }
 

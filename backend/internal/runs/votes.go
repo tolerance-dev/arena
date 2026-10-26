@@ -49,7 +49,8 @@ type Rating struct {
 const (
 	eloStart = 1000.0
 	eloK     = 32.0
-	// Votes cast in an account's first day are kept but left out of Elo: a fresh account is the cheap way to stuff votes.
+	// An account's votes count in Elo once it is a day old (until then they wait): a fresh account is the cheap way to
+	// stuff votes, and a day lets the admin block it first.
 	voteAccountAge = "1 day"
 	// Pairs handed out and never voted on are dropped after this.
 	votePairTTL = "1 day"
@@ -289,14 +290,14 @@ func (s *Service) Vote(ctx context.Context, userID, pairID, winner string) (Reve
 
 // Ratings replays the task's votes in order into each agent's Elo (keyed by agent id). A vote counts for the agent
 // even after a newer run became its best: it is the agent being ranked. Votes of blocked users, and those cast in an
-// account's first day (voteAccountAge), are left out.
+// account younger than voteAccountAge (they count once it is that old), are left out.
 func (s *Service) Ratings(ctx context.Context, task string) (map[string]Rating, error) {
 	elo := map[string]float64{}
 	out := map[string]Rating{}
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT ra.agent_id, rb.agent_id, v.winner FROM pair_votes v
 			JOIN runs ra ON ra.id = v.run_a JOIN runs rb ON rb.id = v.run_b JOIN users u ON u.id = v.user_id
-			WHERE v.task = $1 AND NOT u.blocked AND v.created_at >= u.created_at + $2::interval
+			WHERE v.task = $1 AND NOT u.blocked AND u.created_at <= now() - $2::interval
 			ORDER BY v.created_at`, task, voteAccountAge)
 		if err != nil {
 			return err
