@@ -82,7 +82,8 @@ for slug, cname, names in cats:
 dump("marketplace", "categories.json", [{"id": s, "name": n} for s, n, _ in cats])
 dump("marketplace", "products.json", products)
 dump("marketplace", "sellers.json", sellers)
-dump("marketplace", "users.json", users(8, lambda i: {"address": f"{10 + i} Market Street, Springfield"}))
+market_users = users(8, lambda i: {"address": f"{10 + i} Market Street, Springfield"})
+dump("marketplace", "users.json", market_users)
 reviews = []
 for i in range(1, 121):
     p = R.choice(products)
@@ -90,6 +91,99 @@ for i in range(1, 121):
                     "text": R.choice(["Exactly as described.", "Fast delivery, works great.", "Good quality for the price.", "Would buy again.", "A bit smaller than expected.", "Love it!"]),
                     "created_at": f"2026-0{R.randint(1, 9)}-{R.randint(10, 28)}T12:00:00Z"})
 dump("marketplace", "reviews.json", reviews)
+
+# ---------- marketplace: the API checks ----------
+# Computed from the data, with no randomness (the hotels and cinema data after this must not move), and prefixed m_
+# (the names are module-global). They follow the API contract in marketplace/TASK.md; the cart and stock scenario
+# replays what the checks themselves buy.
+mc = []
+def mchk(name, method, path, **kw):
+    mc.append({"name": name, "method": method, "path": path, **kw})
+
+m_prod = {p["id"]: p for p in products}
+m_seller = {x["id"]: x for x in sellers}
+def m_money(v):
+    return round(v, 2)
+def m_titled(q, cat=None):
+    return sorted(p["id"] for p in products if q.lower() in p["title"].lower() and (cat is None or p["category"] == cat))
+
+m_hit = m_titled("set")
+assert len(m_hit) >= 3
+m_p = m_prod["p40"]
+m_reviews = [r for r in reviews if r["product_id"] == "p40"]
+assert len(m_reviews) >= 3
+mc.append({"name": "search page lists the matching products with their prices", "page": "/search?q=set",
+           "text": [m_prod[i]["title"] for i in m_hit] + [str(m_prod[m_hit[0]]["price"])]})
+mc.append({"name": "product page shows the product, its seller and reviews", "page": "/products/p40",
+           "text": [m_p["title"], str(m_p["price"]), m_seller[m_p["seller_id"]]["name"], m_reviews[0]["text"]]})
+
+mchk("catalog: every product", "GET", "/api/products", expect=[{"path": "products", "len": len(products)}])
+mchk("catalog: filter by category", "GET", "/api/products?category=books",
+     expect=[{"path": "products", "ids": sorted(p["id"] for p in products if p["category"] == "books")}])
+mchk("catalog: search the titles, any case", "GET", "/api/products?q=SeT", expect=[{"path": "products", "ids": m_hit}])
+m_both = m_titled("set", "toys")
+assert 0 < len(m_both) < len(m_hit)
+mchk("catalog: search within a category", "GET", "/api/products?q=set&category=toys", expect=[{"path": "products", "ids": m_both}])
+for key, field in (("price", "price"), ("price_desc", "-price"), ("rating", "-rating")):
+    mchk(f"catalog: sort by {key}", "GET", f"/api/products?sort={key}",
+         expect=[{"path": "products", "len": len(products)}, {"path": "products", "sorted_by": field}])
+mchk("product: price, stock and seller", "GET", "/api/products/p40",
+     expect=[{"path": "price", "equals": m_p["price"]}, {"path": "stock", "equals": m_p["stock"]},
+             {"path": "seller.name", "equals": m_seller[m_p["seller_id"]]["name"]}])
+mchk("product: its reviews", "GET", "/api/products/p40", expect=[{"path": "reviews", "ids": sorted(r["id"] for r in m_reviews)}])
+mchk("product: an unknown product is 404", "GET", "/api/products/p999", status=404)
+
+m_anna, m_boris = market_users[0], market_users[1]
+mchk("sign in: a wrong password is refused", "POST", "/api/login", body={"email": m_anna["email"], "password": "wrong"}, status_in=[401, 403])
+mchk("sign in: Anna", "POST", "/api/login", body={"email": m_anna["email"], "password": m_anna["password"]},
+     expect=[{"path": "token", "exists": True}], save={"anna": "token"})
+mchk("sign in: Boris", "POST", "/api/login", body={"email": m_boris["email"], "password": m_boris["password"]},
+     expect=[{"path": "token", "exists": True}], save={"boris": "token"})
+mchk("cart: needs a signed-in user", "GET", "/api/cart", status_in=[401, 403])
+
+# m_a: plenty in stock; m_b: exactly 2 left; m_sold: sold out; m_last: one left, which both users want.
+m_a = next(p for p in products if p["stock"] >= 5)
+m_b = next(p for p in products if p["stock"] == 2)
+m_sold = next(p for p in products if p["stock"] == 0)
+m_last = next(p for p in products if p["stock"] == 1)
+def m_put(name, who, p, n, **kw):
+    mchk(name, "POST", "/api/cart", auth=who, body={"product_id": p["id"], "quantity": n}, **kw)
+
+m_put("cart: add two of a product", "anna", m_a, 2,
+      expect=[{"path": f"items[product_id={m_a['id']}].subtotal", "equals": m_money(2 * m_a["price"])},
+              {"path": "total", "equals": m_money(2 * m_a["price"])}])
+m_put("cart: a second product adds to the total", "anna", m_b, 2,
+      expect=[{"path": "items", "len": 2}, {"path": "total", "equals": m_money(2 * m_a["price"] + 2 * m_b["price"])}])
+m_put("cart: no more than the stock", "anna", m_b, 3, status=409)
+m_put("cart: a sold-out product can't be added", "anna", m_sold, 1, status=409)
+m_put("cart: an unknown product is 404", "anna", {"id": "p999"}, 1, status=404)
+m_put("cart: a negative quantity is refused", "anna", m_a, -1, status_in=[400, 422])
+m_put("cart: changing a quantity", "anna", m_a, 1,
+      expect=[{"path": f"items[product_id={m_a['id']}].quantity", "equals": 1},
+              {"path": "total", "equals": m_money(m_a["price"] + 2 * m_b["price"])}])
+m_put("cart: quantity 0 removes the product", "anna", m_b, 0,
+      expect=[{"path": "items", "len": 1}, {"path": f"items[product_id={m_b['id']}]", "absent": True}])
+mchk("cart: every user has their own", "GET", "/api/cart", auth="boris", expect=[{"path": "items", "len": 0}])
+m_put("last item: Anna puts it in her cart", "anna", m_last, 1, status_in=[200, 201])
+m_put("last item: so does Boris", "boris", m_last, 1, status_in=[200, 201])
+mchk("checkout: Anna's order", "POST", "/api/orders", auth="anna", status_in=[200, 201],
+     expect=[{"path": "total", "equals": m_money(m_a["price"] + m_last["price"])}, {"path": "items", "len": 2}], save={"order1": "id"})
+mchk("checkout: the cart is empty afterwards", "GET", "/api/cart", auth="anna", expect=[{"path": "items", "len": 0}])
+mchk("checkout: the stock goes down", "GET", f"/api/products/{m_a['id']}", expect=[{"path": "stock", "equals": m_a["stock"] - 1}])
+mchk("last item: Boris can't check out what is gone", "POST", "/api/orders", auth="boris", status=409)
+mchk("last item: his failed checkout ordered nothing", "GET", "/api/orders", auth="boris", expect=[{"path": "orders", "len": 0}])
+mchk("last item: the catalog shows it sold out", "GET", "/api/products?category=" + m_last["category"],
+     expect=[{"path": f"products[id={m_last['id']}].stock", "equals": 0}])
+m_put("last item: it can't go into a cart any more", "anna", m_last, 1, status=409)
+mchk("checkout: an empty cart is refused", "POST", "/api/orders", auth="anna", status_in=[400, 409, 422])
+m_put("checkout: Anna takes the last two of a product", "anna", m_b, 2, status_in=[200, 201])
+mchk("checkout: Anna's second order", "POST", "/api/orders", auth="anna", status_in=[200, 201],
+     expect=[{"path": "total", "equals": m_money(2 * m_b["price"])}], save={"order2": "id"})
+mchk("orders: Anna sees both", "GET", "/api/orders", auth="anna",
+     expect=[{"path": "orders", "len": 2}, {"path": "orders[id={order1}].total", "equals": m_money(m_a["price"] + m_last["price"])},
+             {"path": "orders[id={order2}]", "exists": True}])
+mchk("orders: Boris doesn't see Anna's", "GET", "/api/orders", auth="boris", expect=[{"path": "orders[id={order1}]", "absent": True}])
+mchk("orders: a signed-out list is refused", "GET", "/api/orders", status_in=[401, 403])
 
 # ---------- hotels ----------
 cities = ["Lisbon", "Barcelona", "Prague", "Vienna", "Istanbul", "Tbilisi"]
@@ -414,7 +508,7 @@ cchk("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="prem
 task_json("marketplace", 1, {"en": "Marketplace", "ru": "Маркетплейс"},
           {"en": "A storefront with many sellers: catalog, search, product pages, cart, checkout, orders.",
            "ru": "Витрина с продавцами: каталог, поиск, карточки товаров, корзина, оформление заказа, история."},
-          [name for _, name, _ in cats])
+          [name for _, name, _ in cats], mc)
 task_json("hotels", 2, {"en": "Hotel booking", "ru": "Бронирование отелей"},
           {"en": "Booking.com in miniature: search by city and dates, hotel pages, rooms, bookings.",
            "ru": "Booking.com в миниатюре: поиск по городу и датам, страницы отелей, номера, брони."},

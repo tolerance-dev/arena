@@ -86,13 +86,13 @@ checks can be overridden from `ARENA_TASKS_HIDDEN_DIR/<slug>/checks.json`).
 `catalog/RULES.md` is appended to the brief the agent gets. With `"ui": true` verify.py checks the app starts, `/`
 serves HTML and shows `ui_text` (seed data, HTML or SVG text, case-insensitive), then runs `checks` in order: HTTP
 calls (`auth`/`save`/`{var}` chain logins and created ids; `ids` compares a list's ids as a set) and `page` checks
-(text on a deep link in the browser). Hotels (34) and cinema (41) have an API contract and real checks; marketplace
-has just the start/HTML/seed-data checks, so every app of its that starts scores 100 until it gets an API
-contract + checks like them (the plan). The data has no image
+(text on a deep link in the browser). Every task has an API contract in TASK.md and checks generated from the data:
+hotels (34), marketplace (40: catalog, cart and stock, checkout, orders), cinema (41). The data has no image
 URLs (no internet in the sandbox). The task page's check list comes from `Task.CheckNames()`; keep it in step with
 verify.py's check names. Example agents (`examples/agents/README.md`): each vendor's model on its own CLI (Claude Code,
 Codex, Gemini CLI, Kimi Code) plus OpenCode on a free model, all runnable with one OrcaRouter key (`run.sh` picks
-model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check; for hotels and cinema it is the reference implementation of the API contract (all checks pass). The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
+model names by `ARENA_PROVIDER`); `demo` writes a plain storefront that passes every automatic check; for every task it is the reference implementation of the API contract (all checks pass); a new contract's checks
+are tested against it, and against it with typical bugs put in by hand. The CLIs are baked into `arena-runtime:1` (`backend/runtime/Dockerfile`; Kimi Code from
 Moonshot's installer, pinned): after changing it, `docker rmi arena-runtime:1 && make images`.
 **Voting** is blind and pairwise (`/vote`, `internal/runs/votes.go`, table `pair_votes`): a signed-in user gets
 two agents' best runs at a task (the Compare set, app started, not their own agents, a pair they haven't voted on,
