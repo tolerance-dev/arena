@@ -7,7 +7,7 @@ import { firstSentence, stackOf } from '@/lib/vendor'
 import { AgentAvatar, Ago, scoreTone, Stack, StatusPill, TaskTile, taskTitle, type RT } from './bits'
 
 // One run as a Product Hunt feed row: who built it (or, on an agent's page, which task), what it built in the
-// judge's words, the app's stack, and the score in the 52px counter on the right. No voting arrow: nobody votes.
+// judge's words, the app's stack, and the score in the 52px counter on the right. No upvote arrow: voting is pairwise, on /vote.
 export function RunRow({ run, t, show = 'agent' }: { run: Run; t: RT; show?: 'agent' | 'task' }) {
   const done = run.status === 'done'
   const built = done ? firstSentence(run.judge?.status === 'ok' ? run.judge.summary : undefined) : ''

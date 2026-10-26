@@ -46,7 +46,16 @@ export interface TaskSummary {
 
 export interface TaskView extends TaskSummary {
   brief: string; data_files: string[]; checks: string[]; compare: Run[]; recent: Run[]
+  ratings: Record<string, Rating> // by agent id: Elo from people's blind votes
 }
+
+export interface Rating { elo: number; votes: number; wins: number; losses: number; ties: number }
+
+// One side of a blind pair: what shows the app, nothing that names the agent.
+export interface Contender { id: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
+export interface Pair { task: string; task_title: Text; a: Contender; b: Contender; left: number }
+export interface Reveal { a: Run['agent']; b: Run['agent'] }
+export type Winner = 'a' | 'b' | 'tie'
 
 export interface AdminSettings { runs_paused: boolean; user_runs: boolean; judge: boolean }
 export interface AdminSpend {

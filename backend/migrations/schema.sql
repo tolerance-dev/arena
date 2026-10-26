@@ -98,6 +98,20 @@ CREATE TABLE gateway_tokens (
 );
 CREATE INDEX gateway_tokens_run_idx ON gateway_tokens (run_id);
 
+-- A person's blind pick between two agents' apps at one task (internal/runs/votes.go); the agents' Elo comes from
+-- these. The pair is stored in id order (run_a < run_b), so one person votes on a pair once.
+CREATE TABLE pair_votes (
+    user_id    text NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    task       text NOT NULL,
+    run_a      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
+    run_b      text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
+    winner     text NOT NULL CHECK (winner IN ('a', 'b', 'tie')),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, run_a, run_b),
+    CHECK (run_a < run_b)
+);
+CREATE INDEX pair_votes_task_idx ON pair_votes (task, created_at);
+
 -- Platform switches the admin page flips (internal/admin): exactly one row.
 CREATE TABLE settings (
     id          boolean PRIMARY KEY DEFAULT true CHECK (id),
@@ -109,5 +123,5 @@ CREATE TABLE settings (
 INSERT INTO settings DEFAULT VALUES;
 
 GRANT USAGE ON SCHEMA public TO arena_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, settings TO arena_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, user_identities, sessions, agents, runs, gateway_tokens, pair_votes, settings TO arena_app;
 

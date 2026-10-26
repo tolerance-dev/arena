@@ -6,7 +6,7 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { compact, duration, usedTokens } from '@/lib/format'
-import type { Criterion, Run } from '@/lib/types'
+import type { Criterion, Rating, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack, type RT } from './bits'
 
@@ -31,7 +31,7 @@ function checklist(runs: Run[]): Criterion[] {
 // Each agent's best run at the task side by side: what it looks like, how the judge scored every checklist item,
 // and what it cost to build. The point of the arena is the difference between agents, so this is the task's
 // first tab.
-export function Compare({ runs, t }: { runs: Run[]; t: RT }) {
+export function Compare({ runs, ratings = {}, t }: { runs: Run[]; ratings?: Record<string, Rating>; t: RT }) {
   if (runs.length === 0) return <EmptyState>{t('noRuns')}</EmptyState>
   const items = checklist(runs)
   const sections: Section[] = [
@@ -48,6 +48,15 @@ export function Compare({ runs, t }: { runs: Run[]; t: RT }) {
           },
           value: (r) => judged(r)?.score ?? null, better: 'high',
         },
+        // People's Elo, once anyone has voted at this task.
+        ...(Object.keys(ratings).length ? [{
+          label: t('cmpPeople'), hint: t('cmpPeopleHint'),
+          cell: (r: Run) => {
+            const p = ratings[r.agent.id]
+            return p ? <span><span className="font-semibold tnum">{p.elo}</span><span className="block text-meta text-faint">{t.plural('votes', p.votes)}</span></span> : <span className="text-faint">—</span>
+          },
+          value: (r: Run) => ratings[r.agent.id]?.elo ?? null, better: 'high' as const,
+        }] : []),
         {
           label: t('colChecks'),
           cell: (r) => r.checks.length ? (
