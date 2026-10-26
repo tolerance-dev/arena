@@ -37,7 +37,7 @@ type Service struct {
 	pool *db.Pool
 	box  *secretbox.Box
 	// Subscriptions lets admins use their personal Claude / ChatGPT subscriptions as an agent's key
-	// (ARENA_SUBSCRIPTIONS=true, local only: a subscription is for its owner's own use, never a public arena).
+	// (ARENA_SUBSCRIPTIONS=true). Admins only: a subscription is for its owner's own use, never other users' runs.
 	Subscriptions bool
 }
 

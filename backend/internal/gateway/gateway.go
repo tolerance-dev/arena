@@ -35,8 +35,8 @@ import (
 )
 
 type Config struct {
-	// Subscriptions passes agents keyed with a personal Claude or ChatGPT subscription (ARENA_SUBSCRIPTIONS, local
-	// only; the api lets only admins create them).
+	// Subscriptions passes agents keyed with a personal Claude or ChatGPT subscription (ARENA_SUBSCRIPTIONS; the
+	// api lets only admins create them).
 	Subscriptions bool
 	FakeUpstream  bool   // answer LLM calls locally (dev without keys)
 	SelfURL       string // how sandboxes reach the gateway, for rewriting PyPI links

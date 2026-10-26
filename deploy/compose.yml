@@ -62,6 +62,8 @@ services:
       ARENA_SECURE_COOKIES: "true"
       ARENA_TRUST_PROXY: "true"
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
+      # Admins (only) may key agents with their own Claude / ChatGPT subscription.
+      ARENA_SUBSCRIPTIONS: "true"
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
       ARENA_PREVIEW_URL: https://p-{id}.${ARENA_DOMAIN:?}
@@ -127,6 +129,7 @@ services:
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       ARENA_PREVIEW_DOMAIN: ${ARENA_DOMAIN:?}
       ARENA_PREVIEW_PREFIX: p-
+      ARENA_SUBSCRIPTIONS: "true"
       # Live previews at once, 512 MB each, next to ARENA_RUN_CONCURRENCY agents of up to 6 GB on a 16 GB host.
       ARENA_PREVIEW_MAX: ${ARENA_PREVIEW_MAX:-6}
       ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}

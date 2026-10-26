@@ -208,7 +208,7 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
             <Input id="api_key" name="api_key" type="password" required {...noAutofill} placeholder="sk-…" />
           )}
           <p className="text-xs text-muted-foreground">
-            {providerValue === 'claude-sub' ? 'Ваша подписка Claude, только на этом локальном стенде: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.' : providerValue === 'chatgpt-sub' ? 'Ваша подписка ChatGPT, только на этом локальном стенде: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).' : 'Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.'}{' '}
+            {providerValue === 'claude-sub' ? 'Ваша подписка Claude: выполните `claude setup-token` и вставьте токен. Прогоны тратят лимиты подписки.' : providerValue === 'chatgpt-sub' ? 'Ваша подписка ChatGPT, только на этом локальном стенде: вставьте ~/.codex/auth.json от Codex, вошедшего через ChatGPT. Хранится только access-токен (живёт около недели; когда истечёт, вставьте свежий файл).' : 'Тратится только этим агентом, через шлюз. Лучше отдельный ключ с лимитом трат.'}{' '}
             <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">Как хранятся ключи</Link>
           </p>
         </div>
