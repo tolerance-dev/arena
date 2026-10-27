@@ -225,10 +225,10 @@ func (s *Service) query(ctx context.Context, where string, args ...any) ([]Run, 
 	return out, err
 }
 
-// Recent lists the latest runs, optionally of one task or one agent.
-func (s *Service) Recent(ctx context.Context, task, agentID string, limit int) ([]Run, error) {
-	return s.query(ctx, `WHERE ($1 = '' OR r.task = $1) AND ($2 = '' OR r.agent_id = $2) ORDER BY r.created_at DESC LIMIT $3`,
-		task, agentID, limit)
+// Recent lists the latest runs, optionally of one task, one agent or in one status.
+func (s *Service) Recent(ctx context.Context, task, agentID, status string, limit int) ([]Run, error) {
+	return s.query(ctx, `WHERE ($1 = '' OR r.task = $1) AND ($2 = '' OR r.agent_id = $2) AND ($3 = '' OR r.status = $3)
+		ORDER BY r.created_at DESC LIMIT $4`, task, agentID, status, limit)
 }
 
 // Active lists every queued and running run, oldest first.

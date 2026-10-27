@@ -15,8 +15,9 @@ function retryAfterSeconds(res: Response): number | undefined {
 
 const BASE = '/api/v1'
 
-// The home page's latest runs: rendered on the server, then polled by the browser.
-export const RECENT_RUNS = '/runs?limit=10'
+// The home page's latest runs, finished ones only (no cancelled, failed or running): rendered on the server, then
+// polled by the browser.
+export const RECENT_RUNS = '/runs?status=done&limit=10'
 
 async function throwProblem(res: Response): Promise<never> {
   let body: { code?: string; message?: string; fields?: { path: string; code: string }[] } | null = null
