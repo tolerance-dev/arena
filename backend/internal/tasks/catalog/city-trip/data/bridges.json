@@ -1,0 +1,105 @@
+[
+  {
+    "id": "palace",
+    "name": "Palace Bridge",
+    "lat": 59.9411,
+    "lon": 30.3087,
+    "connects": "Center ↔ Vasilievsky Island",
+    "open_at_night": [
+      {
+        "from": "01:10",
+        "to": "02:50"
+      },
+      {
+        "from": "03:10",
+        "to": "04:55"
+      }
+    ]
+  },
+  {
+    "id": "blagoveshchensky",
+    "name": "Blagoveshchensky Bridge",
+    "lat": 59.9348,
+    "lon": 30.2894,
+    "connects": "Center ↔ Vasilievsky Island",
+    "open_at_night": [
+      {
+        "from": "01:25",
+        "to": "02:45"
+      },
+      {
+        "from": "03:10",
+        "to": "05:00"
+      }
+    ]
+  },
+  {
+    "id": "birzhevoy",
+    "name": "Birzhevoy Bridge",
+    "lat": 59.9475,
+    "lon": 30.304,
+    "connects": "Vasilievsky Island ↔ Petrogradsky",
+    "open_at_night": [
+      {
+        "from": "02:00",
+        "to": "04:55"
+      }
+    ]
+  },
+  {
+    "id": "tuchkov",
+    "name": "Tuchkov Bridge",
+    "lat": 59.95,
+    "lon": 30.287,
+    "connects": "Vasilievsky Island ↔ Petrogradsky",
+    "open_at_night": [
+      {
+        "from": "02:00",
+        "to": "02:55"
+      },
+      {
+        "from": "03:35",
+        "to": "04:55"
+      }
+    ]
+  },
+  {
+    "id": "trinity",
+    "name": "Trinity Bridge",
+    "lat": 59.9488,
+    "lon": 30.327,
+    "connects": "Center ↔ Petrogradsky",
+    "open_at_night": [
+      {
+        "from": "01:20",
+        "to": "04:50"
+      }
+    ]
+  },
+  {
+    "id": "liteyny",
+    "name": "Liteyny Bridge",
+    "lat": 59.952,
+    "lon": 30.3493,
+    "connects": "Center ↔ Vyborgsky",
+    "open_at_night": [
+      {
+        "from": "01:40",
+        "to": "04:45"
+      }
+    ]
+  },
+  {
+    "id": "bolsheokhtinsky",
+    "name": "Bolsheokhtinsky Bridge",
+    "lat": 59.9416,
+    "lon": 30.4013,
+    "connects": "Center ↔ Okhta",
+    "open_at_night": [
+      {
+        "from": "02:00",
+        "to": "05:00"
+      }
+    ]
+  }
+]

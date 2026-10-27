@@ -1,5 +1,6 @@
 {
   "order": 3,
+  "kind": "build",
   "title": {
     "en": "Online cinema",
     "ru": "Онлайн-кинотеатр"

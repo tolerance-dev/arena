@@ -1,0 +1,38 @@
+[
+  {
+    "date": "2026-11-13",
+    "summary": "Overcast, dry",
+    "temp_min_c": 1,
+    "temp_max_c": 4,
+    "wind_ms": 6,
+    "sunrise": "08:47",
+    "sunset": "16:22",
+    "rain": []
+  },
+  {
+    "date": "2026-11-14",
+    "summary": "Rain most of the day, clearing in the evening",
+    "temp_min_c": 3,
+    "temp_max_c": 6,
+    "wind_ms": 11,
+    "sunrise": "08:50",
+    "sunset": "16:20",
+    "rain": [
+      {
+        "from": "09:00",
+        "to": "17:30",
+        "intensity": "heavy"
+      }
+    ]
+  },
+  {
+    "date": "2026-11-15",
+    "summary": "Clear and frosty, sun all day",
+    "temp_min_c": -3,
+    "temp_max_c": 1,
+    "wind_ms": 3,
+    "sunrise": "08:53",
+    "sunset": "16:17",
+    "rain": []
+  }
+]

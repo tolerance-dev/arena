@@ -1,0 +1,39 @@
+{
+  "order": 5,
+  "kind": "startup",
+  "title": {
+    "en": "Plan a city trip",
+    "ru": "Спланировать поездку"
+  },
+  "tagline": {
+    "en": "Petya has 3 days and 10,000 ₽ in Saint Petersburg. Build the trip planner you'd actually trust, as close to a real product as you can.",
+    "ru": "У Пети 3 дня и 10 000 ₽ на Петербург. Сделать планировщик поездки, которому веришь, — максимально близко к настоящему продукту."
+  },
+  "time_limit_s": 1800,
+  "token_budget": 2000000,
+  "ui": true,
+  "ui_text": [],
+  "checks": [],
+  "scenarios": [
+    {
+      "en": "Look at Petya's plan for Saturday: does it fit — everything open, enough time to get around, and what does it cost?",
+      "ru": "Посмотрите план Пети на субботу: всё сходится — всё открыто, хватает времени на дорогу, сколько это стоит?"
+    },
+    {
+      "en": "It's raining on Saturday. Did the plan account for it? Swap an outdoor stop for something indoors: do times and the budget update?",
+      "ru": "В субботу дождь. План это учёл? Замените что-нибудь на улице на крытое: время и бюджет пересчитались?"
+    },
+    {
+      "en": "Petya wants to add the ballet at the Mariinsky. What does the app say about the budget, and what does it suggest dropping?",
+      "ru": "Петя хочет добавить балет в Мариинском. Что приложение говорит про бюджет и что предлагает убрать?"
+    },
+    {
+      "en": "Where does Petya sleep, and how does he get back after seeing the bridges go up at night?",
+      "ru": "Где Петя ночует и как он вернётся после того, как посмотрит развод мостов?"
+    },
+    {
+      "en": "Open it on a phone, as if you were walking around the city with it: is it handy?",
+      "ru": "Откройте на телефоне, как будто гуляете с ним по городу: удобно?"
+    }
+  ]
+}

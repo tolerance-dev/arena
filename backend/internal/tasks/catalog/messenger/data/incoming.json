@@ -1,0 +1,77 @@
+[
+  {
+    "after_s": 20,
+    "type": "typing",
+    "chat_id": "c1",
+    "from": "u1",
+    "for_s": 6
+  },
+  {
+    "after_s": 26,
+    "type": "message",
+    "chat_id": "c1",
+    "from": "u1",
+    "text": "On my bike now 🚲 see you at 19:30 at the tasca?"
+  },
+  {
+    "after_s": 45,
+    "type": "message",
+    "chat_id": "c2",
+    "from": "u7",
+    "text": "@alexm can you drop the final export of the empty states here before 19:00?"
+  },
+  {
+    "after_s": 70,
+    "type": "message",
+    "chat_id": "c7",
+    "from": "u20",
+    "text": "Reminder: water OFF tomorrow 9:00–13:00 ⚠️"
+  },
+  {
+    "after_s": 95,
+    "type": "message",
+    "chat_id": "c16",
+    "from": "u2",
+    "attachment": {
+      "type": "voice",
+      "duration_s": 42,
+      "transcript": "Alex it's mom again, did you get my message about the album? Grandma's lunch is on Sunday at one, don't be late"
+    },
+    "text": ""
+  },
+  {
+    "after_s": 130,
+    "type": "typing",
+    "chat_id": "c3",
+    "from": "u14",
+    "for_s": 8
+  },
+  {
+    "after_s": 140,
+    "type": "message",
+    "chat_id": "c3",
+    "from": "u14",
+    "text": "Flights just went up to 109€ 😬 I'm booking everyone tonight, last call @alexm @jonasb"
+  },
+  {
+    "after_s": 180,
+    "type": "message",
+    "chat_id": "c21",
+    "from": "c21",
+    "text": "Card •• 4417: 23.80 € at Pingo Doce"
+  },
+  {
+    "after_s": 240,
+    "type": "message",
+    "chat_id": "c4",
+    "from": "u6",
+    "text": "Thanks for today! Could we move Monday's 1:1 to 11:30?"
+  },
+  {
+    "after_s": 300,
+    "type": "message",
+    "chat_id": "c23",
+    "from": "c23",
+    "text": "FINAL NOTICE: your parcel will be returned today. Pay now: ctt-delivery-pt.example/pay"
+  }
+]

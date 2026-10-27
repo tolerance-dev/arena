@@ -31,8 +31,10 @@ type Pair struct {
 	ID        string     `json:"id"` // what the vote names (POST /api/v1/my/votes)
 	Task      string     `json:"task"`
 	TaskTitle tasks.Text `json:"task_title"`
-	A         Contender  `json:"a"`
-	B         Contender  `json:"b"`
+	// Scenarios: what to try in both apps before picking (the voted kinds: invent, startup).
+	Scenarios []tasks.Text `json:"scenarios,omitempty"`
+	A         Contender    `json:"a"`
+	B         Contender    `json:"b"`
 	// Left counts the pairs at this task the voter hasn't voted on yet, this one included.
 	Left int `json:"left"`
 }
@@ -170,6 +172,9 @@ func (s *Service) nextPairAt(ctx context.Context, userID, task string) (*Pair, e
 		o.a, o.b = o.b, o.a
 	}
 	pair := &Pair{ID: idgen.New("vp"), Task: task, TaskTitle: o.a.TaskTitle, Left: len(open)}
+	if t := tasks.BySlug(task); t != nil {
+		pair.Scenarios = t.Scenarios
+	}
 	side := func(r Run) Contender {
 		c := Contender{Alias: alias(), HasShot: r.HasShot, HasShotMobile: r.HasShotMobile}
 		if r.PreviewURL != "" {

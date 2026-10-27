@@ -1,0 +1,310 @@
+[
+  {
+    "id": "u1",
+    "name": "Mia Chen",
+    "username": "miachen",
+    "phone": "+351 913 927 232",
+    "bio": "🌿 ceramics & long walks",
+    "online": false,
+    "last_seen": "2026-11-20T17:57:00Z"
+  },
+  {
+    "id": "u2",
+    "name": "Mom",
+    "username": "helen.morgan",
+    "phone": "+351 948 292 518",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u3",
+    "name": "Dad",
+    "username": "rob.morgan",
+    "phone": "+351 924 126 128",
+    "bio": "Retired. Fishing whenever possible.",
+    "online": true,
+    "last_seen": "2026-11-20T18:00:00Z"
+  },
+  {
+    "id": "u4",
+    "name": "Kate Morgan",
+    "username": "katem",
+    "phone": "+351 936 530 667",
+    "bio": "Architect · Porto",
+    "online": false,
+    "last_seen": "2026-11-20T08:00:00Z",
+    "birthday": "11-27"
+  },
+  {
+    "id": "u5",
+    "name": "Grandma Rose",
+    "username": "rose1941",
+    "phone": "+351 915 846 543",
+    "bio": "",
+    "online": true,
+    "last_seen": "2026-11-20T18:00:00Z",
+    "birthday": "11-22"
+  },
+  {
+    "id": "u6",
+    "name": "Sam Rivera",
+    "username": "samr",
+    "phone": "+351 959 606 861",
+    "bio": "Head of Product @ Lumen",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u7",
+    "name": "Priya Nair",
+    "username": "priya.n",
+    "phone": "+351 926 493 932",
+    "bio": "Design systems @ Lumen",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u8",
+    "name": "Jonas Berg",
+    "username": "jonasb",
+    "phone": "+351 922 596 898",
+    "bio": "bass, beer, bad decisions",
+    "online": false,
+    "last_seen": "2026-11-20T17:57:00Z"
+  },
+  {
+    "id": "u9",
+    "name": "Lena Novak",
+    "username": "lenanovak",
+    "phone": "+49 151 2345 6789",
+    "bio": "Berlin ✈️ Lisbon",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u10",
+    "name": "Rui Duarte (landlord)",
+    "username": "rui.duarte",
+    "phone": "+351 966 426 189",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u11",
+    "name": "Theo Park",
+    "username": "theopark",
+    "phone": "+351 963 923 220",
+    "bio": "Talent partner · hiring designers",
+    "online": true,
+    "last_seen": "2026-11-20T18:00:00Z"
+  },
+  {
+    "id": "u12",
+    "name": "Clínica São Bento",
+    "username": "clinica.sb",
+    "phone": "+351 968 372 413",
+    "bio": "Appointments Mon–Fri 8:00–19:00",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u13",
+    "name": "Marco Rossi",
+    "username": "marcor",
+    "phone": "+351 951 654 741",
+    "bio": "⚽️",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u14",
+    "name": "Hugo Garcia",
+    "username": "hugog",
+    "phone": "+351 927 185 411",
+    "bio": "Always booking the next trip",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u15",
+    "name": "Iris Kowalski",
+    "username": "irisk",
+    "phone": "+351 943 869 499",
+    "bio": "Books > people (sometimes)",
+    "online": false,
+    "last_seen": "2026-11-20T17:57:00Z"
+  },
+  {
+    "id": "u16",
+    "name": "Felix Muller",
+    "username": "felixm",
+    "phone": "+351 947 474 827",
+    "bio": "Frontend @ Lumen",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u17",
+    "name": "Greta Berg",
+    "username": "gretab",
+    "phone": "+351 969 198 493",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u18",
+    "name": "Leo Petrov",
+    "username": "leop",
+    "phone": "+351 948 822 836",
+    "bio": "Climbing 7a, coding 5c",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u19",
+    "name": "Ana Costa",
+    "username": "anacosta",
+    "phone": "+351 950 868 434",
+    "bio": "Flat 3B",
+    "online": false,
+    "last_seen": "2026-11-20T14:00:00Z"
+  },
+  {
+    "id": "u20",
+    "name": "Tiago Santos",
+    "username": "tiagos",
+    "phone": "+351 937 742 394",
+    "bio": "Building admin, flat 1A",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u21",
+    "name": "Joana Pereira",
+    "username": "joanap",
+    "phone": "+351 968 246 138",
+    "bio": "Flat 4C · two cats",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u22",
+    "name": "Nuno Alves",
+    "username": "nunoalves",
+    "phone": "+351 934 996 627",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-20T17:48:00Z"
+  },
+  {
+    "id": "u23",
+    "name": "Beatriz Lima",
+    "username": "bialima",
+    "phone": "+351 929 915 301",
+    "bio": "Research @ Lumen",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u24",
+    "name": "David Smith",
+    "username": "dsmith",
+    "phone": "+351 963 160 638",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u25",
+    "name": "Elena Ivanova",
+    "username": "elenai",
+    "phone": "+351 949 163 326",
+    "bio": "Reading Murakami again",
+    "online": false,
+    "last_seen": "2026-11-19T17:00:00Z"
+  },
+  {
+    "id": "u26",
+    "name": "Omar Haddad",
+    "username": "omarh",
+    "phone": "+351 940 234 921",
+    "bio": "Goalkeeper, reluctantly",
+    "online": true,
+    "last_seen": "2026-11-20T18:00:00Z"
+  },
+  {
+    "id": "u27",
+    "name": "Sofia Ricci",
+    "username": "sofiar",
+    "phone": "+351 955 230 348",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-19T17:00:00Z"
+  },
+  {
+    "id": "u28",
+    "name": "Ben Carter",
+    "username": "bencarter",
+    "phone": "+351 947 293 372",
+    "bio": "Old school, new beard",
+    "online": false,
+    "last_seen": "2026-11-20T17:15:00Z"
+  },
+  {
+    "id": "u29",
+    "name": "Yuki Tanaka",
+    "username": "yukit",
+    "phone": "+351 953 330 579",
+    "bio": "QA @ Lumen",
+    "online": false,
+    "last_seen": "2026-11-17T23:20:00Z"
+  },
+  {
+    "id": "u30",
+    "name": "Noah Fischer",
+    "username": "noahf",
+    "phone": "+351 965 709 650",
+    "bio": "Climbing & coffee",
+    "online": true,
+    "last_seen": "2026-11-20T18:00:00Z"
+  },
+  {
+    "id": "u31",
+    "name": "Clara Silva",
+    "username": "clarasilva",
+    "phone": "+351 963 645 450",
+    "bio": "Flat 2A",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u32",
+    "name": "Ines Rocha",
+    "username": "inesrocha",
+    "phone": "+351 935 825 513",
+    "bio": "",
+    "online": false,
+    "last_seen": "2026-11-20T14:00:00Z"
+  },
+  {
+    "id": "u33",
+    "name": "Pedro Matos",
+    "username": "pedrom",
+    "phone": "+351 951 219 510",
+    "bio": "Flat 5B",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  },
+  {
+    "id": "u34",
+    "name": "Laura Kim",
+    "username": "laurakim",
+    "phone": "+351 928 603 991",
+    "bio": "School reunion organiser-in-chief",
+    "online": false,
+    "last_seen": "2026-11-20T16:30:00Z"
+  }
+]

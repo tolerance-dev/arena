@@ -1,0 +1,4316 @@
+[
+  {
+    "id": "m1",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T09:40:32Z",
+    "text": "Morning ☀️ did you sleep at all after that deadline?"
+  },
+  {
+    "id": "m2",
+    "chat_id": "c1",
+    "from": "u0",
+    "sent_at": "2026-11-20T09:46:08Z",
+    "text": "Barely. 4 hours. Coffee is my personality today"
+  },
+  {
+    "id": "m3",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T09:54:22Z",
+    "text": "Poor thing. Dinner tonight to make up for it?"
+  },
+  {
+    "id": "m4",
+    "chat_id": "c1",
+    "from": "u0",
+    "sent_at": "2026-11-20T09:57:54Z",
+    "text": "Yes please. Somewhere new?"
+  },
+  {
+    "id": "m5",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T10:03:08Z",
+    "text": "There's this tasca Joana keeps talking about"
+  },
+  {
+    "id": "m6",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T10:05:29Z",
+    "text": "",
+    "attachment": {
+      "type": "location",
+      "title": "Tasca do Zé",
+      "address": "Rua da Atalaia 57, Bairro Alto",
+      "lat": 38.7127,
+      "lon": -9.1449
+    }
+  },
+  {
+    "id": "m7",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T10:08:12Z",
+    "text": "Table for 2 at 19:30, I booked it ✌️",
+    "reactions": [
+      {
+        "emoji": "❤️",
+        "users": [
+          "u0"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m8",
+    "chat_id": "c1",
+    "from": "u0",
+    "sent_at": "2026-11-20T10:14:30Z",
+    "text": "You're the best. Do we need cash there?"
+  },
+  {
+    "id": "m9",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T10:17:07Z",
+    "text": "Cash only I think, bring like 40€",
+    "reply_to": "m8"
+  },
+  {
+    "id": "m10",
+    "chat_id": "c1",
+    "from": "u0",
+    "sent_at": "2026-11-20T10:29:37Z",
+    "text": "ok, will stop at the ATM"
+  },
+  {
+    "id": "m11",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T13:30:06Z",
+    "text": "",
+    "attachment": {
+      "type": "photo",
+      "name": "IMG_2231.jpg",
+      "width": 1200,
+      "height": 1600,
+      "caption": "the new mug came out of the kiln!! 🫖"
+    },
+    "reactions": [
+      {
+        "emoji": "😍",
+        "users": [
+          "u0"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m12",
+    "chat_id": "c1",
+    "from": "u0",
+    "sent_at": "2026-11-20T13:47:20Z",
+    "text": "That glaze is incredible"
+  },
+  {
+    "id": "m13",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T13:50:27Z",
+    "text": "Can you pick up oat milk on the way home? We're out"
+  },
+  {
+    "id": "m14",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T17:50:27Z",
+    "text": "Also my mom asks if we're coming on Sunday"
+  },
+  {
+    "id": "m15",
+    "chat_id": "c1",
+    "from": "u1",
+    "sent_at": "2026-11-20T17:54:00Z",
+    "text": "Leaving the studio in 20 min"
+  },
+  {
+    "id": "m16",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-10-30T11:30:39Z",
+    "text": "Love this"
+  },
+  {
+    "id": "m17",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-10-30T14:09:58Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m18",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-10-30T20:37:00Z",
+    "text": "The analytics dashboard is up"
+  },
+  {
+    "id": "m19",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-10-30T21:32:00Z",
+    "text": "Meeting moved to 15:00"
+  },
+  {
+    "id": "m20",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-10-31T00:04:18Z",
+    "text": "On it"
+  },
+  {
+    "id": "m21",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-10-31T03:09:41Z",
+    "text": "Updated the board"
+  },
+  {
+    "id": "m22",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-10-31T17:34:17Z",
+    "text": "Standup in 5"
+  },
+  {
+    "id": "m23",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-10-31T20:54:41Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m24",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-01T07:15:01Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m25",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-01T18:12:32Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m26",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-01T20:17:40Z",
+    "text": "Agreed"
+  },
+  {
+    "id": "m27",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-01T22:59:03Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m28",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-02T03:32:31Z",
+    "text": "Back from lunch"
+  },
+  {
+    "id": "m29",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-02T06:46:21Z",
+    "text": "Meeting moved to 15:00"
+  },
+  {
+    "id": "m30",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-02T11:56:46Z",
+    "text": "That's a bug, not a feature 😅"
+  },
+  {
+    "id": "m31",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-02T15:16:51Z",
+    "text": "Sprint retro tomorrow 11:00"
+  },
+  {
+    "id": "m32",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-02T17:45:16Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m33",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-02T20:54:25Z",
+    "text": "Standup in 5"
+  },
+  {
+    "id": "m34",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-03T10:17:27Z",
+    "text": "Love this"
+  },
+  {
+    "id": "m35",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-03T12:20:34Z",
+    "text": "Agreed"
+  },
+  {
+    "id": "m36",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-03T15:43:26Z",
+    "text": "Standup in 5"
+  },
+  {
+    "id": "m37",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-03T17:46:40Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m38",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-03T20:50:30Z",
+    "text": "Love this"
+  },
+  {
+    "id": "m39",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-04T10:22:28Z",
+    "text": "That's a bug, not a feature 😅"
+  },
+  {
+    "id": "m40",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-04T21:32:52Z",
+    "text": "On it"
+  },
+  {
+    "id": "m41",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-05T12:15:36Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m42",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-05T14:43:46Z",
+    "text": "Standup in 5"
+  },
+  {
+    "id": "m43",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-05T23:29:56Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m44",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-06T02:47:25Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m45",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-06T10:04:41Z",
+    "text": "Agreed"
+  },
+  {
+    "id": "m46",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-06T23:07:31Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m47",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-07T10:04:35Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m48",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-07T20:13:58Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m49",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-08T03:19:37Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m50",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-08T17:01:09Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m51",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-08T22:41:08Z",
+    "text": "On it"
+  },
+  {
+    "id": "m52",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-09T13:33:44Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m53",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-10T02:29:38Z",
+    "text": "Sprint retro tomorrow 11:00"
+  },
+  {
+    "id": "m54",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-10T15:04:59Z",
+    "text": "Pushed the new tokens to the repo"
+  },
+  {
+    "id": "m55",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-10T23:12:51Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m56",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-10T23:51:19Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m57",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-11T02:49:19Z",
+    "text": "Lunch? ramen?"
+  },
+  {
+    "id": "m58",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-11T09:03:24Z",
+    "text": "Back from lunch"
+  },
+  {
+    "id": "m59",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-11T22:13:31Z",
+    "text": "Back from lunch"
+  },
+  {
+    "id": "m60",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-11T22:59:20Z",
+    "text": "Love this"
+  },
+  {
+    "id": "m61",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-11T23:40:35Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m62",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-12T13:08:00Z",
+    "text": "Pushed the new tokens to the repo"
+  },
+  {
+    "id": "m63",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-13T01:35:22Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m64",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-13T08:06:07Z",
+    "text": "Customer call went well"
+  },
+  {
+    "id": "m65",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-13T20:59:35Z",
+    "text": "Customer call went well"
+  },
+  {
+    "id": "m66",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-14T09:20:19Z",
+    "text": "That's a bug, not a feature 😅"
+  },
+  {
+    "id": "m67",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-14T13:50:57Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m68",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-15T00:06:21Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m69",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-15T04:54:39Z",
+    "text": "I'll take that ticket"
+  },
+  {
+    "id": "m70",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-15T07:29:35Z",
+    "text": "Meeting moved to 15:00"
+  },
+  {
+    "id": "m71",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-15T14:09:07Z",
+    "text": "I'll take that ticket"
+  },
+  {
+    "id": "m72",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-15T18:07:20Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m73",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-16T03:19:12Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m74",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-16T06:22:01Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m75",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-16T18:56:56Z",
+    "text": "Sprint retro tomorrow 11:00"
+  },
+  {
+    "id": "m76",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-17T02:06:57Z",
+    "text": "Sprint retro tomorrow 11:00"
+  },
+  {
+    "id": "m77",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-17T03:01:13Z",
+    "text": "Standup in 5"
+  },
+  {
+    "id": "m78",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-17T12:19:19Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m79",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-18T00:17:18Z",
+    "text": "Screenshots in the thread"
+  },
+  {
+    "id": "m80",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-18T14:26:52Z",
+    "text": "Can someone review my PR?"
+  },
+  {
+    "id": "m81",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-18T22:07:36Z",
+    "text": "Who's on call this week?"
+  },
+  {
+    "id": "m82",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-19T06:07:19Z",
+    "text": "Meeting moved to 15:00"
+  },
+  {
+    "id": "m83",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-19T16:06:33Z",
+    "text": "Back from lunch"
+  },
+  {
+    "id": "m84",
+    "chat_id": "c2",
+    "from": "u0",
+    "sent_at": "2026-11-20T02:49:00Z",
+    "text": "Figma is so slow today"
+  },
+  {
+    "id": "m85",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-20T04:58:20Z",
+    "text": "Agreed"
+  },
+  {
+    "id": "m86",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-20T14:39:17Z",
+    "text": "Reminder: roadmap review with the leadership is Monday 10:00. Decks in this chat by Friday EOD please"
+  },
+  {
+    "id": "m87",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-20T15:09:51Z",
+    "text": "Onboarding flow v3 is in Figma, comments welcome",
+    "attachment": {
+      "type": "link",
+      "url": "https://figma.example/file/onb-v3",
+      "title": "Onboarding v3 — Figma"
+    }
+  },
+  {
+    "id": "m88",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-20T15:29:55Z",
+    "text": "The new date picker breaks on Safari 17, fixing"
+  },
+  {
+    "id": "m89",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-20T15:35:54Z",
+    "text": "Found 3 more bugs in checkout, tickets in the board"
+  },
+  {
+    "id": "m90",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-20T16:36:06Z",
+    "text": "Interview notes from the 6 usability sessions",
+    "attachment": {
+      "type": "file",
+      "name": "usability-round-2-notes.pdf",
+      "size_kb": 842
+    }
+  },
+  {
+    "id": "m91",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-20T16:44:41Z",
+    "text": "TL;DR: nobody finds the 'save for later' button 🙃",
+    "reply_to": "m90",
+    "reactions": [
+      {
+        "emoji": "😂",
+        "users": [
+          "u7",
+          "u16"
+        ]
+      },
+      {
+        "emoji": "😭",
+        "users": [
+          "u0"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m92",
+    "chat_id": "c2",
+    "from": "u6",
+    "sent_at": "2026-11-20T17:01:11Z",
+    "text": "@alexm can you review the Q4 deck by Friday? Mainly the pricing slides",
+    "attachment": {
+      "type": "file",
+      "name": "Q4-roadmap-draft.pdf",
+      "size_kb": 5230
+    }
+  },
+  {
+    "id": "m93",
+    "chat_id": "c2",
+    "from": "u7",
+    "sent_at": "2026-11-20T17:16:28Z",
+    "text": "@alexm also need your eyes on the empty states before Monday 🙏"
+  },
+  {
+    "id": "m94",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-20T17:19:06Z",
+    "text": "deploying the fix now"
+  },
+  {
+    "id": "m95",
+    "chat_id": "c2",
+    "from": "u16",
+    "sent_at": "2026-11-20T17:23:54Z",
+    "text": "done, Safari is happy",
+    "reactions": [
+      {
+        "emoji": "🎉",
+        "users": [
+          "u6",
+          "u7",
+          "u29"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m96",
+    "chat_id": "c2",
+    "from": "u29",
+    "sent_at": "2026-11-20T17:38:23Z",
+    "text": "Who took my charger from the meeting room 👀"
+  },
+  {
+    "id": "m97",
+    "chat_id": "c2",
+    "from": "u23",
+    "sent_at": "2026-11-20T17:46:00Z",
+    "text": "Friday drinks at 18:30 at the usual place?",
+    "attachment": {
+      "type": "poll",
+      "question": "Friday drinks?",
+      "options": [
+        {
+          "text": "I'm in 🍻",
+          "votes": [
+            "u16",
+            "u23",
+            "u29"
+          ]
+        },
+        {
+          "text": "Next week",
+          "votes": [
+            "u6"
+          ]
+        },
+        {
+          "text": "Can't",
+          "votes": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "m98",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-09T20:05:26Z",
+    "text": "I'll make a shared spreadsheet"
+  },
+  {
+    "id": "m99",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-10T04:32:54Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m100",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-10T08:03:28Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m101",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-10T12:03:24Z",
+    "text": "Insurance anyone?"
+  },
+  {
+    "id": "m102",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-10T23:31:39Z",
+    "text": "Look at this view"
+  },
+  {
+    "id": "m103",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-11T05:21:32Z",
+    "text": "Insurance anyone?"
+  },
+  {
+    "id": "m104",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-11T15:48:35Z",
+    "text": "Look at this view"
+  },
+  {
+    "id": "m105",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-11T17:32:19Z",
+    "text": "I'll make a shared spreadsheet"
+  },
+  {
+    "id": "m106",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-12T02:31:43Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m107",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-12T14:58:15Z",
+    "text": "Insurance anyone?"
+  },
+  {
+    "id": "m108",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-13T05:30:07Z",
+    "text": "So excited!!"
+  },
+  {
+    "id": "m109",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-13T08:58:03Z",
+    "text": "So excited!!"
+  },
+  {
+    "id": "m110",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-13T10:40:41Z",
+    "text": "Agreed 💯"
+  },
+  {
+    "id": "m111",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-13T22:20:16Z",
+    "text": "So excited!!"
+  },
+  {
+    "id": "m112",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-14T04:30:54Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m113",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-14T05:15:18Z",
+    "text": "Agreed 💯"
+  },
+  {
+    "id": "m114",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-14T12:48:46Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m115",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-15T01:25:16Z",
+    "text": "Who has a waterproof jacket to lend?"
+  },
+  {
+    "id": "m116",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-15T06:54:07Z",
+    "text": "Look at this view"
+  },
+  {
+    "id": "m117",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-15T11:26:00Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m118",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-15T14:53:51Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m119",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-15T21:43:23Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m120",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-16T06:28:02Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m121",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-16T16:16:08Z",
+    "text": "Look at this view"
+  },
+  {
+    "id": "m122",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-16T22:35:25Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m123",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-16T23:53:21Z",
+    "text": "Weather looks rainy but who cares"
+  },
+  {
+    "id": "m124",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-17T05:16:02Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m125",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-17T06:47:20Z",
+    "text": "Agreed 💯"
+  },
+  {
+    "id": "m126",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-17T18:40:40Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m127",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-17T20:33:42Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m128",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-18T03:21:11Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m129",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-18T04:37:07Z",
+    "text": "Do we cook or eat out?"
+  },
+  {
+    "id": "m130",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-18T13:54:12Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m131",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-18T17:09:31Z",
+    "text": "So excited!!"
+  },
+  {
+    "id": "m132",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-19T04:08:50Z",
+    "text": "Haha yes"
+  },
+  {
+    "id": "m133",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-19T15:26:52Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m134",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-19T17:38:47Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m135",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-19T21:25:42Z",
+    "text": "Insurance anyone?"
+  },
+  {
+    "id": "m136",
+    "chat_id": "c3",
+    "from": "u0",
+    "sent_at": "2026-11-20T01:02:55Z",
+    "text": "Hot springs at Furnas are a must"
+  },
+  {
+    "id": "m137",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-20T10:51:15Z",
+    "text": "I'm bringing the speaker"
+  },
+  {
+    "id": "m138",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T14:25:46Z",
+    "text": "OK people. Azores, 12–16 Dec. Who's in for real?"
+  },
+  {
+    "id": "m139",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T14:28:55Z",
+    "text": "",
+    "attachment": {
+      "type": "poll",
+      "question": "Which dates work?",
+      "options": [
+        {
+          "text": "12–16 Dec",
+          "votes": [
+            "u14",
+            "u15",
+            "u1"
+          ]
+        },
+        {
+          "text": "19–23 Dec",
+          "votes": [
+            "u8"
+          ]
+        },
+        {
+          "text": "January",
+          "votes": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "m140",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-20T14:52:39Z",
+    "text": "December is chaos at work but I'll make it work"
+  },
+  {
+    "id": "m141",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-20T14:55:49Z",
+    "text": "Found a house in Ponta Delgada, 4 rooms, 640€ total for 4 nights",
+    "attachment": {
+      "type": "link",
+      "url": "https://stays.example/azores/ponta-delgada-4br",
+      "title": "Casa Azul — 4 bedrooms · Ponta Delgada"
+    }
+  },
+  {
+    "id": "m142",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-20T15:04:43Z",
+    "text": "That's 128 each if we're 5, love it",
+    "reply_to": "m141"
+  },
+  {
+    "id": "m143",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T15:09:18Z",
+    "text": "Flights are 89€ return right now from LIS"
+  },
+  {
+    "id": "m144",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T15:31:37Z",
+    "text": "I can book the house today if everyone sends me 128€",
+    "reactions": [
+      {
+        "emoji": "👍",
+        "users": [
+          "u15",
+          "u1"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m145",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-20T15:38:37Z",
+    "text": "Sent ✅"
+  },
+  {
+    "id": "m146",
+    "chat_id": "c3",
+    "from": "u1",
+    "sent_at": "2026-11-20T15:52:57Z",
+    "text": "Sent too"
+  },
+  {
+    "id": "m147",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T16:10:16Z",
+    "text": "@alexm @jonasb waiting for you two 👀"
+  },
+  {
+    "id": "m148",
+    "chat_id": "c3",
+    "from": "u8",
+    "sent_at": "2026-11-20T17:01:13Z",
+    "text": "Sending tonight, promise"
+  },
+  {
+    "id": "m149",
+    "chat_id": "c3",
+    "from": "u15",
+    "sent_at": "2026-11-20T17:12:38Z",
+    "text": "Do we rent a car? Hiking Sete Cidades without one is a pain"
+  },
+  {
+    "id": "m150",
+    "chat_id": "c3",
+    "from": "u14",
+    "sent_at": "2026-11-20T17:25:00Z",
+    "text": "Car is ~35€/day split 5 ways, easy yes"
+  },
+  {
+    "id": "m151",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T12:02:59Z",
+    "text": "Hey, got a minute today?"
+  },
+  {
+    "id": "m152",
+    "chat_id": "c4",
+    "from": "u0",
+    "sent_at": "2026-11-20T12:06:41Z",
+    "text": "Sure, what's up?"
+  },
+  {
+    "id": "m153",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T12:14:44Z",
+    "text": "Leadership wants the pricing page redesign in Q1 instead of Q2"
+  },
+  {
+    "id": "m154",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T12:29:50Z",
+    "text": "Can you scope it roughly? Just t-shirt sizes"
+  },
+  {
+    "id": "m155",
+    "chat_id": "c4",
+    "from": "u0",
+    "sent_at": "2026-11-20T12:53:58Z",
+    "text": "I'd say M for the page, L if we touch checkout"
+  },
+  {
+    "id": "m156",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T16:14:57Z",
+    "text": "Perfect, that's what I needed",
+    "reactions": [
+      {
+        "emoji": "🙏",
+        "users": [
+          "u0"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m157",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T16:28:25Z",
+    "text": "And can you send me the deck by Friday? I want to read it before Monday"
+  },
+  {
+    "id": "m158",
+    "chat_id": "c4",
+    "from": "u6",
+    "sent_at": "2026-11-20T16:50:00Z",
+    "text": "No rush today, enjoy your evening"
+  },
+  {
+    "id": "m159",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-07T05:55:32Z",
+    "text": "Kate how was the trip?"
+  },
+  {
+    "id": "m160",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-07T11:57:21Z",
+    "text": "Did you see the news?"
+  },
+  {
+    "id": "m161",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-07T17:06:05Z",
+    "text": "Call me later"
+  },
+  {
+    "id": "m162",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-08T04:09:38Z",
+    "text": "Good morning everyone ☀️"
+  },
+  {
+    "id": "m163",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-08T16:23:38Z",
+    "text": "The garden is full of lemons, come get some"
+  },
+  {
+    "id": "m164",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-08T22:13:42Z",
+    "text": "Happy Sunday"
+  },
+  {
+    "id": "m165",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-09T06:49:42Z",
+    "text": "Dad fixed the gate finally"
+  },
+  {
+    "id": "m166",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-09T19:06:11Z",
+    "text": "Miss you"
+  },
+  {
+    "id": "m167",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-09T21:38:58Z",
+    "text": "Did you see the news?"
+  },
+  {
+    "id": "m168",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-10T09:31:03Z",
+    "text": "Who's coming for lunch?"
+  },
+  {
+    "id": "m169",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-10T12:04:37Z",
+    "text": "Kate how was the trip?"
+  },
+  {
+    "id": "m170",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-10T13:11:26Z",
+    "text": "The garden is full of lemons, come get some"
+  },
+  {
+    "id": "m171",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-10T21:10:21Z",
+    "text": "Remember to take your coat, it's cold"
+  },
+  {
+    "id": "m172",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-11T02:23:13Z",
+    "text": "Remember to take your coat, it's cold"
+  },
+  {
+    "id": "m173",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-11T11:03:19Z",
+    "text": "Good morning everyone ☀️"
+  },
+  {
+    "id": "m174",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-11T18:17:32Z",
+    "text": "Love you all"
+  },
+  {
+    "id": "m175",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-12T00:02:43Z",
+    "text": "Remember to take your coat, it's cold"
+  },
+  {
+    "id": "m176",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-12T09:10:17Z",
+    "text": "Miss you"
+  },
+  {
+    "id": "m177",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-12T21:16:58Z",
+    "text": "Good morning everyone ☀️"
+  },
+  {
+    "id": "m178",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-13T02:24:02Z",
+    "text": "Love you all"
+  },
+  {
+    "id": "m179",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-13T05:20:10Z",
+    "text": "The garden is full of lemons, come get some"
+  },
+  {
+    "id": "m180",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-13T08:34:41Z",
+    "text": "Remember to take your coat, it's cold"
+  },
+  {
+    "id": "m181",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-13T18:18:08Z",
+    "text": "Photos from the beach"
+  },
+  {
+    "id": "m182",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-13T18:39:40Z",
+    "text": "Call me later"
+  },
+  {
+    "id": "m183",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-13T20:49:00Z",
+    "text": "Photos from the beach"
+  },
+  {
+    "id": "m184",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-14T07:03:46Z",
+    "text": "Love you all"
+  },
+  {
+    "id": "m185",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-14T21:50:14Z",
+    "text": "Miss you"
+  },
+  {
+    "id": "m186",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-15T00:09:09Z",
+    "text": "Did you see the news?"
+  },
+  {
+    "id": "m187",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-15T05:12:26Z",
+    "text": "Photos from the beach"
+  },
+  {
+    "id": "m188",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-15T16:55:45Z",
+    "text": "Remember to take your coat, it's cold"
+  },
+  {
+    "id": "m189",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-16T02:11:24Z",
+    "text": "😂😂😂"
+  },
+  {
+    "id": "m190",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-16T12:08:03Z",
+    "text": "Love you all"
+  },
+  {
+    "id": "m191",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-16T23:24:07Z",
+    "text": "Good morning everyone ☀️"
+  },
+  {
+    "id": "m192",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-17T10:55:06Z",
+    "text": "Happy Sunday"
+  },
+  {
+    "id": "m193",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-17T12:30:51Z",
+    "text": "Kate how was the trip?"
+  },
+  {
+    "id": "m194",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-17T16:15:06Z",
+    "text": "Who's coming for lunch?"
+  },
+  {
+    "id": "m195",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-18T01:50:06Z",
+    "text": "Did you see the news?"
+  },
+  {
+    "id": "m196",
+    "chat_id": "c5",
+    "from": "u0",
+    "sent_at": "2026-11-18T12:20:08Z",
+    "text": "Who's coming for lunch?"
+  },
+  {
+    "id": "m197",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-18T18:05:27Z",
+    "text": "Happy Sunday"
+  },
+  {
+    "id": "m198",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-19T06:13:44Z",
+    "text": "Who's coming for lunch?"
+  },
+  {
+    "id": "m199",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-19T11:43:07Z",
+    "text": "Kate how was the trip?"
+  },
+  {
+    "id": "m200",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-19T13:20:17Z",
+    "text": "Kate how was the trip?"
+  },
+  {
+    "id": "m201",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-20T02:08:03Z",
+    "text": "Call me later"
+  },
+  {
+    "id": "m202",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-20T07:09:59Z",
+    "text": "The garden is full of lemons, come get some"
+  },
+  {
+    "id": "m203",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-20T13:58:22Z",
+    "text": "The garden is full of lemons, come get some"
+  },
+  {
+    "id": "m204",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-20T14:47:17Z",
+    "text": "Grandma turns 85 on Sunday!! Lunch at our place at 13:00, everyone please confirm",
+    "reactions": [
+      {
+        "emoji": "❤️",
+        "users": [
+          "u4",
+          "u3"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m205",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-20T15:01:17Z",
+    "text": "I'll be there, coming from Porto on Saturday"
+  },
+  {
+    "id": "m206",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-20T15:18:14Z",
+    "text": "I'm doing the grill",
+    "reply_to": "m204"
+  },
+  {
+    "id": "m207",
+    "chat_id": "c5",
+    "from": "u5",
+    "sent_at": "2026-11-20T15:29:50Z",
+    "text": "Don't make a fuss for me please"
+  },
+  {
+    "id": "m208",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-20T15:33:49Z",
+    "text": "Too late mum 😄",
+    "reply_to": "m207"
+  },
+  {
+    "id": "m209",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-20T15:46:05Z",
+    "text": "",
+    "attachment": {
+      "type": "photo",
+      "name": "grandma_1962.jpg",
+      "width": 1100,
+      "height": 1500,
+      "caption": "found this in the attic!"
+    },
+    "reactions": [
+      {
+        "emoji": "😍",
+        "users": [
+          "u4",
+          "u3"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m210",
+    "chat_id": "c5",
+    "from": "u4",
+    "sent_at": "2026-11-20T16:01:04Z",
+    "text": "She looks like a film star"
+  },
+  {
+    "id": "m211",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-20T16:08:17Z",
+    "text": "Alex are you bringing Mia?"
+  },
+  {
+    "id": "m212",
+    "chat_id": "c5",
+    "from": "u2",
+    "sent_at": "2026-11-20T16:16:35Z",
+    "text": "",
+    "attachment": {
+      "type": "voice",
+      "duration_s": 38,
+      "transcript": "Alex, darling, just call me when you can, it's about the gift for grandma, I had an idea about the photo album, okay, kisses"
+    }
+  },
+  {
+    "id": "m213",
+    "chat_id": "c5",
+    "from": "u3",
+    "sent_at": "2026-11-20T16:25:00Z",
+    "text": "Who's picking up the cake from Pastelaria Aloma? Order is under Morgan, paid already"
+  },
+  {
+    "id": "m214",
+    "chat_id": "c6",
+    "from": "u8",
+    "sent_at": "2026-11-19T11:39:49Z",
+    "text": "Concert tickets for Saturday!! I bought 2",
+    "attachment": {
+      "type": "file",
+      "name": "tickets-capitolio-sat.pdf",
+      "size_kb": 312
+    }
+  },
+  {
+    "id": "m215",
+    "chat_id": "c6",
+    "from": "u0",
+    "sent_at": "2026-11-19T12:01:06Z",
+    "text": "Legend. How much do I owe you?"
+  },
+  {
+    "id": "m216",
+    "chat_id": "c6",
+    "from": "u8",
+    "sent_at": "2026-11-19T12:07:51Z",
+    "text": "45€ for yours"
+  },
+  {
+    "id": "m217",
+    "chat_id": "c6",
+    "from": "u0",
+    "sent_at": "2026-11-19T12:13:19Z",
+    "text": "Sending now"
+  },
+  {
+    "id": "m218",
+    "chat_id": "c6",
+    "from": "u0",
+    "sent_at": "2026-11-19T12:18:28Z",
+    "text": "Done, check MB Way"
+  },
+  {
+    "id": "m219",
+    "chat_id": "c6",
+    "from": "u8",
+    "sent_at": "2026-11-19T12:36:48Z",
+    "text": "Got it 🙌",
+    "reactions": [
+      {
+        "emoji": "👍",
+        "users": [
+          "u0"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m220",
+    "chat_id": "c6",
+    "from": "u8",
+    "sent_at": "2026-11-20T08:37:22Z",
+    "text": "Btw I still have your drill since summer lol. Bring it Saturday?"
+  },
+  {
+    "id": "m221",
+    "chat_id": "c6",
+    "from": "u0",
+    "sent_at": "2026-11-20T08:49:16Z",
+    "text": "Ha, I forgot it existed. Yes bring it"
+  },
+  {
+    "id": "m222",
+    "chat_id": "c6",
+    "from": "u8",
+    "sent_at": "2026-11-20T15:30:00Z",
+    "text": "Doors at 21:00, meet at Cais do Sodré at 20:15?"
+  },
+  {
+    "id": "m223",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-10-20T13:51:12Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m224",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-10-21T02:01:03Z",
+    "text": "The elevator is making a noise again"
+  },
+  {
+    "id": "m225",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-10-21T05:54:40Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m226",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-10-21T16:48:13Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m227",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-10-21T18:19:36Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m228",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-22T01:53:34Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m229",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-22T05:52:23Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m230",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-22T16:35:55Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m231",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-10-23T02:27:06Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m232",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-23T06:13:49Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m233",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-23T15:53:41Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m234",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-24T00:16:51Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m235",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-10-24T10:19:22Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m236",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-10-24T12:48:17Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m237",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-10-24T15:04:35Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m238",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-24T19:22:21Z",
+    "text": "The elevator is making a noise again"
+  },
+  {
+    "id": "m239",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-10-25T05:39:50Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m240",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-10-25T07:25:08Z",
+    "text": "Package for flat 3A is with me"
+  },
+  {
+    "id": "m241",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-10-25T22:22:36Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m242",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-26T02:40:47Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m243",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-10-26T05:15:31Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m244",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-26T13:44:18Z",
+    "text": "+1"
+  },
+  {
+    "id": "m245",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-10-27T02:40:49Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m246",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-10-27T04:28:39Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m247",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-10-27T14:25:58Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m248",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-10-27T16:47:10Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m249",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-28T05:26:00Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m250",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-28T08:39:54Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m251",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-10-28T10:10:51Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m252",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-10-28T11:30:27Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m253",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-28T22:25:59Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m254",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-10-29T01:53:05Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m255",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-29T16:05:28Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m256",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-10-30T02:02:48Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m257",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-10-30T14:19:15Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m258",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-10-30T22:03:40Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m259",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-10-31T06:09:37Z",
+    "text": "+1"
+  },
+  {
+    "id": "m260",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-10-31T08:57:23Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m261",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-10-31T15:11:30Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m262",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-10-31T17:23:45Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m263",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-31T18:18:37Z",
+    "text": "+1"
+  },
+  {
+    "id": "m264",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-10-31T21:52:27Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m265",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-01T02:38:03Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m266",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-01T07:20:01Z",
+    "text": "+1"
+  },
+  {
+    "id": "m267",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-01T08:47:56Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m268",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-01T11:50:39Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m269",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-11-02T01:35:31Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m270",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-02T13:39:17Z",
+    "text": "+1"
+  },
+  {
+    "id": "m271",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-02T18:23:01Z",
+    "text": "+1"
+  },
+  {
+    "id": "m272",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-03T01:39:38Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m273",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-03T11:50:50Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m274",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-03T12:22:24Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m275",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-03T17:29:45Z",
+    "text": "Package for flat 3A is with me"
+  },
+  {
+    "id": "m276",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-04T05:14:47Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m277",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-11-04T19:22:38Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m278",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-04T23:35:18Z",
+    "text": "+1"
+  },
+  {
+    "id": "m279",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-11-05T13:51:49Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m280",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-05T23:00:31Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m281",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-06T07:21:43Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m282",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-06T11:48:20Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m283",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-11-06T13:14:39Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m284",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-06T21:43:37Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m285",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-07T06:21:42Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m286",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-07T10:57:49Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m287",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-07T12:31:58Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m288",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-07T17:18:40Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m289",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-07T20:54:19Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m290",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-07T21:34:44Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m291",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-08T06:04:46Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m292",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-08T20:03:18Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m293",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-09T02:16:30Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m294",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-09T05:33:26Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m295",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-11-09T08:10:31Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m296",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-09T20:47:11Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m297",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-10T05:31:59Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m298",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-10T12:23:48Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m299",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-10T14:14:10Z",
+    "text": "The light on the 2nd floor is out"
+  },
+  {
+    "id": "m300",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-10T21:41:43Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m301",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-11-11T03:15:34Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m302",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-11T11:19:27Z",
+    "text": "The elevator is making a noise again"
+  },
+  {
+    "id": "m303",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-12T02:16:15Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m304",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-12T09:10:16Z",
+    "text": "Package for flat 3A is with me"
+  },
+  {
+    "id": "m305",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-12T10:56:03Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m306",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-12T15:52:45Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m307",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-12T20:03:25Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m308",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-13T05:01:30Z",
+    "text": "+1"
+  },
+  {
+    "id": "m309",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-13T07:10:38Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m310",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-13T08:55:47Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m311",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-11-13T12:24:40Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m312",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-11-13T22:21:26Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m313",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-14T04:41:41Z",
+    "text": "Who left the door open downstairs?"
+  },
+  {
+    "id": "m314",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-14T09:24:36Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m315",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-15T00:00:02Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m316",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-15T05:19:05Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m317",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-15T07:06:32Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m318",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-15T11:44:14Z",
+    "text": "Can we please not leave boxes in the hall"
+  },
+  {
+    "id": "m319",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-16T00:54:27Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m320",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-16T04:47:38Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m321",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-16T10:36:51Z",
+    "text": "Does anyone have a ladder?"
+  },
+  {
+    "id": "m322",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-16T12:57:24Z",
+    "text": "Thanks!"
+  },
+  {
+    "id": "m323",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-16T21:04:11Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m324",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-17T07:50:19Z",
+    "text": "Is the garage gate broken?"
+  },
+  {
+    "id": "m325",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-17T21:18:49Z",
+    "text": "Package for flat 3A is with me"
+  },
+  {
+    "id": "m326",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-17T23:47:15Z",
+    "text": "Happy holidays neighbours!"
+  },
+  {
+    "id": "m327",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-18T12:46:34Z",
+    "text": "Noise from 4B after midnight 😴"
+  },
+  {
+    "id": "m328",
+    "chat_id": "c7",
+    "from": "u24",
+    "sent_at": "2026-11-18T16:18:41Z",
+    "text": "Recycling is on Tuesdays now"
+  },
+  {
+    "id": "m329",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-19T02:25:05Z",
+    "text": "Has anyone called the electrician?"
+  },
+  {
+    "id": "m330",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-19T06:35:00Z",
+    "text": "Selling a sofa, almost new, 80€"
+  },
+  {
+    "id": "m331",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-19T16:21:50Z",
+    "text": "+1"
+  },
+  {
+    "id": "m332",
+    "chat_id": "c7",
+    "from": "u0",
+    "sent_at": "2026-11-20T02:12:07Z",
+    "text": "Lovely, thank you"
+  },
+  {
+    "id": "m333",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-20T13:00:44Z",
+    "text": "IMPORTANT: water will be off on Saturday 21 Nov from 9:00 to 13:00 for pipe repairs in the basement",
+    "reactions": [
+      {
+        "emoji": "👍",
+        "users": [
+          "u19",
+          "u21",
+          "u33"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m334",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-20T13:03:07Z",
+    "text": "Thanks Tiago! Does that include hot water too?",
+    "reply_to": "m333"
+  },
+  {
+    "id": "m335",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-20T13:18:39Z",
+    "text": "Yes, everything",
+    "reply_to": "m334"
+  },
+  {
+    "id": "m336",
+    "chat_id": "c7",
+    "from": "u31",
+    "sent_at": "2026-11-20T13:24:29Z",
+    "text": "Whose bike is blocking the entrance again 🙄"
+  },
+  {
+    "id": "m337",
+    "chat_id": "c7",
+    "from": "u33",
+    "sent_at": "2026-11-20T13:31:19Z",
+    "text": "Sorry, mine, moving it"
+  },
+  {
+    "id": "m338",
+    "chat_id": "c7",
+    "from": "u19",
+    "sent_at": "2026-11-20T13:34:43Z",
+    "text": "Lost: black cat with a white paw, answers to Pimenta. Last seen near the bins",
+    "attachment": {
+      "type": "photo",
+      "name": "pimenta.jpg",
+      "width": 1200,
+      "height": 1200
+    }
+  },
+  {
+    "id": "m339",
+    "chat_id": "c7",
+    "from": "u21",
+    "sent_at": "2026-11-20T13:44:33Z",
+    "text": "I'll keep an eye out 🐈‍⬛"
+  },
+  {
+    "id": "m340",
+    "chat_id": "c7",
+    "from": "u20",
+    "sent_at": "2026-11-20T14:00:49Z",
+    "text": "Reminder: building meeting on Wed 25 Nov, 19:00, ground floor. We vote on painting the stairwell (~140€ per flat)"
+  },
+  {
+    "id": "m341",
+    "chat_id": "c7",
+    "from": "u22",
+    "sent_at": "2026-11-20T14:13:46Z",
+    "text": "Can someone accept a parcel for me tomorrow? Flat 2B"
+  },
+  {
+    "id": "m342",
+    "chat_id": "c7",
+    "from": "u32",
+    "sent_at": "2026-11-20T14:30:00Z",
+    "text": "Pimenta is back home, she was in the garage 😅",
+    "reactions": [
+      {
+        "emoji": "❤️",
+        "users": [
+          "u19",
+          "u21",
+          "u31",
+          "u22"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m343",
+    "chat_id": "c8",
+    "from": "u10",
+    "sent_at": "2026-11-18T21:34:57Z",
+    "text": "Good afternoon Alex. The plumber can come on Tuesday 24 Nov between 10:00 and 12:00 for the bathroom leak. Will someone be home?"
+  },
+  {
+    "id": "m344",
+    "chat_id": "c8",
+    "from": "u0",
+    "sent_at": "2026-11-18T22:05:03Z",
+    "text": "Hi Rui, yes I'll work from home that morning"
+  },
+  {
+    "id": "m345",
+    "chat_id": "c8",
+    "from": "u10",
+    "sent_at": "2026-11-18T22:13:49Z",
+    "text": "Perfect, his name is Carlos, he will call 10 minutes before"
+  },
+  {
+    "id": "m346",
+    "chat_id": "c8",
+    "from": "u10",
+    "sent_at": "2026-11-20T07:33:49Z",
+    "text": "Also a reminder that from January the rent will be 1,150€ as we discussed. I'll send the updated contract"
+  },
+  {
+    "id": "m347",
+    "chat_id": "c8",
+    "from": "u10",
+    "sent_at": "2026-11-20T07:50:20Z",
+    "text": "",
+    "attachment": {
+      "type": "file",
+      "name": "contract-addendum-2027.pdf",
+      "size_kb": 198
+    }
+  },
+  {
+    "id": "m348",
+    "chat_id": "c8",
+    "from": "u10",
+    "sent_at": "2026-11-20T08:00:00Z",
+    "text": "Please sign and send it back by 30 November"
+  },
+  {
+    "id": "m349",
+    "chat_id": "c9",
+    "from": "u0",
+    "sent_at": "2026-11-16T03:49:52Z",
+    "text": "She has no idea"
+  },
+  {
+    "id": "m350",
+    "chat_id": "c9",
+    "from": "u14",
+    "sent_at": "2026-11-16T13:59:34Z",
+    "text": "Shh 🤫"
+  },
+  {
+    "id": "m351",
+    "chat_id": "c9",
+    "from": "u1",
+    "sent_at": "2026-11-17T03:17:56Z",
+    "text": "Shh 🤫"
+  },
+  {
+    "id": "m352",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-17T18:00:53Z",
+    "text": "Great idea"
+  },
+  {
+    "id": "m353",
+    "chat_id": "c9",
+    "from": "u2",
+    "sent_at": "2026-11-17T18:29:32Z",
+    "text": "She has no idea"
+  },
+  {
+    "id": "m354",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-18T05:58:21Z",
+    "text": "I can bake the cake"
+  },
+  {
+    "id": "m355",
+    "chat_id": "c9",
+    "from": "u2",
+    "sent_at": "2026-11-18T13:23:01Z",
+    "text": "I can bake the cake"
+  },
+  {
+    "id": "m356",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-18T17:42:05Z",
+    "text": "I can bake the cake"
+  },
+  {
+    "id": "m357",
+    "chat_id": "c9",
+    "from": "u0",
+    "sent_at": "2026-11-19T02:05:57Z",
+    "text": "I can bake the cake"
+  },
+  {
+    "id": "m358",
+    "chat_id": "c9",
+    "from": "u2",
+    "sent_at": "2026-11-19T04:46:32Z",
+    "text": "She has no idea"
+  },
+  {
+    "id": "m359",
+    "chat_id": "c9",
+    "from": "u1",
+    "sent_at": "2026-11-19T06:12:46Z",
+    "text": "Great idea"
+  },
+  {
+    "id": "m360",
+    "chat_id": "c9",
+    "from": "u14",
+    "sent_at": "2026-11-19T07:39:53Z",
+    "text": "Sent you the money"
+  },
+  {
+    "id": "m361",
+    "chat_id": "c9",
+    "from": "u25",
+    "sent_at": "2026-11-19T15:48:24Z",
+    "text": "Balloons yes or no?"
+  },
+  {
+    "id": "m362",
+    "chat_id": "c9",
+    "from": "u0",
+    "sent_at": "2026-11-19T17:03:57Z",
+    "text": "Balloons yes or no?"
+  },
+  {
+    "id": "m363",
+    "chat_id": "c9",
+    "from": "u14",
+    "sent_at": "2026-11-20T06:14:43Z",
+    "text": "Balloons yes or no?"
+  },
+  {
+    "id": "m364",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-20T11:24:06Z",
+    "text": "Surprise party for Kate: Friday 27 Nov, 20:00, the rooftop at Park bar. She thinks it's dinner with me"
+  },
+  {
+    "id": "m365",
+    "chat_id": "c9",
+    "from": "u2",
+    "sent_at": "2026-11-20T11:45:59Z",
+    "text": "She'll cry, I know her 😄"
+  },
+  {
+    "id": "m366",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-20T12:10:42Z",
+    "text": "Gift: the Leica she's been eyeing, 600€ total → 20€ each from 30 people"
+  },
+  {
+    "id": "m367",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-20T12:14:48Z",
+    "text": "Paid so far: Mom, Mia, Hugo, Elena, me. Alex? 👀"
+  },
+  {
+    "id": "m368",
+    "chat_id": "c9",
+    "from": "u25",
+    "sent_at": "2026-11-20T12:30:58Z",
+    "text": "I made a playlist, add songs",
+    "attachment": {
+      "type": "link",
+      "url": "https://music.example/playlist/kate30",
+      "title": "Kate turns 30 🎉 — 47 songs"
+    }
+  },
+  {
+    "id": "m369",
+    "chat_id": "c9",
+    "from": "u14",
+    "sent_at": "2026-11-20T12:56:52Z",
+    "text": "I'll bring the projector for the slideshow"
+  },
+  {
+    "id": "m370",
+    "chat_id": "c9",
+    "from": "u17",
+    "sent_at": "2026-11-20T13:00:00Z",
+    "text": "Everyone send me 1–2 photos with Kate by Wednesday please!"
+  },
+  {
+    "id": "m371",
+    "chat_id": "c10",
+    "from": "u9",
+    "sent_at": "2026-11-17T14:02:47Z",
+    "text": "",
+    "attachment": {
+      "type": "voice",
+      "duration_s": 74,
+      "transcript": "Heyyy, it's me, sorry for the voice message, I'm walking. So I'm coming to Lisbon from the 3rd to the 8th of December for work, and I'd love to see you, maybe the 5th? Let me know, okay, miss you, bye"
+    }
+  },
+  {
+    "id": "m372",
+    "chat_id": "c10",
+    "from": "u0",
+    "sent_at": "2026-11-17T14:25:15Z",
+    "text": "LENA! Yes! The 5th is perfect"
+  },
+  {
+    "id": "m373",
+    "chat_id": "c10",
+    "from": "u9",
+    "sent_at": "2026-11-17T14:32:59Z",
+    "text": "Yay! Can I crash on your sofa the last night? The hotel ends on the 7th"
+  },
+  {
+    "id": "m374",
+    "chat_id": "c10",
+    "from": "u0",
+    "sent_at": "2026-11-17T14:39:11Z",
+    "text": "Of course, Mia will be happy too"
+  },
+  {
+    "id": "m375",
+    "chat_id": "c10",
+    "from": "u9",
+    "sent_at": "2026-11-19T16:39:34Z",
+    "text": "",
+    "attachment": {
+      "type": "photo",
+      "name": "berlin_snow.jpg",
+      "width": 1600,
+      "height": 1200,
+      "caption": "it's already snowing here 🥶"
+    }
+  },
+  {
+    "id": "m376",
+    "chat_id": "c10",
+    "from": "u9",
+    "sent_at": "2026-11-19T17:00:00Z",
+    "text": "",
+    "attachment": {
+      "type": "voice",
+      "duration_s": 21,
+      "transcript": "Also, what's the name of that pastry place you love? I want to bring my colleagues"
+    }
+  },
+  {
+    "id": "m377",
+    "chat_id": "c11",
+    "from": "u12",
+    "sent_at": "2026-11-18T17:22:24Z",
+    "text": "Clínica São Bento: your appointment with Dr. Silva (dermatology) is confirmed for Thu 3 Dec at 09:30. Please arrive 10 min early and bring your health card."
+  },
+  {
+    "id": "m378",
+    "chat_id": "c11",
+    "from": "u0",
+    "sent_at": "2026-11-18T17:27:31Z",
+    "text": "Thank you, confirmed"
+  },
+  {
+    "id": "m379",
+    "chat_id": "c11",
+    "from": "u12",
+    "sent_at": "2026-11-18T17:40:00Z",
+    "text": "Reply CANCEL to cancel or call +351 213 000 456 to reschedule."
+  },
+  {
+    "id": "m380",
+    "chat_id": "c12",
+    "from": "u11",
+    "sent_at": "2026-11-17T17:59:25Z",
+    "text": "Hi Alex! I'm Theo, talent partner at Northwind. Loved your case study on the onboarding redesign"
+  },
+  {
+    "id": "m381",
+    "chat_id": "c12",
+    "from": "u11",
+    "sent_at": "2026-11-17T18:11:43Z",
+    "text": "We're hiring a Lead Product Designer, fully remote, EU hours. Open to a 20-min chat?",
+    "attachment": {
+      "type": "link",
+      "url": "https://jobs.example/northwind/lead-product-designer",
+      "title": "Lead Product Designer — Northwind"
+    }
+  },
+  {
+    "id": "m382",
+    "chat_id": "c12",
+    "from": "u11",
+    "sent_at": "2026-11-17T18:20:00Z",
+    "text": "No pressure either way 🙂"
+  },
+  {
+    "id": "m383",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-05T20:02:41Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m384",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-06T02:42:55Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m385",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-06T09:27:40Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m386",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-06T14:29:33Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m387",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-07T04:01:32Z",
+    "text": "In"
+  },
+  {
+    "id": "m388",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-07T10:48:41Z",
+    "text": "Who has the ball?"
+  },
+  {
+    "id": "m389",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-07T14:21:31Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m390",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-07T16:27:05Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m391",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-08T03:14:07Z",
+    "text": "In"
+  },
+  {
+    "id": "m392",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-08T07:29:41Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m393",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-08T18:22:31Z",
+    "text": "In"
+  },
+  {
+    "id": "m394",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-08T22:03:24Z",
+    "text": "Who has the ball?"
+  },
+  {
+    "id": "m395",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-09T08:44:58Z",
+    "text": "Out this week"
+  },
+  {
+    "id": "m396",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-09T17:58:27Z",
+    "text": "In"
+  },
+  {
+    "id": "m397",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-10T02:23:26Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m398",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-10T04:01:38Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m399",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-10T14:15:46Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m400",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-10T22:06:38Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m401",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-11T00:04:02Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m402",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-11T12:00:15Z",
+    "text": "Who has the ball?"
+  },
+  {
+    "id": "m403",
+    "chat_id": "c13",
+    "from": "u24",
+    "sent_at": "2026-11-12T01:01:44Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m404",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-12T03:11:05Z",
+    "text": "In"
+  },
+  {
+    "id": "m405",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-12T14:52:46Z",
+    "text": "Out this week"
+  },
+  {
+    "id": "m406",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-12T22:05:18Z",
+    "text": "Out this week"
+  },
+  {
+    "id": "m407",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-13T00:14:28Z",
+    "text": "Same time next week?"
+  },
+  {
+    "id": "m408",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-13T02:42:06Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m409",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-13T12:57:00Z",
+    "text": "In"
+  },
+  {
+    "id": "m410",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-14T02:33:45Z",
+    "text": "Same time next week?"
+  },
+  {
+    "id": "m411",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-14T07:35:14Z",
+    "text": "In"
+  },
+  {
+    "id": "m412",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-14T13:59:25Z",
+    "text": "In"
+  },
+  {
+    "id": "m413",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-14T18:21:38Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m414",
+    "chat_id": "c13",
+    "from": "u24",
+    "sent_at": "2026-11-14T19:09:49Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m415",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-14T20:19:05Z",
+    "text": "Out this week"
+  },
+  {
+    "id": "m416",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-14T23:18:38Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m417",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-15T05:31:07Z",
+    "text": "Same time next week?"
+  },
+  {
+    "id": "m418",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-15T09:58:43Z",
+    "text": "In"
+  },
+  {
+    "id": "m419",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-15T17:15:52Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m420",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-15T17:39:00Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m421",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-16T07:22:16Z",
+    "text": "Who has the ball?"
+  },
+  {
+    "id": "m422",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-16T11:15:11Z",
+    "text": "Running late, start without me"
+  },
+  {
+    "id": "m423",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-16T21:15:59Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m424",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-16T22:43:05Z",
+    "text": "In"
+  },
+  {
+    "id": "m425",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-17T01:30:21Z",
+    "text": "In"
+  },
+  {
+    "id": "m426",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-17T15:53:20Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m427",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-17T20:50:02Z",
+    "text": "In"
+  },
+  {
+    "id": "m428",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-18T00:06:07Z",
+    "text": "In"
+  },
+  {
+    "id": "m429",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-18T06:32:19Z",
+    "text": "Good game lads"
+  },
+  {
+    "id": "m430",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-18T20:59:30Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m431",
+    "chat_id": "c13",
+    "from": "u22",
+    "sent_at": "2026-11-19T06:10:32Z",
+    "text": "Rain or not, we play"
+  },
+  {
+    "id": "m432",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-19T12:18:11Z",
+    "text": "Same time next week?"
+  },
+  {
+    "id": "m433",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-19T17:16:37Z",
+    "text": "Thursday 20:30, pitch 3 at Estádio Universitário. Who's in?"
+  },
+  {
+    "id": "m434",
+    "chat_id": "c13",
+    "from": "u26",
+    "sent_at": "2026-11-19T17:33:54Z",
+    "text": "In"
+  },
+  {
+    "id": "m435",
+    "chat_id": "c13",
+    "from": "u28",
+    "sent_at": "2026-11-19T17:44:54Z",
+    "text": "In"
+  },
+  {
+    "id": "m436",
+    "chat_id": "c13",
+    "from": "u0",
+    "sent_at": "2026-11-19T17:51:36Z",
+    "text": "In"
+  },
+  {
+    "id": "m437",
+    "chat_id": "c13",
+    "from": "u8",
+    "sent_at": "2026-11-19T17:57:20Z",
+    "text": "Out, knee"
+  },
+  {
+    "id": "m438",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-19T18:07:25Z",
+    "text": "We're 9, need one more!"
+  },
+  {
+    "id": "m439",
+    "chat_id": "c13",
+    "from": "u24",
+    "sent_at": "2026-11-19T19:37:45Z",
+    "text": "My cousin can come"
+  },
+  {
+    "id": "m440",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-19T19:55:40Z",
+    "text": "Pitch is 6€ each, pay me at the pitch"
+  },
+  {
+    "id": "m441",
+    "chat_id": "c13",
+    "from": "u13",
+    "sent_at": "2026-11-19T20:20:00Z",
+    "text": "Great game! 7–5 for the bibs 🔥",
+    "attachment": {
+      "type": "photo",
+      "name": "team_photo.jpg",
+      "width": 1600,
+      "height": 1200
+    },
+    "reactions": [
+      {
+        "emoji": "🔥",
+        "users": [
+          "u26",
+          "u28",
+          "u0",
+          "u24"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m442",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-09T10:43:21Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m443",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-09T16:14:13Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m444",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-09T18:51:38Z",
+    "text": "Loved it"
+  },
+  {
+    "id": "m445",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-10T09:24:25Z",
+    "text": "Didn't love the ending tbh"
+  },
+  {
+    "id": "m446",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-10T20:13:42Z",
+    "text": "Loved it"
+  },
+  {
+    "id": "m447",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-10T20:56:02Z",
+    "text": "Didn't love the ending tbh"
+  },
+  {
+    "id": "m448",
+    "chat_id": "c14",
+    "from": "u1",
+    "sent_at": "2026-11-11T08:23:57Z",
+    "text": "Halfway through, no spoilers!"
+  },
+  {
+    "id": "m449",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-11T17:54:36Z",
+    "text": "Halfway through, no spoilers!"
+  },
+  {
+    "id": "m450",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-12T06:46:03Z",
+    "text": "Loved it"
+  },
+  {
+    "id": "m451",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-12T10:52:48Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m452",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-13T00:43:01Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m453",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-13T03:54:08Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m454",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-13T07:26:03Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m455",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-13T08:08:52Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m456",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-13T15:52:54Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m457",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-14T00:17:57Z",
+    "text": "Loved it"
+  },
+  {
+    "id": "m458",
+    "chat_id": "c14",
+    "from": "u1",
+    "sent_at": "2026-11-14T07:17:27Z",
+    "text": "Halfway through, no spoilers!"
+  },
+  {
+    "id": "m459",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-14T15:20:48Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m460",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-15T04:28:08Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m461",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-15T15:41:30Z",
+    "text": "Didn't love the ending tbh"
+  },
+  {
+    "id": "m462",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-15T19:27:18Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m463",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-15T23:21:14Z",
+    "text": "Loved it"
+  },
+  {
+    "id": "m464",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-16T08:10:01Z",
+    "text": "Chapter 12 though 😭"
+  },
+  {
+    "id": "m465",
+    "chat_id": "c14",
+    "from": "u0",
+    "sent_at": "2026-11-16T14:06:56Z",
+    "text": "Halfway through, no spoilers!"
+  },
+  {
+    "id": "m466",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-16T17:48:40Z",
+    "text": "Who's bringing snacks?"
+  },
+  {
+    "id": "m467",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-17T03:10:20Z",
+    "text": "Next book: 'Klara and the Sun'. Meeting Sun 6 Dec, 17:00 at mine"
+  },
+  {
+    "id": "m468",
+    "chat_id": "c14",
+    "from": "u25",
+    "sent_at": "2026-11-17T03:17:10Z",
+    "text": "Finally something not 900 pages long",
+    "reactions": [
+      {
+        "emoji": "😂",
+        "users": [
+          "u27",
+          "u1"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m469",
+    "chat_id": "c14",
+    "from": "u27",
+    "sent_at": "2026-11-17T03:18:36Z",
+    "text": "I'll bring wine"
+  },
+  {
+    "id": "m470",
+    "chat_id": "c14",
+    "from": "u15",
+    "sent_at": "2026-11-17T03:20:00Z",
+    "text": "Alex you're hosting January, don't forget 😉"
+  },
+  {
+    "id": "m471",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-09T21:52:05Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m472",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-09T23:17:53Z",
+    "text": "Chalk ran out"
+  },
+  {
+    "id": "m473",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-10T06:02:42Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m474",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-10T18:54:24Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m475",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-10T20:10:46Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m476",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-11T03:27:29Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m477",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-11T13:19:23Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m478",
+    "chat_id": "c15",
+    "from": "u0",
+    "sent_at": "2026-11-11T23:18:44Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m479",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-12T00:22:38Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m480",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-12T04:35:09Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m481",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-12T04:55:40Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m482",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-12T16:47:41Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m483",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-12T22:22:35Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m484",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-13T04:21:02Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m485",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-13T10:43:53Z",
+    "text": "My fingers hurt"
+  },
+  {
+    "id": "m486",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-13T11:29:30Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m487",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-13T18:12:51Z",
+    "text": "Projecting the blue route"
+  },
+  {
+    "id": "m488",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-14T05:33:58Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m489",
+    "chat_id": "c15",
+    "from": "u0",
+    "sent_at": "2026-11-14T14:30:32Z",
+    "text": "My fingers hurt"
+  },
+  {
+    "id": "m490",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-14T22:17:17Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m491",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-15T06:13:41Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m492",
+    "chat_id": "c15",
+    "from": "u0",
+    "sent_at": "2026-11-15T12:44:13Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m493",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-16T03:18:15Z",
+    "text": "Beta video in the thread"
+  },
+  {
+    "id": "m494",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-16T10:36:21Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m495",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-16T18:33:22Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m496",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-17T02:22:12Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m497",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-17T15:32:50Z",
+    "text": "Gym tonight?"
+  },
+  {
+    "id": "m498",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-17T18:04:33Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m499",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-17T20:25:02Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m500",
+    "chat_id": "c15",
+    "from": "u17",
+    "sent_at": "2026-11-18T11:12:04Z",
+    "text": "Sent it!! 🎉"
+  },
+  {
+    "id": "m501",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-18T22:31:20Z",
+    "text": "Sintra this Sunday? Forecast is dry"
+  },
+  {
+    "id": "m502",
+    "chat_id": "c15",
+    "from": "u30",
+    "sent_at": "2026-11-18T22:33:30Z",
+    "text": "Yes! Leaving 8:00 from Sete Rios"
+  },
+  {
+    "id": "m503",
+    "chat_id": "c15",
+    "from": "u18",
+    "sent_at": "2026-11-18T22:37:57Z",
+    "text": "Alex you have the second rope right?"
+  },
+  {
+    "id": "m504",
+    "chat_id": "c15",
+    "from": "u0",
+    "sent_at": "2026-11-18T22:40:00Z",
+    "text": "Yep, and the quickdraws"
+  },
+  {
+    "id": "m505",
+    "chat_id": "c16",
+    "from": "u2",
+    "sent_at": "2026-11-19T00:08:53Z",
+    "text": "Did you eat?"
+  },
+  {
+    "id": "m506",
+    "chat_id": "c16",
+    "from": "u0",
+    "sent_at": "2026-11-19T10:08:58Z",
+    "text": "Yes mom 😄"
+  },
+  {
+    "id": "m507",
+    "chat_id": "c16",
+    "from": "u2",
+    "sent_at": "2026-11-19T10:19:15Z",
+    "text": "Call me when you have a moment, it's about Grandma's present"
+  },
+  {
+    "id": "m508",
+    "chat_id": "c16",
+    "from": "u2",
+    "sent_at": "2026-11-20T11:20:00Z",
+    "text": "",
+    "attachment": {
+      "type": "voice",
+      "duration_s": 55,
+      "transcript": "Hi darling, so I thought for the present we could all make a photo album with old pictures, I'll scan them, can you do the design? You're good at that. Call me"
+    }
+  },
+  {
+    "id": "m509",
+    "chat_id": "c17",
+    "from": "u7",
+    "sent_at": "2026-11-20T14:15:10Z",
+    "text": "Off the record: do you think the empty states need illustrations or just copy?"
+  },
+  {
+    "id": "m510",
+    "chat_id": "c17",
+    "from": "u0",
+    "sent_at": "2026-11-20T14:25:16Z",
+    "text": "Copy first, illustrations only for the first-run screens"
+  },
+  {
+    "id": "m511",
+    "chat_id": "c17",
+    "from": "u7",
+    "sent_at": "2026-11-20T14:43:15Z",
+    "text": "Agree. Sam wants mascots though 🙃"
+  },
+  {
+    "id": "m512",
+    "chat_id": "c17",
+    "from": "u0",
+    "sent_at": "2026-11-20T15:00:00Z",
+    "text": "Over my dead body",
+    "reactions": [
+      {
+        "emoji": "😂",
+        "users": [
+          "u7"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "m513",
+    "chat_id": "c18",
+    "from": "u3",
+    "sent_at": "2026-11-15T04:12:26Z",
+    "text": "Caught a 3kg sea bass this morning",
+    "attachment": {
+      "type": "photo",
+      "name": "seabass.jpg",
+      "width": 1600,
+      "height": 1200
+    }
+  },
+  {
+    "id": "m514",
+    "chat_id": "c18",
+    "from": "u0",
+    "sent_at": "2026-11-15T04:35:10Z",
+    "text": "Wow dad!! Save some for Sunday"
+  },
+  {
+    "id": "m515",
+    "chat_id": "c18",
+    "from": "u3",
+    "sent_at": "2026-11-15T04:40:00Z",
+    "text": "Already in the freezer 😎"
+  },
+  {
+    "id": "m516",
+    "chat_id": "c19",
+    "from": "u4",
+    "sent_at": "2026-11-18T13:53:27Z",
+    "text": "Mom says you're designing the album for grandma? Need old photos from me?"
+  },
+  {
+    "id": "m517",
+    "chat_id": "c19",
+    "from": "u0",
+    "sent_at": "2026-11-18T14:13:28Z",
+    "text": "Yes, send whatever you have from the 90s"
+  },
+  {
+    "id": "m518",
+    "chat_id": "c19",
+    "from": "u4",
+    "sent_at": "2026-11-18T14:17:00Z",
+    "text": "",
+    "attachment": {
+      "type": "file",
+      "name": "old_photos_1994-1999.zip",
+      "size_kb": 48210
+    }
+  },
+  {
+    "id": "m519",
+    "chat_id": "c19",
+    "from": "u4",
+    "sent_at": "2026-11-18T14:20:00Z",
+    "text": "Also what are we doing on Friday the 27th? Greta invited me to dinner 🤔",
+    "edited": true
+  },
+  {
+    "id": "m520",
+    "chat_id": "c20",
+    "from": "u32",
+    "sent_at": "2026-10-17T11:12:43Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m521",
+    "chat_id": "c20",
+    "from": "u28",
+    "sent_at": "2026-10-17T21:41:37Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m522",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-18T01:39:53Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m523",
+    "chat_id": "c20",
+    "from": "u28",
+    "sent_at": "2026-10-18T09:46:00Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m524",
+    "chat_id": "c20",
+    "from": "u0",
+    "sent_at": "2026-10-18T11:32:35Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m525",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-19T00:38:47Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m526",
+    "chat_id": "c20",
+    "from": "u28",
+    "sent_at": "2026-10-19T08:01:05Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m527",
+    "chat_id": "c20",
+    "from": "u0",
+    "sent_at": "2026-10-19T21:01:36Z",
+    "text": "Happy birthday!!"
+  },
+  {
+    "id": "m528",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-20T07:02:37Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m529",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-20T11:07:57Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m530",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-21T01:21:08Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m531",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-21T03:38:57Z",
+    "text": "Happy birthday!!"
+  },
+  {
+    "id": "m532",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-21T10:35:43Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m533",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-21T14:56:24Z",
+    "text": "Happy birthday!!"
+  },
+  {
+    "id": "m534",
+    "chat_id": "c20",
+    "from": "u28",
+    "sent_at": "2026-10-21T21:03:46Z",
+    "text": "Haha remember that?"
+  },
+  {
+    "id": "m535",
+    "chat_id": "c20",
+    "from": "u32",
+    "sent_at": "2026-10-22T04:29:54Z",
+    "text": "Haha remember that?"
+  },
+  {
+    "id": "m536",
+    "chat_id": "c20",
+    "from": "u34",
+    "sent_at": "2026-10-22T11:59:28Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m537",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-23T02:40:39Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m538",
+    "chat_id": "c20",
+    "from": "u32",
+    "sent_at": "2026-10-23T05:22:34Z",
+    "text": "We should meet more"
+  },
+  {
+    "id": "m539",
+    "chat_id": "c20",
+    "from": "u24",
+    "sent_at": "2026-10-23T13:21:08Z",
+    "text": "Who still talks to Mr. Pereira?"
+  },
+  {
+    "id": "m540",
+    "chat_id": "c20",
+    "from": "u34",
+    "sent_at": "2026-10-23T23:18:56Z",
+    "text": "20 years since graduation!! Reunion in June, I'm organising"
+  },
+  {
+    "id": "m541",
+    "chat_id": "c20",
+    "from": "u28",
+    "sent_at": "2026-10-23T23:20:00Z",
+    "text": "I can't believe it's been 20 years"
+  },
+  {
+    "id": "m542",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-18T22:47:10Z",
+    "text": "Card •• 4417: 3.40 € at Fábrica Coffee Roasters"
+  },
+  {
+    "id": "m543",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-19T02:48:09Z",
+    "text": "Card •• 4417: 52.10 € at Continente Amoreiras"
+  },
+  {
+    "id": "m544",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-19T07:49:03Z",
+    "text": "MB Way: you sent 45.00 € to Jonas Berg"
+  },
+  {
+    "id": "m545",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-19T17:49:05Z",
+    "text": "Your security code is 482 913. Never share it with anyone."
+  },
+  {
+    "id": "m546",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-20T08:49:35Z",
+    "text": "Salary received: 3,240.00 €"
+  },
+  {
+    "id": "m547",
+    "chat_id": "c21",
+    "from": "c21",
+    "sent_at": "2026-11-20T17:10:00Z",
+    "text": "Card •• 4417: 12.80 € at Uber Eats"
+  },
+  {
+    "id": "m548",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-13T06:18:52Z",
+    "text": "🎤 Call for speakers is open"
+  },
+  {
+    "id": "m549",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-13T15:57:16Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m550",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-13T21:26:57Z",
+    "text": "🎤 Call for speakers is open"
+  },
+  {
+    "id": "m551",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-14T03:40:59Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m552",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-14T15:01:16Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m553",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-14T23:12:14Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m554",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-15T12:59:20Z",
+    "text": "📍 Venue changed, see details"
+  },
+  {
+    "id": "m555",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-15T15:12:13Z",
+    "text": "📍 Venue changed, see details"
+  },
+  {
+    "id": "m556",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-15T23:04:11Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m557",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-16T10:02:48Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m558",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-16T23:42:00Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m559",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-17T10:20:46Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m560",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-17T20:01:45Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m561",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-18T01:45:43Z",
+    "text": "🎤 Call for speakers is open"
+  },
+  {
+    "id": "m562",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-18T04:58:19Z",
+    "text": "📍 Venue changed, see details"
+  },
+  {
+    "id": "m563",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-18T06:02:52Z",
+    "text": "📍 Venue changed, see details"
+  },
+  {
+    "id": "m564",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-18T20:29:28Z",
+    "text": "Recording is up"
+  },
+  {
+    "id": "m565",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-19T08:13:21Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m566",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-19T16:25:50Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m567",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-19T21:36:02Z",
+    "text": "📅 New meetup announced"
+  },
+  {
+    "id": "m568",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-20T02:58:05Z",
+    "text": "📅 Design Systems Night — Thu 26 Nov, 19:00 at Second Home. Free, register below",
+    "attachment": {
+      "type": "link",
+      "url": "https://meetups.example/ds-night",
+      "title": "Design Systems Night #14"
+    }
+  },
+  {
+    "id": "m569",
+    "chat_id": "c22",
+    "from": "c22",
+    "sent_at": "2026-11-20T03:00:00Z",
+    "text": "Slides from last week's talk on accessibility audits",
+    "attachment": {
+      "type": "file",
+      "name": "a11y-audits-slides.pdf",
+      "size_kb": 6120
+    }
+  },
+  {
+    "id": "m570",
+    "chat_id": "c23",
+    "from": "c23",
+    "sent_at": "2026-11-20T01:20:00Z",
+    "text": "CTT: Your parcel is held at customs. Pay 1.99 € to release it: ctt-delivery-pt.example/pay"
+  },
+  {
+    "id": "m571",
+    "chat_id": "c24",
+    "from": "u14",
+    "sent_at": "2026-11-18T05:43:21Z",
+    "text": "Bro you still in for the Azores? Need the 128€ for the house by Sunday"
+  },
+  {
+    "id": "m572",
+    "chat_id": "c24",
+    "from": "u0",
+    "sent_at": "2026-11-18T06:00:00Z",
+    "text": "Yes yes, sending this weekend"
+  }
+]

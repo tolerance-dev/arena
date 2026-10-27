@@ -1,0 +1,43 @@
+{
+  "name": "Petya",
+  "age": 27,
+  "from": "Moscow",
+  "first_time_in_city": true,
+  "arrival": {
+    "at": "2026-11-13T08:10:00+03:00",
+    "place": "Moskovsky railway station",
+    "lat": 59.9298,
+    "lon": 30.3624,
+    "by": "Sapsan train from Moscow"
+  },
+  "departure": {
+    "at": "2026-11-15T22:50:00+03:00",
+    "place": "Moskovsky railway station",
+    "lat": 59.9298,
+    "lon": 30.3624,
+    "be_there_by": "2026-11-15T22:30:00+03:00"
+  },
+  "budget_rub": 10000,
+  "budget_covers": "everything in the city: two nights' sleep, food, tickets, tours and transport. The train is already paid.",
+  "luggage": "a 12 kg backpack he doesn't want to carry around all day",
+  "diet": "vegetarian (eats eggs and dairy)",
+  "pace": "happy to walk up to 15 km a day; likes to sleep until 9:00 at the weekend",
+  "interests": [
+    "history",
+    "architecture",
+    "views from above",
+    "local food",
+    "good coffee"
+  ],
+  "not_interested_in": [
+    "shopping malls",
+    "more than 2.5 hours in one museum"
+  ],
+  "wishes": [
+    "the Hermitage, but no more than 2.5 hours there",
+    "see the bridges go up at night at least once",
+    "a view over the roofs",
+    "try pyshki",
+    "one proper sit-down vegetarian dinner"
+  ]
+}

@@ -50,9 +50,21 @@ type Check struct {
 	Hidden   bool              `json:"hidden,omitempty"` // from the hidden set: verify.py reports no details
 }
 
+// Kinds of task. A build task is a product to a spec, ranked by the share of checks passed. The others have only a
+// brief and are ranked by people's blind votes, trying the task's Scenarios in both apps; their checks just gate the
+// run (it starts, it shows the data). Invent: rethink a product everyone knows. Startup: an MVP that solves one real
+// person's problem, as close to a product people would pay for as the agent can get.
+const (
+	KindBuild   = "build"
+	KindInvent  = "invent"
+	KindStartup = "startup"
+)
+
 type Task struct {
 	Slug        string `json:"slug"`
 	Order       int    `json:"order"`
+	Kind        string `json:"kind"`
+	Scenarios   []Text `json:"scenarios,omitempty"` // what a voter tries in both apps
 	Title       Text   `json:"title"`
 	Tagline     Text   `json:"tagline"`
 	TimeLimitS  int    `json:"time_limit_s"`
@@ -165,6 +177,12 @@ func Load(hiddenDir string) error {
 		})
 		if err != nil {
 			return fmt.Errorf("tasks: %s data: %w", slug, err)
+		}
+		if t.Kind == "" {
+			t.Kind = KindBuild
+		}
+		if t.Kind != KindBuild && t.Kind != KindInvent && t.Kind != KindStartup {
+			return fmt.Errorf("tasks: %s: unknown kind %q", slug, t.Kind)
 		}
 		if t.TimeLimitS <= 0 || t.TokenBudget <= 0 {
 			return fmt.Errorf("tasks: %s: time_limit_s and token_budget are required", slug)
