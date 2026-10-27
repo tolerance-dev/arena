@@ -215,7 +215,7 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/my/runs/history", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		page, _ := strconv.Atoi(q.Get("page"))
-		out, err := s.History(r.Context(), identity.MustFromContext(r.Context()).UserID, q.Get("agent"), q.Get("task"), q.Get("outcome"), page, 25)
+		out, err := s.History(r.Context(), identity.MustFromContext(r.Context()).UserID, q.Get("agent"), q.Get("task"), q.Get("outcome"), page, 10)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
