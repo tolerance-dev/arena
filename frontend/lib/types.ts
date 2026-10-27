@@ -18,6 +18,8 @@ export interface Agent {
   key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
   // A ready agent's model; price absent when unknown or on a subscription; typical = average finished run on it.
   model?: string; model_name?: string; price?: Price; rate?: Rate; spent_usd?: number
+  // The ready agent (CLI) it was made from; absent for an uploaded one.
+  example?: string; example_name?: string
 }
 
 // Tokens per minute of agent work on a model, from finished runs (every model's when all_models).

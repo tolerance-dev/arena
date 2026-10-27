@@ -35,11 +35,10 @@ var Examples = []Example{
 // at the agent's key kind, which every example honours), or invalid input when the slug or model is unknown or the
 // key can't reach that model through that CLI.
 func exampleBundle(slug, model, provider string) ([]byte, string, error) {
-	i := slices.IndexFunc(Examples, func(e Example) bool { return e.Slug == slug })
-	if i < 0 {
+	e := exampleBySlug(slug)
+	if e == nil {
 		return nil, "", invalid("Unknown example agent")
 	}
-	e := Examples[i]
 	if model == "" {
 		model = e.Model
 	}
@@ -52,4 +51,11 @@ func exampleBundle(slug, model, provider string) ([]byte, string, error) {
 	}
 	script, err := exampleFiles.ReadFile("examples/" + slug + "/run.sh")
 	return script, model, err
+}
+
+func exampleBySlug(slug string) *Example {
+	if i := slices.IndexFunc(Examples, func(e Example) bool { return e.Slug == slug }); i >= 0 {
+		return &Examples[i]
+	}
+	return nil
 }

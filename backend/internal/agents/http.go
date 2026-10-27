@@ -63,7 +63,7 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		}
 		a, err := s.Create(r.Context(), identity.MustFromContext(r.Context()).UserID, identity.OwnerScope(r.Context()) != "", CreateInput{
 			Name: r.FormValue("name"), Description: r.FormValue("description"), Provider: r.FormValue("provider"),
-			APIKey: r.FormValue("api_key"), Bundle: data, Model: model,
+			APIKey: r.FormValue("api_key"), Bundle: data, Model: model, Example: r.FormValue("example"),
 		})
 		if err != nil {
 			httpx.WriteError(w, r, err)

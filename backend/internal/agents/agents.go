@@ -52,6 +52,9 @@ type Agent struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Provider    string `json:"provider"`
+	// Example is the ready agent (Examples slug: the CLI) it was made from, "" for an uploaded one.
+	Example     string `json:"example,omitempty"`
+	ExampleName string `json:"example_name,omitempty"`
 	// Model is the catalog model a ready agent runs (pricing.Models; empty for an uploaded agent: unknown).
 	Model     string `json:"model,omitempty"`
 	ModelName string `json:"model_name,omitempty"`
@@ -192,6 +195,7 @@ func BundleFiles(data []byte) (map[string]sandbox.File, error) {
 type CreateInput struct {
 	Name, Description, Provider, APIKey string
 	Model                               string // a pricing.Models slug, or "" (unknown)
+	Example                             string // an Examples slug, or "" (uploaded)
 	Bundle                              []byte
 }
 
@@ -252,8 +256,8 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "You already have 10 agents: delete one first")
 			}
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint, in.Model)
+		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint, in.Model, in.Example)
 		return err
 	})
 	if err != nil {
@@ -262,7 +266,7 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 	return s.Get(ctx, id, true)
 }
 
-const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
+const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.example, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
 	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
 	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw, o.tin, o.tout, o.tcr, o.tcw
@@ -292,12 +296,15 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var mn, gn int
 	var ms, mi, mo, mr, mw, gs, gi, gout, gr, gw *float64
 	var oi, oo, ocr, ocw int64
-	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
+	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Example, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
 		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw, &oi, &oo, &ocr, &ocw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
 	a.CreatedAt = a.CreatedAt.UTC()
+	if e := exampleBySlug(a.Example); e != nil {
+		a.ExampleName = e.Name
+	}
 	if m := pricing.BySlug(a.Model); m != nil {
 		a.ModelName = m.Name
 		p := m.Price
