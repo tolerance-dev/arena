@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronRight, Download, ExternalLink, Maximize2, Monitor, RotateCw, Smartphone, X } from 'lucide-react'
+import { Check, ChevronRight, Download, ExternalLink, Maximize2, Minus, Monitor, RotateCw, Smartphone, X } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button } from '@/components/ui/button'
@@ -16,12 +16,13 @@ import { del, post } from '@/lib/api'
 import { compact, duration, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import { errorText } from '@/lib/errors'
-import type { Run } from '@/lib/types'
+import type { T } from '@/lib/i18n'
+import type { Check as CheckResult, Run } from '@/lib/types'
 import { providerLabel } from '@/lib/providers'
 import { useMe } from '@/lib/use-me'
 import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, CheckStrip, exitLabel, isActive, phase, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
+import { AgentAvatar, Ago, exitLabel, isActive, phase, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { LiveBuild } from './live-build'
 import { agentElapsed, useNow } from './live-runs'
@@ -77,7 +78,6 @@ export function RunView({ id }: { id: string }) {
           <>
             <div className="max-xl:hidden"><Verdict run={run} /></div>
             <Numbers run={run} />
-            <Conditions run={run} />
             <Actions run={run} onChange={poll.reload} />
           </>
         }
@@ -191,7 +191,7 @@ function Preview({ run }: { run: Run }) {
   )
 }
 
-// The result in one place: the score and every check as a cell.
+// The result in one place: the score and how many checks it took. The checks themselves are in the main column.
 function Verdict({ run }: { run: Run }) {
   const t = useT()
   const done = run.status === 'done'
@@ -203,16 +203,24 @@ function Verdict({ run }: { run: Run }) {
       <div className={cn('numeral mt-2 text-[56px]', done && run.score != null ? scoreTone(run.score) : 'text-pending')}>
         {done && run.score != null ? run.score : '—'}
       </div>
-      <p className="mt-2 text-ui text-faint">
-        {!done ? t('Оценка появится, когда закончатся проверки.', 'The score appears once the checks finish.') : run.agent_exit === 'key_rejected' ? t('не оценивался: провайдер отклонил ключ', 'not scored: the provider rejected the key') : !run.app_started ? t('приложение не запустилось', 'the app didn’t start') : t('доля пройденных автопроверок', 'share of automatic checks passed')}
+      <p className="mt-1 text-body text-muted-foreground">
+        {!done ? t('Появится, когда закончатся проверки.', 'Appears once the checks finish.')
+          : run.agent_exit === 'key_rejected' ? t('Не оценивался: провайдер отклонил ключ.', 'Not scored: the provider rejected the key.')
+          : !run.app_started ? t('Приложение не запустилось, проверять было нечего.', 'The app didn’t start, so there was nothing to check.')
+          : run.checks.length > 0 ? t.plural(run.checks.length, [`Пройдено ${passed} из {n} проверки`, `Пройдено ${passed} из {n} проверок`, `Пройдено ${passed} из {n} проверок`], [`${passed} of {n} check passed`, `${passed} of {n} checks passed`])
+          : t('Проверки не запускались.', 'The checks didn’t run.')}
       </p>
-      <div className="mt-5 border-t border-border pt-4">
-        <div className="text-body font-semibold">
-          {run.checks.length ? t.plural(run.checks.length, [`Пройдено ${passed} из {n} проверки`, `Пройдено ${passed} из {n} проверок`, `Пройдено ${passed} из {n} проверок`], [`${passed} of {n} check passed`, `${passed} of {n} checks passed`]) : done ? t('Проверки не запускались', 'The checks didn’t run') : t('Проверки начнутся, когда агент закончит', 'The checks start when the agent finishes')}
-        </div>
-        {failed > 0 && <p className="text-ui text-destructive">{t.plural(failed, ['{n} проверка не прошла', '{n} проверки не прошли', '{n} проверок не прошли'], ['{n} check failed', '{n} checks failed'])}</p>}
-        <CheckStrip checks={run.checks} size="lg" className="mt-3" />
-      </div>
+      {done && run.app_started && run.checks.length > 0 && (
+        <>
+          <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-destructive">
+            <div className="bg-success" style={{ width: `${(100 * passed) / run.checks.length}%` }} />
+          </div>
+          {failed > 0 && <a href="#checks" className="mt-2 inline-block text-ui font-medium text-destructive hover:underline">{t.plural(failed, ['{n} проверка не прошла', '{n} проверки не прошли', '{n} проверок не прошли'], ['{n} check failed', '{n} checks failed'])} ↓</a>}
+        </>
+      )}
+      {run.checks_version && !run.checks_current && (
+        <p className="mt-3 text-ui text-faint">{t('Проверки задачи с тех пор изменились: прогон не в рейтинге.', 'The task’s checks have changed since: the run isn’t ranked.')}</p>
+      )}
     </section>
   )
 }
@@ -224,86 +232,27 @@ function Numbers({ run }: { run: Run }) {
   const used = usedTokens(run.tokens)
   const pct = Math.min(999, Math.round((100 * used) / Math.max(1, run.token_budget)))
   const done = run.status === 'done'
-  const langs = Object.entries(run.stats.languages ?? {}).sort((a, b) => b[1] - a[1])
-  const total = langs.reduce((s, [, n]) => s + n, 0)
+  const called = Object.entries(run.models ?? {}).sort((a, b) => b[1] - a[1])
+  const model = run.agent.model_name || run.manifest.model_id || (called.length === 1 ? called[0][0] : '')
   return (
     <AsideBlock title={t('Прогон', 'Run')}>
       <dl className="space-y-3">
+        <Line label={t('Модель', 'Model')} value={<span className="text-body">{model || t('выбирает агент', 'the agent picks')}</span>}
+          sub={called.length > 1 ? called.map(([id, n]) => `${id} ×${n}`).join(', ') : undefined} />
         <Line label={t('Время агента', 'Agent time')} value={duration(agentElapsed(run, now))}
           sub={[t(`из ${duration(run.time_limit_s)}`, `of ${duration(run.time_limit_s)}`), run.agent_exit && exitLabel(run.agent_exit, t)].filter(Boolean).join(', ')} />
         <Line label={t('Токены', 'Tokens')} value={compact(used)}
-          sub={<>
-            <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-pending">
-              <span className={cn('block h-full', pct >= 100 ? 'bg-destructive' : 'bg-primary')} style={{ width: `${Math.min(100, pct)}%` }} />
-            </span>
-            <span className="mt-1 block">{t(`${pct}% бюджета, запросов к LLM: ${run.tokens.requests}`, `${pct}% of the budget, ${run.tokens.requests} LLM requests`)}</span>
-            {used > run.token_budget && <span className="block text-destructive">{t('Больше бюджета: прогон не идёт в рейтинг', 'Over budget: the run isn’t ranked')}</span>}
-            {used > 0 && <span className="block">{t(`${compact(run.tokens.in + run.tokens.cache_write)} вход · ${compact(run.tokens.out)} выход · ${compact(run.tokens.cache_read)} из кэша`, `${compact(run.tokens.in + run.tokens.cache_write)} in · ${compact(run.tokens.out)} out · ${compact(run.tokens.cache_read)} cached`)}</span>}
-          </>} />
+          sub={used > run.token_budget
+            ? <span className="text-destructive">{t('Больше бюджета: прогон не идёт в рейтинг', 'Over budget: the run isn’t ranked')}</span>
+            : t(`${pct}% бюджета`, `${pct}% of the budget`)} />
         <Line label={t('Стоимость', 'Cost')} value={run.cost_usd == null ? '—' : usd(run.cost_usd)}
           sub={run.cost_usd == null ? t('модель неизвестна', 'unknown model') : run.agent.provider.endsWith('-sub') ? t('подписка, по прайсу', 'subscription, at list price') : undefined} />
-        <Line label={t('Строк кода', 'Lines of code')} value={done ? t.num(run.stats.loc) : '—'} sub={done ? t(`файлов: ${run.stats.files}`, `${run.stats.files} files`) : undefined} />
-        <Line label={t('Старт за', 'Started in')} value={run.stats.start_seconds ? `${run.stats.start_seconds} s` : '—'} />
-      </dl>
-      {total > 0 && (
-        <div className="mt-4">
-          <div className="text-ui text-faint">{t('Языки', 'Languages')}</div>
-          <div className="mt-2 flex h-1.5 gap-px overflow-hidden rounded-full">
-            {langs.map(([l, n], i) => <div key={l} style={{ width: `${(100 * n) / total}%`, background: `var(--series-${(i % 4) + 1})` }} />)}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ui">
-            {langs.map(([l, n], i) => (
-              <span key={l} className="flex items-center gap-1.5">
-                <span className="size-2 rounded-[2px]" style={{ background: `var(--series-${(i % 4) + 1})` }} />
-                <span className="font-medium">{l}</span><span className="text-faint tnum">{t.num(n)}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </AsideBlock>
-  )
-}
-
-// What the run was fixed to at creation (its manifest), so results are compared under the same conditions.
-function Conditions({ run }: { run: Run }) {
-  const t = useT()
-  const m = run.manifest
-  const short = (h?: string) => (h ?? '').replace(/^sha256:/, '').slice(0, 8)
-  const models = Object.entries(run.models ?? {}).sort((a, b) => b[1] - a[1])
-  const versions = Object.entries(m.runtime?.versions ?? {})
-  const checks = run.checks_version ?? m.checks_version
-  return (
-    <AsideBlock title={t('Условия прогона', 'Run conditions')}>
-      <dl className="space-y-2 text-ui">
-        <Fixed label={t('Агент', 'Agent')} value={short(m.bundle_sha256)} />
-        <Fixed label={t('Ключ', 'Key')} value={providerLabel(m.provider, t)} mono={false} sub={t('ключ можно сменить на ключ того же провайдера', 'the key can be swapped for another key of the same provider')} />
-        <Fixed label={t('Модель', 'Model')} value={m.model_id || t('выбирает агент', 'the agent picks')} mono={!!m.model_id} />
-        {models.length > 0 && (
-          <Fixed label={t('Вызывал', 'Called')} value={models.length === 1 ? models[0][0] : t.plural(models.length, ['{n} модель', '{n} модели', '{n} моделей'], ['{n} model', '{n} models'])}
-            sub={models.length > 1 ? models.map(([id, n]) => `${id} ×${n}`).join(', ') : t(`запросов: ${models[0][1]}`, `${models[0][1]} requests`)} />
+        {done && run.stats.loc > 0 && (
+          <Line label={t('Код', 'Code')} value={t.plural(run.stats.loc, ['{n} строка', '{n} строки', '{n} строк'], ['{n} line', '{n} lines'])}
+            sub={t.plural(run.stats.files, ['{n} файл', '{n} файла', '{n} файлов'], ['{n} file', '{n} files'])} />
         )}
-        <Fixed label={t('Задание', 'Task')} value={short(m.task_md_sha256)} sub={t(`данные ${short(m.data_sha256)}`, `data ${short(m.data_sha256)}`)} />
-        <Fixed label={t('Проверки', 'Checks')} value={checks} sub={[
-          checks !== m.checks_version && t(`при создании ${m.checks_version}`, `at creation ${m.checks_version}`),
-          run.checks_version && !run.checks_current && t('устарели: прогон не в рейтинге', 'outdated: the run isn’t ranked'),
-          t(`оценка v${m.scoring_version}`, `scoring v${m.scoring_version}`),
-        ].filter(Boolean).join(', ')} />
-        <Fixed label={t('Среда', 'Runtime')} value={m.runtime ? short(m.runtime.image) : '—'} sub={versions.map(([k, v]) => `${k} ${v}`).join(', ') || undefined} />
       </dl>
     </AsideBlock>
-  )
-}
-
-function Fixed({ label, value, sub, mono = true }: { label: string; value: React.ReactNode; sub?: React.ReactNode; mono?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <dt className="shrink-0 text-muted-foreground">{label}</dt>
-        <dd className={cn('min-w-0 truncate text-right font-medium', mono && 'font-mono text-meta')}>{value}</dd>
-      </div>
-      {sub && <dd className="text-faint break-words">{sub}</dd>}
-    </div>
   )
 }
 
@@ -368,26 +317,91 @@ function Actions({ run, onChange }: { run: Run; onChange: () => void }) {
   )
 }
 
-// Every check in the order it ran, numbered like the cells of the strip in the aside.
+type CheckGroup = { key: string; label: string; hidden: boolean; items: { check: CheckResult; n: number; label: string }[] }
+
+// The checks by what they test: a name "cart: add two" goes to "Cart"; the start and the page checks have no prefix,
+// hidden checks ("hidden check 3") show no details. Groups come in the order their first check ran.
+function groupChecks(checks: CheckResult[], t: T): CheckGroup[] {
+  const groups = new Map<string, CheckGroup>()
+  const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+  checks.forEach((check, i) => {
+    const hidden = /^hidden check \d+$/.test(check.name)
+    const m = hidden ? null : /^([^:]{1,40}):\s*(.+)$/.exec(check.name)
+    const key = hidden ? '~hidden' : m ? m[1].toLowerCase() : '~app'
+    let g = groups.get(key)
+    if (!g) {
+      g = { key, hidden, items: [], label: hidden ? t('Скрытые проверки', 'Hidden checks') : m ? upper(m[1]) : t('Запуск и страницы', 'Start and pages') }
+      groups.set(key, g)
+    }
+    g.items.push({ check, n: i + 1, label: hidden ? `#${g.items.length + 1}` : upper(m ? m[2] : check.name) })
+  })
+  return [...groups.values()]
+}
+
+// A check that never ran its request: it needed a value (a user's token, an order id) an earlier failed check
+// should have given. It still counts as failed, but the cause is above it.
+const cascade = /^needs \w+, which an earlier check didn't get$/
+
+// What the platform checked in the app, a line per group; a group with a failed check is open, with the reasons.
 function Checks({ run }: { run: Run }) {
   const t = useT()
+  const groups = groupChecks(run.checks, t)
+  const passed = run.checks.filter((c) => c.passed).length
+  const skipped = run.checks.filter((c) => !c.passed && cascade.test(c.detail ?? '')).length
   return (
-    <section>
-      <SectionTitle aside={run.rechecks > 0
+    <section id="checks" className="scroll-mt-20">
+      <SectionTitle count={`${passed}/${run.checks.length}`} aside={run.rechecks > 0
         ? t.plural(run.rechecks, ['Проверено заново {n} раз: тот же код, текущие проверки', 'Проверено заново {n} раза: тот же код, текущие проверки', 'Проверено заново {n} раз: тот же код, текущие проверки'], ['Checked again once: the same code, the current checks', 'Checked again {n} times: the same code, the current checks'])
-        : t('В том порядке, в каком шли на одном свежем сервере', 'In the order they ran on one fresh server')}>{t('Автоматические проверки', 'Automatic checks')}</SectionTitle>
-      <ol className="overflow-hidden rounded-xl border-2 border-border">
-        {run.checks.map((c, i) => (
-          <li key={`${i}-${c.name}`} className={cn('flex items-start gap-3 px-4 py-2.5 text-title not-first:border-t not-first:border-border', !c.passed && 'bg-destructive/5')}>
-            <span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span>
-            {c.passed ? <Check className="mt-1 size-4 shrink-0 text-success" aria-label={t('Пройдена', 'Passed')} /> : <X className="mt-1 size-4 shrink-0 text-destructive" aria-label={t('Не пройдена', 'Failed')} />}
-            <div className="min-w-0">
-              <div className={cn(!c.passed && 'font-semibold')}>{c.name}</div>
-              {!c.passed && c.detail && <div className="mt-0.5 font-mono text-meta break-words text-muted-foreground">{c.detail}</div>}
-            </div>
-          </li>
-        ))}
-      </ol>
+        : <Link href="/how" className="hover:text-primary">{t('Как считаем', 'How we score')}</Link>}>{t('Проверки', 'Checks')}</SectionTitle>
+      <p className="mb-4 max-w-[70ch] text-body text-muted-foreground">
+        {t('Платформа запустила приложение на чистом сервере и прошла по его страницам и API по сценариям из задания, одна проверка за другой. Оценка — доля пройденных.',
+          'The platform started the app on a fresh server and went through its pages and API along the task’s scenarios, one check after another. The score is the share passed.')}
+      </p>
+      {skipped > 0 && (
+        <p className="mb-3 flex items-start gap-2 text-ui text-faint">
+          <Minus aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t.plural(skipped, ['{n} проверка не дошла до запроса: ей нужен результат более ранней, которая не прошла (вход, корзина). Считается непройденной.', '{n} проверки не дошли до запроса: им нужен результат более ранней, которая не прошла (вход, корзина). Считаются непройденными.', '{n} проверок не дошли до запроса: им нужен результат более ранней, которая не прошла (вход, корзина). Считаются непройденными.'],
+            ['{n} check was not reached: it needs the result of an earlier one that failed (sign-in, a cart). It counts as failed.', '{n} checks were not reached: they need the result of an earlier one that failed (sign-in, a cart). They count as failed.'])}
+        </p>
+      )}
+      <div className="overflow-hidden rounded-xl border-2 border-border">
+        {groups.map((g) => {
+          const ok = g.items.filter((it) => it.check.passed).length
+          const all = ok === g.items.length
+          return (
+            <details key={g.key} open={!all} className="group not-first:border-t not-first:border-border">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted [&::-webkit-details-marker]:hidden">
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-faint transition-transform group-open:rotate-90" />
+                <span className="min-w-0 flex-1 truncate text-title">{g.label}</span>
+                <span aria-hidden className="flex gap-[3px] max-sm:hidden">
+                  {g.items.map((it) => <span key={it.n} className={cn('h-3 w-[5px] rounded-[1px]', it.check.passed ? 'bg-success' : 'bg-destructive')} />)}
+                </span>
+                <span className={cn('w-12 text-right text-body font-semibold tnum', all ? 'text-success' : 'text-destructive')}>{ok}/{g.items.length}</span>
+              </summary>
+              <ol className="pb-2">
+                {g.items.map(({ check, n, label }) => {
+                  const notReached = !check.passed && cascade.test(check.detail ?? '')
+                  return (
+                    <li key={n} className="flex items-start gap-3 py-1 pr-4 pl-11 text-body">
+                      {check.passed ? <Check className="mt-0.5 size-4 shrink-0 text-success" aria-label={t('Пройдена', 'Passed')} />
+                        : notReached ? <Minus className="mt-0.5 size-4 shrink-0 text-faint" aria-label={t('Не пройдена', 'Failed')} />
+                        : <X className="mt-0.5 size-4 shrink-0 text-destructive" aria-label={t('Не пройдена', 'Failed')} />}
+                      <div className="min-w-0 flex-1">
+                        <div className={cn(check.passed || notReached ? 'text-muted-foreground' : 'font-medium')}>
+                          {label}{notReached && <span className="ml-2 text-ui text-faint">{t('не дошла', 'not reached')}</span>}
+                        </div>
+                        {!check.passed && !notReached && (g.hidden ? <div className="text-ui text-faint">{t('Подробности скрытых проверок не показываем', 'Hidden checks show no details')}</div>
+                          : check.detail && <div className="font-mono text-meta break-words text-muted-foreground">{check.detail}</div>)}
+                      </div>
+                      <span className="shrink-0 text-meta text-faint tnum" title={t('Порядковый номер проверки в прогоне', 'The check’s place in the run')}>{n}</span>
+                    </li>
+                  )
+                })}
+              </ol>
+            </details>
+          )
+        })}
+      </div>
     </section>
   )
 }

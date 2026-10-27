@@ -511,8 +511,8 @@ func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key stri
 	}
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		// A ready agent's model must be served at the new key kind too (the worker sets MODEL by it).
-		var model string
-		if err := tx.QueryRow(ctx, `SELECT model FROM agents WHERE id = $1`, id).Scan(&model); err != nil {
+		var model, was string
+		if err := tx.QueryRow(ctx, `SELECT model, provider FROM agents WHERE id = $1`, id).Scan(&model, &was); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return httpx.NotFound()
 			}
@@ -528,6 +528,13 @@ func (s *Service) UpdateKey(ctx context.Context, ownerID, id, provider, key stri
 		if err == nil && tag.RowsAffected() == 0 {
 			return httpx.NotFound()
 		}
+		if err != nil || was == provider {
+			return err
+		}
+		// The gateway refuses a run's requests once its key is another provider's: a run still to build would end
+		// with no app and score 0 for the switch, so it is cancelled instead (the checks need no key).
+		_, err = tx.Exec(ctx, `UPDATE runs SET status = 'infra_error', failure_reason = 'cancelled', finished_at = now(), updated_at = now()
+			WHERE agent_id = $1 AND status IN ('queued', 'agent')`, id)
 		return err
 	})
 	if err != nil {
