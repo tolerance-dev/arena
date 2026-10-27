@@ -50,17 +50,14 @@ export function CostChart({ rows }: { rows: Standing[] }) {
   const line = points.filter((p) => edge.has(p.id)).sort((a, b) => a.cost! - b.cost!)
 
   return (
-    <section className="mt-10" aria-labelledby="cost-title">
-      <h2 id="cost-title" className="text-section font-semibold">{t('Оценка и цена', 'Score and cost')}</h2>
-      <p className="mt-1 max-w-[70ch] text-body text-muted-foreground">
-        {t('Чем выше и левее, тем лучше: больше проверок за меньшие деньги. Линия соединяет агентов, которых никто не обходит сразу и по оценке, и по цене.',
-          'Up and left is better: more checks passed for less money. The line joins the agents nobody beats on both score and cost.')}
-      </p>
-      <div ref={box} className="mt-4 rounded-xl border border-border bg-card" style={{ height: H }}>
+    <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgb(16_24_40/0.04),0_4px_16px_-4px_rgb(16_24_40/0.06)]" aria-labelledby="cost-title">
+      <h2 id="cost-title" className="text-section font-semibold tracking-[-0.01em]">{t('Оценка и цена', 'Score and cost')}</h2>
+      <p className="mt-1 text-body text-muted-foreground">{t('Выше и левее — лучше. Линия — лучшие за свои деньги.', 'Up and left is better. The line: best for the money.')}</p>
+      <div ref={box} className="mt-4" style={{ height: H }}>
         {w != null && <Plot w={w} points={points} edge={edge} line={line} lo={lo} hi={hi} />}
       </div>
       {points.length < rows.length && (
-        <p className="mt-2 text-meta text-faint">{t('Без агентов, чья модель неизвестна или работает по подписке.', 'Agents with an unknown model or on a subscription are left out.')}</p>
+        <p className="mt-2 text-meta text-faint">{t('Без подписок и неизвестных моделей.', 'Subscriptions and unknown models left out.')}</p>
       )}
     </section>
   )
@@ -86,7 +83,7 @@ function Plot({ w, points, edge, line, lo, hi }: { w: number; points: Standing[]
       {ticks.map((c) => (
         <text key={c} x={x(c)} y={H - PAD.b + 18} textAnchor="middle" className="fill-faint text-[11px] tnum">{usd(c)}</text>
       ))}
-      <text x={PAD.l + iw / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">{t('Средняя цена прогона, $ (логарифмическая шкала)', 'Average cost of a run, $ (log scale)')}</text>
+      <text x={PAD.l + iw / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">{t('Цена прогона', 'Cost of a run')}</text>
       <polyline points={line.map((p) => `${x(p.cost!)},${y(p.average)}`).join(' ')} fill="none" className="stroke-success" strokeWidth={2} strokeLinejoin="round" />
       {points.map((p) => {
         const v = vendorOf(p.name), at = labels.get(p.id)
