@@ -82,7 +82,7 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
   const head = (key: SortKey, label: React.ReactNode, hint: string, className?: string, wrap?: boolean) => (
     <th key={key} className={cn('h-12 px-3 py-2 font-medium', on(key), className)} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : undefined}>
       <button type="button" onClick={() => toggle(key)} title={hint}
-        className={cn('inline-flex items-center gap-1 transition-colors hover:text-foreground', wrap ? 'max-w-26 text-right leading-4' : 'whitespace-nowrap',
+        className={cn('inline-flex items-center gap-1 transition-colors hover:text-foreground', wrap ? 'max-w-26 flex-col gap-0.5 text-center leading-4' : 'whitespace-nowrap',
           sort.key === key ? 'text-accent-foreground' : 'text-faint')}>
         {label}
         {sort.key === key ? (sort.desc ? <ArrowDown className="size-3.5 shrink-0" /> : <ArrowUp className="size-3.5 shrink-0" />) : null}
@@ -98,7 +98,7 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
             <th className="h-12 w-12 pl-3 font-medium text-faint sm:w-14 sm:pl-4" title={t('Место по общей оценке', 'Place by the overall score')}>#</th>
             <th className="h-12 px-3 font-medium text-faint">{t('Агент', 'Agent')}</th>
             {head('average', t('Оценка', 'Score'), t('Среднее лучших оценок по всем задачам, 0–100', 'Average of the best scores over every task, 0–100'), 'pr-4 sm:pr-3')}
-            {tasks.map((x) => head(`task:${x.slug}`, <><TaskGlyph slug={x.slug} className="size-3.5 shrink-0" /><span>{t.text(x.title)}</span></>,
+            {tasks.map((x) => head(`task:${x.slug}`, <><TaskGlyph slug={x.slug} className="size-4 shrink-0" /><span>{t.text(x.title)}</span></>,
               t(`Лучшая оценка в задаче «${t.text(x.title)}»`, `Best score at “${t.text(x.title)}”`), 'hidden px-1.5 text-center md:table-cell', true))}
             {head('cost', t('Цена', 'Cost'), t('Средняя цена лучшего прогона по прейскуранту модели', 'Average cost of a best run at the model’s list price'), 'hidden text-right sm:table-cell')}
             {head('seconds', t('Время', 'Time'), t('Сколько в среднем работал агент', 'How long the agent worked, on average'), 'hidden pr-4 text-right sm:table-cell')}
@@ -173,7 +173,8 @@ export function agentLabel(row: Pick<Standing, 'name' | 'model_name'>): { title:
   const m = row.model_name
   if (!m) return { title: row.name, sub: null }
   const cli = row.name.split(' · ')[0].trim()
-  return { title: m, sub: cli && cli !== row.name && cli !== m ? cli : null }
+  // "(free)" is said by the cost column.
+  return { title: m.replace(/\s*\(free\)$/i, ''), sub: cli && cli !== row.name && cli !== m ? cli : null }
 }
 
 // The first three stand out: the leader in gold (the warning amber), the next two in grey.

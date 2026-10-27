@@ -14,7 +14,7 @@ const VENDOR_FILL: Record<Vendor, string> = {
   deepseek: 'fill-vendor-deepseek', zhipu: 'fill-vendor-zhipu', alibaba: 'fill-vendor-alibaba', tencent: 'fill-vendor-tencent',
 }
 const TICKS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500]
-const H = 360, PAD = { l: 40, r: 16, t: 20, b: 48 }
+const H = 300, PAD = { l: 40, r: 16, t: 20, b: 48 }
 
 // Agents that nobody beats on both: no other is at least as good for no more money. Cheapest first.
 export function frontier(points: Standing[]): Set<string> {

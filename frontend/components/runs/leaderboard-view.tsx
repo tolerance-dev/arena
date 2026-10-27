@@ -32,7 +32,7 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
           {list && rows && (
             <ul className="mt-4 flex flex-wrap gap-2">
               {updated && <Stat icon={CalendarDays}>{t(`обновлён ${t.date(updated, DAY)}`, `updated ${t.date(updated, DAY)}`)}</Stat>}
-              <Stat icon={Bot}>{t.plural(rows.length, ['{n} агент в рейтинге', '{n} агента в рейтинге', '{n} агентов в рейтинге'], ['{n} agent ranked', '{n} agents ranked'])}</Stat>
+              <Stat icon={Bot}>{t.plural(rows.length, ['{n} агент', '{n} агента', '{n} агентов'], ['{n} agent', '{n} agents'])}</Stat>
               <Stat icon={LayoutGrid}>{t.plural(list.length, ['{n} задача', '{n} задачи', '{n} задач'], ['{n} task', '{n} tasks'])}</Stat>
               <Stat icon={Play}>{t.plural(list.reduce((s, x) => s + x.runs, 0), ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])}</Stat>
             </ul>
