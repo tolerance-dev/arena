@@ -21,6 +21,7 @@ import { providerLabel } from '@/lib/providers'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar, ProviderOptions } from './bits'
 import { LiveRuns } from './live-runs'
+import { RunMatrix } from './run-matrix'
 
 const field = fieldClass
 // Key fields are plain text, so the user sees the key they paste (a password field showed only dots). As password
@@ -61,7 +62,8 @@ export function MyAgents() {
   const showForm = adding ?? none
   return (
     <div className="space-y-12">
-      <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. What’s running right now is on top.')}</PageHeader>
+      <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Таблица наверху показывает, что каждый агент уже сделал, и запускает недостающее.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. The table on top shows what each agent has done and starts what’s missing.')}</PageHeader>
+      {!!agents.data?.items.length && <RunMatrix agents={agents.data.items} tasks={tasks.data?.items ?? []} onStarted={refresh} />}
       {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
       <section>
         <SectionTitle aside={!showForm && (

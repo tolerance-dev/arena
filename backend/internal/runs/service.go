@@ -236,6 +236,13 @@ func (s *Service) Active(ctx context.Context) ([]Run, error) {
 	return s.query(ctx, `WHERE r.status IN ('queued', 'agent', 'checking') ORDER BY r.created_at`)
 }
 
+// Latest is the newest run of each of ownerID's agents at each task: the cells of the agents × tasks table on /my.
+func (s *Service) Latest(ctx context.Context, ownerID string) ([]Run, error) {
+	return s.query(ctx, `WHERE r.id IN (SELECT DISTINCT ON (agent_id, task) id FROM runs
+		WHERE agent_id IN (SELECT id FROM agents WHERE owner_id = $1) ORDER BY agent_id, task, created_at DESC)
+		ORDER BY r.created_at DESC`, ownerID)
+}
+
 // Mine lists the latest runs of ownerID's agents.
 func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, error) {
 	return s.query(ctx, `WHERE a.owner_id = $1 ORDER BY r.created_at DESC LIMIT $2`, ownerID, limit)

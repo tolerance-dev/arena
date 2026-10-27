@@ -101,7 +101,7 @@ export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: strin
         )}>{t('Сейчас идёт', 'Running now')}</SectionTitle>
         {err && <p role="alert" className="mb-3 text-body text-destructive">{err}</p>}
         {active.length === 0 ? <EmptyState>{empty ?? t('Сейчас ничего не идёт. Выберите задачу у агента ниже и нажмите «Запустить».', 'Nothing is running. Pick a task for an agent below and press “Start”.')}</EmptyState> : (
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {active.map((r) => (
               <li key={r.id} className="relative">
                 <LiveCard run={r} now={now} picked={picked.has(r.id)} />
