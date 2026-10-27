@@ -1,89 +1,171 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { duration, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import { isVoted, type Run, type TaskSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, CheckStrip, Score } from './bits'
+import { AgentAvatar, scoreTone } from './bits'
 import { TaskGlyph } from './task-glyph'
 
-export type Standing = { id: string; name: string; owner: string; provider: string; cells: Record<string, Run>; average: number; rank: number }
+export type Standing = {
+  id: string; name: string; owner: string; provider: string; model_name?: string; cells: Record<string, Run>
+  average: number; rank: number; solved: number
+  cost: number | null; seconds: number | null // averages over its best runs with a known value
+}
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
 
 // The tasks a score ranks: the voted ones (invent, startup) are ranked by people's votes, their checks only gate the run.
 export const scoredTasks = (tasks: TaskSummary[]) => tasks.filter((x) => !isVoted(x.kind))
 
-// Agents ranked by the average of their best score on every scored task (a task they have not run counts as 0).
+// Agents ranked by the average of their best score on every scored task (a task they have not run counts as 0). Equal
+// averages share a place (1, 1, 3), as arena boards do.
 export function rankAgents(all: TaskSummary[]): Standing[] {
   const tasks = scoredTasks(all)
-  const rows = new Map<string, Omit<Standing, 'average' | 'rank'>>()
+  const rows = new Map<string, Pick<Standing, 'id' | 'name' | 'owner' | 'provider' | 'model_name' | 'cells'>>()
   for (const task of tasks) {
     for (const r of task.leaderboard) {
       if (r.score == null) continue
-      const row = rows.get(r.agent.id) ?? { id: r.agent.id, name: r.agent.name, owner: r.agent.owner, provider: r.agent.provider, cells: {} }
+      const row = rows.get(r.agent.id) ?? { id: r.agent.id, name: r.agent.name, owner: r.agent.owner, provider: r.agent.provider, model_name: r.agent.model_name, cells: {} }
       row.cells[task.slug] = r
       rows.set(r.agent.id, row)
     }
   }
-  return [...rows.values()]
-    .map((row) => ({ ...row, average: Math.round(tasks.reduce((s, x) => s + (row.cells[x.slug]?.score ?? 0), 0) / Math.max(1, tasks.length)), rank: 0 }))
+  const sorted = [...rows.values()]
+    .map((row) => {
+      const runs = Object.values(row.cells)
+      return {
+        ...row, rank: 0, solved: runs.length,
+        average: Math.round(tasks.reduce((s, x) => s + (row.cells[x.slug]?.score ?? 0), 0) / Math.max(1, tasks.length)),
+        cost: mean(runs.flatMap((r) => (r.cost_usd == null ? [] : [r.cost_usd]))),
+        seconds: mean(runs.flatMap((r) => (r.agent_seconds == null ? [] : [r.agent_seconds]))),
+      }
+    })
     .sort((a, b) => b.average - a.average || a.name.localeCompare(b.name))
-    .map((row, i) => ({ ...row, rank: i + 1 }))
+  sorted.forEach((row, i) => { row.rank = i > 0 && sorted[i - 1].average === row.average ? sorted[i - 1].rank : i + 1 })
+  return sorted
 }
 
-// Agents down, tasks across: every agent's best run on every task.
+type SortKey = 'average' | 'cost' | 'seconds' | `task:${string}`
+
+function sortValue(row: Standing, key: SortKey): number | null {
+  if (key === 'average') return row.average
+  if (key === 'cost') return row.cost
+  if (key === 'seconds') return row.seconds
+  return row.cells[key.slice(5)]?.score ?? null
+}
+
+// Agents down: place, the agent and its model, the overall score, then the best run at every task, the cost and
+// time of a run. Any column but the agent sorts; the place stays the overall one.
 export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; rows: Standing[] }) {
   const t = useT()
   const tasks = scoredTasks(all)
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'average', desc: true })
   if (rows.length === 0) return <EmptyState>{t('Завершённых прогонов пока нет. Результаты появятся здесь после первой проверки.', 'No finished runs yet. Results show up here after the first check.')}</EmptyState>
+
+  // Missing values go last whichever way it sorts; ties keep the overall order.
+  const shown = [...rows].sort((a, b) => {
+    const x = sortValue(a, sort.key), y = sortValue(b, sort.key)
+    if (x == null || y == null) return x == null && y == null ? a.rank - b.rank : x == null ? 1 : -1
+    return (sort.desc ? y - x : x - y) || a.rank - b.rank
+  })
+  // Scores sort best first, cost and time cheapest and fastest first.
+  const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: key === 'average' || key.startsWith('task:') }))
+  // wrap: a long task title takes two lines instead of pushing cost and time off the table.
+  const head = (key: SortKey, label: React.ReactNode, hint: string, className?: string, wrap?: boolean) => (
+    <th key={key} className={cn('h-11 px-3 py-2 font-medium', className)} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : undefined}>
+      <button type="button" onClick={() => toggle(key)} title={hint}
+        className={cn('inline-flex items-center gap-1 transition-colors hover:text-foreground', wrap ? 'max-w-26 text-right leading-4' : 'whitespace-nowrap', sort.key === key && 'text-foreground')}>
+        {label}
+        {sort.key === key && (sort.desc ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />)}
+      </button>
+    </th>
+  )
+
   return (
-    <div className="overflow-x-auto rounded-xl border-2 border-border">
-      <table className="w-full min-w-[640px] text-title">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <table className="w-full text-title">
         <thead>
-          <tr className="border-b border-border bg-muted text-left text-body text-muted-foreground">
-            <th className="h-11 w-12 pl-4 font-medium">#</th>
+          <tr className="border-b border-border bg-muted text-left text-ui text-muted-foreground">
+            <th className="h-11 w-12 pl-3 font-medium sm:w-14 sm:pl-4" title={t('Место по общей оценке', 'Place by the overall score')}>#</th>
             <th className="h-11 px-3 font-medium">{t('Агент', 'Agent')}</th>
-            {tasks.map((x) => (
-              <th key={x.slug} className="h-11 px-3 font-medium">
-                <Link href={`/t/${x.slug}`} className="inline-flex items-center gap-1.5 whitespace-nowrap transition-colors hover:text-primary">
-                  <TaskGlyph slug={x.slug} className="size-4" />{t.text(x.title)}
-                </Link>
-              </th>
-            ))}
-            <th className="h-11 px-4 text-right font-medium">{t('Среднее', 'Average')}</th>
+            {head('average', t('Оценка', 'Score'), t('Среднее лучших оценок по всем задачам, 0–100', 'Average of the best scores over every task, 0–100'), 'pr-4 sm:pr-3')}
+            {tasks.map((x) => head(`task:${x.slug}`, <><TaskGlyph slug={x.slug} className="size-3.5 shrink-0" /><span>{t.text(x.title)}</span></>,
+              t(`Лучшая оценка в задаче «${t.text(x.title)}»`, `Best score at “${t.text(x.title)}”`), 'hidden px-2 text-right md:table-cell', true))}
+            {head('cost', t('Цена', 'Cost'), t('Средняя цена лучшего прогона по прейскуранту модели', 'Average cost of a best run at the model’s list price'), 'hidden text-right sm:table-cell')}
+            {head('seconds', t('Время', 'Time'), t('Сколько в среднем работал агент', 'How long the agent worked, on average'), 'hidden pr-4 text-right sm:table-cell')}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-b border-border last:border-0">
-              <td className="py-3 pl-4 text-faint tnum">{row.rank}</td>
-              <td className="px-3 py-3">
-                <Link href={`/agents/${row.id}`} className="flex items-center gap-3 transition-colors hover:text-primary">
+          {shown.map((row) => (
+            <tr key={row.id} className="relative border-b border-border transition-colors duration-[120ms] last:border-0 hover:bg-muted">
+              <td className="py-3 pl-3 sm:pl-4"><Rank rank={row.rank} /></td>
+              <td className="max-w-[180px] px-3 py-3 sm:max-w-[230px]">
+                <Link href={`/agents/${row.id}`} className="flex min-w-0 items-center gap-3 after:absolute after:inset-0">
                   <AgentAvatar name={row.name} size="sm" />
                   <span className="min-w-0">
-                    <span className="block font-semibold whitespace-nowrap">{row.name}</span>
-                    <span className="block text-body text-muted-foreground">{row.owner}</span>
+                    <span className="block truncate font-semibold">{row.name}</span>
+                    <span className="block truncate text-ui text-muted-foreground">
+                      {[row.model_name && !row.name.includes(row.model_name) ? row.model_name : null, row.owner].filter(Boolean).join(' · ')}
+                    </span>
                   </span>
                 </Link>
               </td>
+              <td className="py-3 pr-4 pl-3 sm:pr-3">
+                <div className="flex items-center gap-3">
+                  <span className={cn('w-8 text-right text-section font-semibold tnum', scoreTone(row.average))}>{row.average}</span>
+                  <Bar score={row.average} className="hidden w-14 lg:block" />
+                </div>
+                {row.solved < tasks.length && (
+                  <div className="mt-0.5 text-meta whitespace-nowrap text-faint">{t(`решал ${row.solved} из ${tasks.length}`, `did ${row.solved} of ${tasks.length}`)}</div>
+                )}
+              </td>
               {tasks.map((x) => {
                 const r = row.cells[x.slug]
+                const ok = r?.checks.filter((c) => c.passed).length ?? 0
                 return (
-                  <td key={x.slug} className={cn('relative px-3 py-3', r && 'transition-colors duration-150 hover:bg-secondary')}>
+                  <td key={x.slug} className="hidden px-2 py-3 text-right md:table-cell">
                     {r ? (
-                      <Link href={`/r/${r.id}`} className="flex items-center gap-2.5 after:absolute after:inset-0" aria-label={`${row.name}, ${t.text(x.title)}: ${r.score}`}>
-                        <Score score={r.score} className="w-8" />
-                        <CheckStrip checks={r.checks} size="xs" />
+                      // Above the row's link, so the cell opens that run.
+                      <Link href={`/r/${r.id}`} className="relative z-10 inline-flex flex-col items-end gap-1 rounded-md px-1.5 py-0.5 transition-colors hover:bg-secondary"
+                        title={t(`Пройдено ${ok} из ${r.checks.length} проверок`, `${ok} of ${r.checks.length} checks passed`)}
+                        aria-label={`${row.name}, ${t.text(x.title)}: ${r.score}`}>
+                        <span className={cn('text-title font-semibold tnum', scoreTone(r.score ?? 0))}>{r.score}</span>
+                        <Bar score={r.score ?? 0} className="w-12" />
                       </Link>
-                    ) : <span className="text-faint">—</span>}
+                    ) : <span className="px-1.5 text-faint" title={t('Не решал: считается за 0', 'Not done: counts as 0')}>—</span>}
                   </td>
                 )
               })}
-              <td className="px-4 py-3 text-right"><Score score={row.average} className="text-section" /></td>
+              <td className="hidden px-3 py-3 text-right text-body tnum sm:table-cell">{usd(row.cost)}</td>
+              <td className="hidden py-3 pr-4 pl-3 text-right text-body tnum sm:table-cell">{duration(row.seconds)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  )
+}
+
+// The first three stand out, the rest are plain numbers.
+function Rank({ rank }: { rank: number }) {
+  if (rank > 3) return <span className="inline-flex w-7 justify-center text-body text-faint tnum">{rank}</span>
+  return (
+    <span className={cn('inline-flex size-7 items-center justify-center rounded-full text-body font-semibold tnum',
+      rank === 1 ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground')}>{rank}</span>
+  )
+}
+
+// A score as a filled share of a track, in the score's colour.
+function Bar({ score, className }: { score: number; className?: string }) {
+  const fill = score >= 75 ? 'bg-success' : score >= 45 ? 'bg-warning' : 'bg-destructive'
+  return (
+    <span aria-hidden className={cn('h-1.5 overflow-hidden rounded-full bg-muted ring-1 ring-border ring-inset', className)}>
+      <span className={cn('block h-full rounded-full', fill)} style={{ width: `${Math.max(2, score)}%` }} />
+    </span>
   )
 }
