@@ -31,9 +31,14 @@ export function usd(n: number | null | undefined) {
 
 // What a run should cost if the agent works `minutes`: the model's spending rate at its price, stopped where the
 // budget runs out (it counts input, cache writes and output). budgetMin = minutes until then, when that is sooner.
+// A run's cost: typical = as long as this model's runs usually work (most stop well before their limit), max = the
+// whole picked time; both cut where the token budget runs out.
 export function runEstimate(price: Price, rate: Rate, minutes: number, budget: number) {
   const perMin = (rate.in * price.in + rate.out * price.out + rate.cache_read * price.cache_read + rate.cache_write * price.cache_write) / 1e6
   const budgeted = rate.in + rate.out + rate.cache_write
   const untilBudget = budgeted > 0 && budget > 0 ? budget / budgeted : Infinity
-  return { perMin, total: perMin * Math.min(minutes, untilBudget), budgetMin: untilBudget < minutes ? untilBudget : null }
+  return {
+    perMin, total: perMin * Math.min(minutes, rate.avg_minutes, untilBudget), max: perMin * Math.min(minutes, untilBudget),
+    budgetMin: untilBudget < minutes ? untilBudget : null,
+  }
 }

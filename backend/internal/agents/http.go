@@ -71,6 +71,42 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		}
 		httpx.Respond(w, http.StatusCreated, a)
 	})
+	// Several ready agents at once (the "all standard" picker), all or nothing: see Service.CreateMany.
+	mux.HandleFunc("POST /api/v1/my/agents/batch", func(w http.ResponseWriter, r *http.Request) {
+		raw, err := httpx.ReadBody(w, r)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		var in struct {
+			Agents []struct {
+				Example  string `json:"example"`
+				Model    string `json:"model"`
+				Provider string `json:"provider"`
+				APIKey   string `json:"api_key"`
+				Name     string `json:"name"`
+			} `json:"agents"`
+		}
+		if err := httpx.Decode(raw, &in); err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		ins := make([]CreateInput, len(in.Agents))
+		for i, a := range in.Agents {
+			bundle, model, err := exampleBundle(a.Example, a.Model, a.Provider)
+			if err != nil {
+				httpx.WriteError(w, r, err)
+				return
+			}
+			ins[i] = CreateInput{Name: a.Name, Provider: a.Provider, APIKey: a.APIKey, Bundle: bundle, Model: model, Example: a.Example}
+		}
+		items, err := s.CreateMany(r.Context(), identity.MustFromContext(r.Context()).UserID, identity.OwnerScope(r.Context()) != "", ins)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusCreated, map[string]any{"items": items})
+	})
 	mux.HandleFunc("PUT /api/v1/my/agents/{id}/key", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)
 		if err != nil {

@@ -10,8 +10,8 @@ import { Input, fieldClass } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Segmented } from '@/components/ui/segmented'
-import { del, post, put, upload } from '@/lib/api'
-import { errorText } from '@/lib/errors'
+import { ApiError, del, post, put, upload } from '@/lib/api'
+import { byCode, errorText } from '@/lib/errors'
 import type { Agent, ExampleAgent, ExampleModel, Run, TaskSummary } from '@/lib/types'
 import { runEstimate, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
@@ -21,12 +21,14 @@ import { providerLabel } from '@/lib/providers'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar, ProviderOptions } from './bits'
 import { LiveRuns } from './live-runs'
+import { RunHistory } from './run-history'
+import { RunMatrix } from './run-matrix'
 
 const field = fieldClass
-// Key fields are password inputs, so browsers took the agent form for a sign-in form and filled a saved site
-// password into the key (and its username into the field before it). "new-password" stops Chrome and Safari from
-// filling saved passwords; the data-* attributes tell 1Password, LastPass and Bitwarden to keep out.
-const noAutofill = { autoComplete: 'new-password', 'data-1p-ignore': true, 'data-lpignore': 'true', 'data-bwignore': true } as const
+// Key fields are plain text, so the user sees the key they paste (a password field showed only dots). As password
+// fields, browsers took the agent form for a sign-in form and filled a saved site password into the key; autofill off
+// and the data-* attributes keep Chrome, Safari, 1Password, LastPass and Bitwarden out of them either way.
+const keyField = { type: 'text', autoComplete: 'off', spellCheck: false, 'data-1p-ignore': true, 'data-lpignore': 'true', 'data-bwignore': true } as const
 
 // Any signed-in user uploads agents here and runs them; each user sees only their own agents and runs. What is
 // running right now comes first, then the agents, each with its launch controls in one row.
@@ -61,8 +63,10 @@ export function MyAgents() {
   const showForm = adding ?? none
   return (
     <div className="space-y-12">
-      <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. What’s running right now is on top.')}</PageHeader>
-      {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
+      <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Таблица наверху показывает, что каждый агент уже сделал, и запускает недостающее.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. The table on top shows what each agent has done and starts what’s missing.')}</PageHeader>
+      {!!agents.data?.items.length && <RunMatrix agents={agents.data.items} tasks={tasks.data?.items ?? []} onStarted={refresh} />}
+      {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} recent={false} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
+      {!!agents.data?.items.length && <RunHistory agents={agents.data.items} tasks={tasks.data?.items ?? []} onStarted={refresh} />}
       <section>
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> {t('Новый агент', 'New agent')}</Button>
@@ -156,6 +160,8 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
   const offered = example?.providers.filter((p) => usable(p) && (!model || model.ids[p]))
   const providerValue = offered && !offered.includes(provider) ? offered[0] : provider
   const defaultName = example && model ? `${example.name} · ${model.name.replace(' (free)', '')}` : ''
+  // One agent per CLI and model (the server refuses a copy): more attempts are more runs of the one there is.
+  const twin = example && model ? existing.find((a) => a.example === example.slug && a.model === model.slug) : undefined
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -189,7 +195,7 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
         { value: 'standard', label: t('Все стандартные', 'All standard') },
         { value: 'file', label: t('Свой файл', 'Own file') },
       ]} />
-      {source === 'standard' ? <StandardAgents examples={examples} models={catalog?.models ?? []} existing={existing} onDone={onDone} onCancel={onCancel} /> : (
+      {source === 'standard' ? <StandardAgents examples={examples} models={catalog?.models ?? []} existing={existing} onDone={onDone} onCancel={onCancel} subscriptions={subscriptions} /> : (
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           {source === 'example' ? (
@@ -206,6 +212,9 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
                 {t('Ключи для этой пары: ', 'Keys for this pair: ')}{(offered ?? []).map((p) => providerLabel(p, t)).join(', ')}.{' '}
                 {model.slug === example.model ? t('Один ключ OrcaRouter запускает любого агента с любой моделью.', 'One OrcaRouter key runs any agent with any model.') : t('Модель не из «родного» CLI ещё не проверена: прогон может упасть сразу.', 'A model from outside the CLI’s own vendor isn’t tested yet: the run may fail right away.')}{' '}
                 {model.price.in + model.price.out === 0 ? t('Модель бесплатная.', 'The model is free.') : t(`Цена: ${usd(model.price.in)} вход, ${usd(model.price.out)} выход за миллион токенов.`, `Price: ${usd(model.price.in)} in, ${usd(model.price.out)} out per million tokens.`)}
+              </p>}
+              {twin && <p role="status" className="text-xs font-medium text-destructive">
+                {t(`Такой агент у вас уже есть: «${twin.name}». Запустите его ещё раз или выберите другую модель.`, `You already have this agent: “${twin.name}”. Run it again or pick another model.`)}
               </p>}
             </div>
           ) : (
@@ -243,12 +252,12 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
             <textarea id="api_key" name="api_key" required rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
               className={cn(field, 'h-auto py-2 font-mono text-xs')} />
           ) : (
-            <Input id="api_key" name="api_key" type="password" required {...noAutofill} placeholder="sk-…" />
+            <Input id="api_key" name="api_key" required {...keyField} className="font-mono" placeholder="sk-…" />
           )}
           <KeyHint provider={providerValue} />
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy}><Upload /> {busy ? t('Проверяем ключ…', 'Checking the key…') : t('Загрузить агента', 'Upload agent')}</Button>
+          <Button type="submit" disabled={busy || !!twin}><Upload /> {busy ? t('Проверяем ключ…', 'Checking the key…') : t('Загрузить агента', 'Upload agent')}</Button>
           {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('Отмена', 'Cancel')}</Button>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
@@ -260,50 +269,50 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
 }
 
 const STANDARD_KEYS = ['orcarouter', 'anthropic', 'openai', 'google'] as const
+const SUBSCRIPTION_KEYS = ['claude-sub', 'chatgpt-sub'] as const
 
-// Every ready agent with its native model in one go. Each takes the first key kind it speaks that was filled in, in
-// its own order (its vendor's key before OrcaRouter, see agents.Examples), so one OrcaRouter key creates them all.
-// The ones the user already has (same CLI and model) start unticked; each is a separate upload, so one bad key fails
-// only its agents.
-function StandardAgents({ examples, models, existing, onDone, onCancel }: {
-  examples: ExampleAgent[]; models: ExampleModel[]; existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void
+// Every ready agent with its native model in one go. Each takes the first key kind it speaks that was filled in: a
+// subscription (offered to the site owner only) first, then in its own order (its vendor's key before OrcaRouter, see
+// agents.Examples), so one OrcaRouter key creates them all.
+// The ones the user already has (same CLI and model) start unticked. One request, all or nothing: the server checks
+// every key first and creates none while any is refused (agents.CreateMany).
+function StandardAgents({ examples, models, existing, onDone, onCancel, subscriptions }: {
+  examples: ExampleAgent[]; models: ExampleModel[]; existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean
 }) {
   const t = useT()
   const [keys, setKeys] = useState<Record<string, string>>({})
   const [off, setOff] = useState<Record<string, boolean>>({})
-  const [result, setResult] = useState<Record<string, string>>({})
+  // Why each key was refused (by provider) and any other error; nothing is created until every key passes.
+  const [keyErr, setKeyErr] = useState<Record<string, string>>({})
+  const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const rows = examples.map((e) => {
     const model = models.find((m) => m.slug === e.model)
-    const provider = e.providers.find((p) => keys[p]?.trim() && model?.ids[p])
+    const kinds = e.providers.filter((p) => (subscriptions || !p.endsWith('-sub')) && model?.ids[p])
+    const provider = [...kinds.filter((p) => p.endsWith('-sub')), ...kinds.filter((p) => !p.endsWith('-sub'))].find((p) => keys[p]?.trim())
     const has = existing.some((a) => a.example === e.slug && a.model === e.model)
-    return { e, model, provider, has, on: (off[e.slug] ?? has) === false }
+    return { e, model, kinds, provider, has, on: (off[e.slug] ?? has) === false }
   })
-  const picked = rows.filter((r) => r.on && r.provider && result[r.e.slug] !== 'ok')
+  const picked = rows.filter((r) => r.on && r.provider)
   async function submit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault()
     setBusy(true)
-    let first: Agent | undefined
-    let failed = false
-    for (const r of picked) {
-      const data = new FormData()
-      data.set('example', r.e.slug)
-      data.set('model', r.e.model)
-      data.set('provider', r.provider!)
-      data.set('api_key', keys[r.provider!].trim())
-      data.set('name', `${r.e.name} · ${r.model?.name.replace(' (free)', '') ?? r.e.model}`)
-      try {
-        const agent = await upload<Agent>('/my/agents', data)
-        first ??= agent
-        setResult((x) => ({ ...x, [r.e.slug]: 'ok' }))
-      } catch (e) {
-        failed = true
-        setResult((x) => ({ ...x, [r.e.slug]: errorText(e, t) }))
-      }
+    setErr('')
+    setKeyErr({})
+    try {
+      const { items } = await post<{ items: Agent[] }>('/my/agents/batch', {
+        agents: picked.map((r) => ({
+          example: r.e.slug, model: r.e.model, provider: r.provider, api_key: keys[r.provider!].trim(),
+          name: `${r.e.name} · ${r.model?.name.replace(' (free)', '') ?? r.e.model}`,
+        })),
+      })
+      onDone(items[0])
+    } catch (e) {
+      setErr(errorText(e, t))
+      if (e instanceof ApiError && e.fields) setKeyErr(Object.fromEntries(e.fields.map((f) => [f.path, byCode(f.code, t) ?? f.code])))
+    } finally {
+      setBusy(false)
     }
-    setBusy(false)
-    // All went in: close the form on the first new agent. Any failed: stay, with each row's error, to fix and retry.
-    if (first && !failed) onDone(first)
   }
   return (
     <form onSubmit={submit} className="space-y-5">
@@ -311,8 +320,25 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
         {STANDARD_KEYS.map((p) => (
           <div key={p} className="space-y-1.5">
             <Label htmlFor={`key-${p}`}>{t(`Ключ ${providerLabel(p, t)}`, `${providerLabel(p, t)} key`)}</Label>
-            <Input id={`key-${p}`} type="password" {...noAutofill} placeholder={p === 'orcarouter' ? 'sk-orca-…' : 'sk-…'}
-              value={keys[p] ?? ''} onChange={(e) => setKeys((k) => ({ ...k, [p]: e.target.value }))} />
+            <Input id={`key-${p}`} {...keyField} className={cn('font-mono', keyErr[p] && 'border-destructive')} placeholder={p === 'orcarouter' ? 'sk-orca-…' : 'sk-…'}
+              aria-invalid={!!keyErr[p]} value={keys[p] ?? ''}
+              onChange={(e) => { setKeys((k) => ({ ...k, [p]: e.target.value })); setKeyErr(({ [p]: _, ...rest }) => rest) }} />
+            {keyErr[p] && <p className="text-xs text-destructive">{keyErr[p]}</p>}
+          </div>
+        ))}
+        {subscriptions && SUBSCRIPTION_KEYS.map((p) => (
+          <div key={p} className="space-y-1.5">
+            <Label htmlFor={`key-${p}`}>{providerLabel(p, t)}</Label>
+            {p === 'chatgpt-sub' ? (
+              <textarea id={`key-${p}`} rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
+                className={cn(field, 'h-auto py-2 font-mono text-xs', keyErr[p] && 'border-destructive')} aria-invalid={!!keyErr[p]} value={keys[p] ?? ''}
+                onChange={(e) => { setKeys((k) => ({ ...k, [p]: e.target.value })); setKeyErr(({ [p]: _, ...rest }) => rest) }} />
+            ) : (
+              <Input id={`key-${p}`} {...keyField} className={cn('font-mono', keyErr[p] && 'border-destructive')} placeholder="sk-ant-oat…"
+                aria-invalid={!!keyErr[p]} value={keys[p] ?? ''}
+                onChange={(e) => { setKeys((k) => ({ ...k, [p]: e.target.value })); setKeyErr(({ [p]: _, ...rest }) => rest) }} />
+            )}
+            {keyErr[p] ? <p className="text-xs text-destructive">{keyErr[p]}</p> : <KeyHint provider={p} />}
           </div>
         ))}
         <p className="text-xs text-muted-foreground sm:col-span-2">
@@ -323,23 +349,22 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
       </div>
       <ul className="divide-y divide-border overflow-hidden rounded-xl border-2 border-border">
         {rows.map((r) => {
-          const res = result[r.e.slug]
+          const bad = r.on && r.provider && keyErr[r.provider]
           return (
             <li key={r.e.slug}>
               <label className="flex items-center gap-3 px-4 py-2.5 text-body">
-                <input type="checkbox" className="size-4 accent-primary" checked={r.on} disabled={busy || res === 'ok'}
+                <input type="checkbox" className="size-4 accent-primary" checked={r.on} disabled={busy}
                   onChange={(ev) => setOff((o) => ({ ...o, [r.e.slug]: !ev.target.checked }))} />
                 <AgentAvatar name={r.e.name} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{r.e.name}</span>
                   <span className="block truncate text-meta text-muted-foreground">{r.model?.name ?? r.e.model}</span>
                 </span>
-                <span className={cn('shrink-0 text-right text-meta', res && res !== 'ok' ? 'text-destructive' : 'text-muted-foreground')}>
-                  {res === 'ok' ? <span className="inline-flex items-center gap-1 text-foreground"><Check className="size-3.5" />{t('Создан', 'Created')}</span>
-                    : res ? res
+                <span className={cn('shrink-0 text-right text-meta', bad ? 'text-destructive' : 'text-muted-foreground')}>
+                  {bad ? t(`Ключ ${providerLabel(r.provider!, t)} не принят`, `${providerLabel(r.provider!, t)} key refused`)
                     : r.has && !r.on ? t('Уже есть', 'Already there')
                     : r.provider ? providerLabel(r.provider, t)
-                    : t(`Нужен ключ: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' или ')}`, `Needs a key: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' or ')}`)}
+                    : t(`Нужен ключ: ${r.kinds.map((p) => providerLabel(p, t)).join(' или ')}`, `Needs a key: ${r.kinds.map((p) => providerLabel(p, t)).join(' or ')}`)}
                 </span>
               </label>
             </li>
@@ -351,6 +376,7 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
           <Layers /> {busy ? t('Проверяем ключи…', 'Checking the keys…') : t.plural(picked.length, ['Создать {n} агента', 'Создать {n} агентов', 'Создать {n} агентов'], ['Create {n} agent', 'Create {n} agents'])}
         </Button>
         {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('Отмена', 'Cancel')}</Button>}
+        {err && <span className="text-sm text-destructive">{err}</span>}
       </div>
     </form>
   )
@@ -509,7 +535,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
                   <select className={cn(field, 'w-48')} value={provider} onChange={(e) => { setProvider(e.target.value); setKeyErr('') }}>
                     <ProviderOptions subscriptions={subscriptions} />
                   </select>
-                  <Input type="password" autoFocus {...noAutofill} className="min-w-0 flex-1 font-mono" value={key} onChange={(e) => { setKey(e.target.value); setKeyErr('') }}
+                  <Input autoFocus {...keyField} className="min-w-0 flex-1 font-mono" value={key} onChange={(e) => { setKey(e.target.value); setKeyErr('') }}
                     onKeyDown={(e) => { if (e.key === 'Enter' && key.length >= 20) void saveKey(); if (e.key === 'Escape') cancelKey() }} placeholder={t('Новый ключ', 'New key')} />
                   <Button variant="outline" onClick={() => void saveKey()} disabled={key.length < 20 || keyState === 'checking'}>{keyState === 'checking' ? t('Проверяем…', 'Checking…') : t('Сохранить', 'Save')}</Button>
                   <Button variant="ghost" onClick={cancelKey} disabled={keyState === 'checking'}>{t('Отмена', 'Cancel')}</Button>
@@ -528,7 +554,8 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
   )
 }
 
-// What a run of this agent should cost for the picked time: the model's spending rate × minutes at its price.
+// What a run of this agent usually costs: the model's spending rate × how long its runs usually work (at most the
+// picked time) at its price; the whole picked time in the tooltip.
 function CostEstimate({ agent, minutes, budget }: { agent: Agent; minutes: number; budget: number }) {
   const t = useT()
   const note = (text: string) => <span className="text-meta text-muted-foreground">{text}</span>
@@ -536,12 +563,14 @@ function CostEstimate({ agent, minutes, budget }: { agent: Agent; minutes: numbe
   if (!agent.price) return agent.model ? null : note(t('Цена неизвестна (свой агент)', 'Price unknown (own agent)'))
   const p = agent.price
   if (p.in + p.out + p.cache_read + p.cache_write === 0) return <span className="cursor-help text-body font-semibold tnum" title={t('Бесплатно', 'Free')}>≈ $0</span>
-  if (!agent.rate) return note(t('Оценки пока нет', 'No estimate yet'))
+  if (!agent.rate) return note(t('Оценки пока нет: у модели ещё не было прогонов', 'No estimate yet: the model has no runs yet'))
   // One number: the picked time at the model's spending rate (cut where the budget runs out); details in the tooltip.
   const e = runEstimate(p, agent.rate, minutes, budget)
   const detail = [
+    t(`обычно прогон этой модели идёт ~${Math.max(1, Math.round(agent.rate.avg_minutes))} мин`, `a run of this model usually takes ~${Math.max(1, Math.round(agent.rate.avg_minutes))} min`),
     t(`${usd(e.perMin)} в минуту`, `${usd(e.perMin)} per minute`),
-    agent.rate.all_models ? t(`у этой модели прогонов ещё нет: по ${agent.rate.runs} прогонам всех моделей`, `no runs of this model yet: from ${agent.rate.runs} runs of all models`) : t(`по прогонам этой модели: ${agent.rate.runs}`, `from ${agent.rate.runs} runs of this model`),
+    t(`все ${minutes} мин: до ${usd(e.max)}`, `all ${minutes} min: up to ${usd(e.max)}`),
+    t(`по прогонам этой модели: ${agent.rate.runs}`, `from ${agent.rate.runs} runs of this model`),
     e.budgetMin != null && t(`бюджет токенов кончится на ~${Math.max(1, Math.round(e.budgetMin))} мин`, `the token budget runs out at ~${Math.max(1, Math.round(e.budgetMin))} min`),
   ].filter(Boolean).join(' · ')
   return <span className="cursor-help text-body font-semibold tnum" title={detail}>≈ {usd(e.total)}</span>

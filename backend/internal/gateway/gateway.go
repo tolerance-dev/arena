@@ -451,7 +451,7 @@ type usage struct {
 	seen                           bool
 	model                          string // the model the request asked for (requestedModel), "" = unknown
 	status                         int    // the upstream's answer, 0 = none
-	complete                       bool   // the response body was read to its end
+	complete                       bool   // the response body was read to its end, or a stream sent its last event
 	unsent                         bool   // the request never reached the provider
 }
 
@@ -618,7 +618,13 @@ func (b *meteredBody) Read(p []byte) (int, error) {
 			}
 			b.line = append(b.line, chunk[:i]...)
 			if data, ok := bytes.CutPrefix(bytes.TrimSpace(b.line), []byte("data:")); ok {
-				b.meter.observe(bytes.TrimSpace(data))
+				data = bytes.TrimSpace(data)
+				b.meter.observe(data)
+				if streamEnd(data) {
+					b.meter.mu.Lock()
+					b.meter.complete = true
+					b.meter.mu.Unlock()
+				}
 			}
 			b.line = b.line[:0]
 			chunk = chunk[i+1:]
@@ -627,6 +633,28 @@ func (b *meteredBody) Read(p []byte) (int, error) {
 		b.buf.Write(chunk)
 	}
 	return n, err
+}
+
+// streamEnd tells a stream's last event, which carries (or follows) its final usage: a client may hang up right after
+// it without reading to EOF, and Codex does on chatgpt.com, whose stream stays open a while longer. Charged as cut
+// short, every such request cost its whole reservation (128k output) instead of what it used.
+func streamEnd(data []byte) bool {
+	if string(data) == "[DONE]" { // chat completions
+		return true
+	}
+	if !bytes.Contains(data, []byte(`"response.`)) && !bytes.Contains(data, []byte(`"message_stop"`)) {
+		return false
+	}
+	var ev struct {
+		Type string `json:"type"`
+	}
+	_ = json.Unmarshal(data, &ev)
+	switch ev.Type {
+	case "response.completed", "response.incomplete", "response.failed", // Responses API
+		"message_stop": // Anthropic, after message_delta with the final usage
+		return true
+	}
+	return false
 }
 
 func (b *meteredBody) Close() error {

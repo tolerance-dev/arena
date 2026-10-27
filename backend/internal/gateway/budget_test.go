@@ -266,6 +266,67 @@ func TestBrokenStreamChargesTheReservation(t *testing.T) {
 	}
 }
 
+// A client may hang up right after a stream's last event, before EOF (Codex on chatgpt.com does): the stream is
+// then charged the usage it reported, not its reservation. Before its last event it is still cut short.
+func TestHangUpAfterLastEvent(t *testing.T) {
+	events := map[string]string{
+		"responses": "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":100,\"output_tokens\":7}}}\n\n",
+		"anthropic": "event: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"input_tokens\":100,\"output_tokens\":7}}\n\n" +
+			"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+		"chat": "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":7}}\n\ndata: [DONE]\n\n",
+	}
+	for name, last := range events {
+		// The upstream sends the last event and keeps the stream open; the client reads up to it and hangs up.
+		open := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, last)
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+		}
+		g, st, base := testGateway(t, 100_000, 0, http.HandlerFunc(open))
+		hangUp(t, base, message(1_000, "hi"), last)
+		settled(t, g)
+		if got := st.used(); got.in != 100 || got.out != 7 || got.requests != 1 {
+			t.Errorf("%s: charged %+v, want in 100 out 7", name, got)
+		}
+	}
+
+	// Usage so far, then a hang-up before the last event: still the whole reservation.
+	early := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"input_tokens\":100,\"output_tokens\":7}}\n\n")
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}
+	g, st, base := testGateway(t, 100_000, 0, http.HandlerFunc(early))
+	hangUp(t, base, message(1_000, "hi"), "message_delta")
+	settled(t, g)
+	if got := st.used(); got.in != 100 || got.out != 1_000 {
+		t.Errorf("hang-up before the last event charged %+v, want out 1000", got)
+	}
+}
+
+// hangUp posts body and closes the response as soon as it has read past until.
+func hangUp(t *testing.T, base, body, until string) {
+	t.Helper()
+	req, _ := http.NewRequest("POST", base+"/anthropic/v1/messages", strings.NewReader(body))
+	req.Header.Set("x-api-key", "run-token")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []byte
+	buf := make([]byte, 4096)
+	for !strings.Contains(string(got), until) {
+		n, err := resp.Body.Read(buf)
+		got = append(got, buf[:n]...)
+		if err != nil {
+			t.Fatalf("stream ended before %q: %v", until, err)
+		}
+	}
+	_ = resp.Body.Close()
+}
+
 // Error answers cost what they report (nothing), and so does a provider that can't be reached.
 func TestErrorsAreFree(t *testing.T) {
 	failing := func(w http.ResponseWriter, r *http.Request) {

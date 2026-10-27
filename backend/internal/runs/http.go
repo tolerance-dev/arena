@@ -198,12 +198,29 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 // (an admin: on any agent).
 func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
-		items, err := s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 30)
+		var items []Run
+		var err error
+		if r.URL.Query().Get("latest") == "1" {
+			items, err = s.Latest(r.Context(), identity.MustFromContext(r.Context()).UserID)
+		} else {
+			items, err = s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 30)
+		}
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
 		httpx.Respond(w, http.StatusOK, map[string]any{"items": items})
+	})
+	// The run history on /my: finished runs, a page at a time, filtered by agent, task and outcome.
+	mux.HandleFunc("GET /api/v1/my/runs/history", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		page, _ := strconv.Atoi(q.Get("page"))
+		out, err := s.History(r.Context(), identity.MustFromContext(r.Context()).UserID, q.Get("agent"), q.Get("task"), q.Get("outcome"), page, 10)
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, out)
 	})
 	mux.HandleFunc("POST /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
 		raw, err := httpx.ReadBody(w, r)

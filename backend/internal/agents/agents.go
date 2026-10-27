@@ -7,12 +7,15 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -61,8 +64,9 @@ type Agent struct {
 	// Price is the model's list price (nil when the model is unknown; on a subscription key no money is spent).
 	Price *pricing.Price `json:"price,omitempty"`
 	// Rate is how fast runs on this model spend tokens, per minute of agent work, from finished runs that called it
-	// (every agent's, any task): the site multiplies it by a time limit and the price for an estimate. With no run on
-	// this model yet it is every model's (AllModels). nil when nothing has run.
+	// (every agent's, any task): the site multiplies it by a typical run's minutes and the price for an estimate. nil
+	// while this model has no finished run: another model's pace says nothing about this one (Codex's rate, metered at
+	// whole reservations, once priced a Kimi run at $22).
 	Rate *Rate `json:"rate,omitempty"`
 	// SpentUSD is this agent's runs so far at list price (nil when the model is unknown, 0 on a subscription).
 	SpentUSD  *float64  `json:"spent_usd,omitempty"`
@@ -82,7 +86,6 @@ type Rate struct {
 	CacheWrite float64 `json:"cache_write"`
 	Runs       int     `json:"runs"`
 	AvgMinutes float64 `json:"avg_minutes"` // how long those runs worked, on average (many stop before their limit)
-	AllModels  bool    `json:"all_models,omitempty"`
 }
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_agent", msg) }
@@ -120,7 +123,7 @@ func (s *Service) sealKey(provider, key string, subscriptionOK bool) (sealed []b
 		hint = "…" + auth.Tokens.AccessToken[len(auth.Tokens.AccessToken)-4:]
 	} else {
 		if len(key) < 20 || strings.ContainsAny(key, " \n\t") {
-			return nil, "", invalid("That doesn't look like an API key")
+			return nil, "", httpx.New(http.StatusBadRequest, "key_malformed", "That doesn't look like an API key")
 		}
 		if err := keyKind(provider, key); err != nil {
 			return nil, "", err
@@ -201,49 +204,90 @@ type CreateInput struct {
 
 // Create stores a new agent of ownerID; limited is false for admins (no cap on the number of agents).
 func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in CreateInput) (Agent, error) {
-	in.Name = strings.TrimSpace(in.Name)
-	in.Description = strings.TrimSpace(in.Description)
-	in.APIKey = strings.TrimSpace(in.APIKey)
-	if !httpx.ValidText(in.Name, 2, 60) {
-		return Agent{}, invalid("The name must be 2–60 characters")
-	}
-	if len([]rune(in.Description)) > 500 {
-		return Agent{}, invalid("The description is longer than 500 characters")
-	}
-	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
+	items, err := s.CreateMany(ctx, ownerID, limited, []CreateInput{in})
 	if err != nil {
+		var p *httpx.Problem
+		if errors.As(err, &p) && len(p.Fields) == 1 {
+			// One agent: its key's error as it is, not as a batch.
+			return Agent{}, httpx.New(p.Status, p.Fields[0].Code, keyProblems[p.Fields[0].Code])
+		}
 		return Agent{}, err
 	}
-	if err := s.checkKey(ctx, in.Provider, in.APIKey); err != nil {
-		return Agent{}, err
+	return items[0], nil
+}
+
+// CreateMany stores several agents of ownerID all or nothing: every key is checked with its provider first (each
+// distinct key once, in parallel), and if any is refused none is created. A refused key answers 400 keys_rejected
+// with a field per provider, path = provider and code = why (key_rejected, key_blocked, key_malformed, ...).
+func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, ins []CreateInput) ([]Agent, error) {
+	if len(ins) == 0 || len(ins) > maxAgentsPerUser {
+		return nil, invalid("Send 1–10 agents")
 	}
-	if !bytes.HasPrefix(in.Bundle, []byte("PK")) {
-		// A bare run.sh is a one-file bundle.
-		if !bytes.HasPrefix(in.Bundle, []byte("#!")) {
-			return Agent{}, invalid("Upload a zip with run.sh at its root, or run.sh itself (starting with #!)")
+	rows := make([]newAgent, len(ins))
+	refused := map[string]string{} // provider → error code
+	keys := map[[2]string]bool{}   // {provider, key} to check with the provider
+	for i, in := range ins {
+		in.Name = strings.TrimSpace(in.Name)
+		in.Description = strings.TrimSpace(in.Description)
+		in.APIKey = strings.TrimSpace(in.APIKey)
+		if !httpx.ValidText(in.Name, 2, 60) {
+			return nil, invalid("The name must be 2–60 characters")
 		}
-		var buf bytes.Buffer
-		zw := zip.NewWriter(&buf)
-		h := &zip.FileHeader{Name: "run.sh", Method: zip.Deflate}
-		h.SetMode(0o755)
-		w, err := zw.CreateHeader(h)
-		if err == nil {
-			_, err = w.Write(in.Bundle)
+		if len([]rune(in.Description)) > 500 {
+			return nil, invalid("The description is longer than 500 characters")
 		}
-		if err == nil {
-			err = zw.Close()
-		}
+		sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
 		if err != nil {
-			return Agent{}, err
+			// A key that is wrong in itself is reported with the others; anything else (the provider) fails now.
+			if p := (*httpx.Problem)(nil); errors.As(err, &p) && keyProblems[p.Code] != "" {
+				refused[in.Provider] = p.Code
+				continue
+			}
+			return nil, err
 		}
-		in.Bundle = buf.Bytes()
+		bundle, files, err := normalizeBundle(in.Bundle)
+		if err != nil {
+			return nil, err
+		}
+		in.Bundle = bundle
+		rows[i] = newAgent{in: in, sealed: sealed, hint: hint, files: files}
+		keys[[2]string{in.Provider, in.APIKey}] = true
 	}
-	files, err := BundleFiles(in.Bundle)
-	if err != nil {
-		return Agent{}, err
+	if err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error { return duplicates(ctx, tx, ownerID, rows) }); err != nil {
+		return nil, err
 	}
-	id := idgen.New("agent")
-	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for k := range keys {
+		if _, ok := refused[k[0]]; ok {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.checkKey(ctx, k[0], k[1]); err != nil {
+				code := "key_rejected"
+				var p *httpx.Problem
+				if errors.As(err, &p) {
+					code = p.Code
+				}
+				mu.Lock()
+				refused[k[0]] = code
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if len(refused) > 0 {
+		p := httpx.New(http.StatusBadRequest, "keys_rejected", "Some keys were refused: no agent was created")
+		for provider, code := range refused {
+			p.Fields = append(p.Fields, httpx.FieldError{Path: provider, Code: code})
+		}
+		slices.SortFunc(p.Fields, func(a, b httpx.FieldError) int { return strings.Compare(a.Path, b.Path) })
+		return nil, p
+	}
+	ids := make([]string, len(rows))
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if limited {
 			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
 				return err
@@ -252,30 +296,121 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 			if err := tx.QueryRow(ctx, `SELECT count(*) FROM agents WHERE owner_id = $1`, ownerID).Scan(&n); err != nil {
 				return err
 			}
-			if n >= maxAgentsPerUser {
-				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "You already have 10 agents: delete one first")
+			if n+len(rows) > maxAgentsPerUser {
+				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "That would be more than 10 agents: delete some first")
 			}
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint, in.Model, in.Example)
-		return err
+		// Again under the transaction: one created meanwhile (a double click) doesn't slip through.
+		if err := duplicates(ctx, tx, ownerID, rows); err != nil {
+			return err
+		}
+		for i, r := range rows {
+			ids[i] = idgen.New("agent")
+			if _, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, ids[i], ownerID, r.in.Name, r.in.Description, r.in.Bundle, r.files,
+				r.in.Provider, r.sealed, r.hint, r.in.Model, r.in.Example); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
-		return Agent{}, err
+		return nil, err
 	}
-	return s.Get(ctx, id, true)
+	out := make([]Agent, len(ids))
+	for i, id := range ids {
+		if out[i], err = s.Get(ctx, id, true); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// newAgent is one agent of a batch, checked and sealed, waiting for its row.
+type newAgent struct {
+	in     CreateInput
+	sealed []byte
+	hint   string
+	files  int
+}
+
+// duplicates refuses an agent its owner already has: a ready one with the same CLI and model, an uploaded one with
+// the same bundle. A clone would only split one agent's runs and votes between two rows; more attempts are more runs
+// of the same agent. Rows left empty (a refused key) are skipped: the batch fails on the key anyway.
+func duplicates(ctx context.Context, tx pgx.Tx, ownerID string, rows []newAgent) error {
+	exists := httpx.New(http.StatusConflict, "agent_exists", "You already have this agent: run it again instead of a copy")
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if r.in.Bundle == nil {
+			continue
+		}
+		sum := sha256.Sum256(r.in.Bundle)
+		key := "bundle:" + string(sum[:])
+		if r.in.Example != "" {
+			key = "example:" + r.in.Example + "/" + r.in.Model
+		}
+		if seen[key] {
+			return exists
+		}
+		seen[key] = true
+		var found bool
+		err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agents WHERE owner_id = $1 AND
+			CASE WHEN $2 <> '' THEN example = $2 AND model = $3 ELSE example = '' AND sha256(bundle) = $4 END)`,
+			ownerID, r.in.Example, r.in.Model, sum[:]).Scan(&found)
+		if err != nil {
+			return err
+		}
+		if found {
+			return exists
+		}
+	}
+	return nil
+}
+
+// keyProblems are the messages of the key errors a batch reports by code only.
+var keyProblems = map[string]string{
+	"key_rejected":        "The provider rejected this key",
+	"key_blocked":         "Google doesn't let this key use the Gemini API",
+	"key_malformed":       "That doesn't look like an API key",
+	"key_is_subscription": "That's a Claude subscription token: pick the Claude subscription as the provider",
+	"key_is_api_key":      "That's an Anthropic API key: pick Anthropic as the provider",
+}
+
+// normalizeBundle turns a bare run.sh into a one-file zip and counts the bundle's files.
+func normalizeBundle(bundle []byte) ([]byte, int, error) {
+	if !bytes.HasPrefix(bundle, []byte("PK")) {
+		if !bytes.HasPrefix(bundle, []byte("#!")) {
+			return nil, 0, invalid("Upload a zip with run.sh at its root, or run.sh itself (starting with #!)")
+		}
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		h := &zip.FileHeader{Name: "run.sh", Method: zip.Deflate}
+		h.SetMode(0o755)
+		w, err := zw.CreateHeader(h)
+		if err == nil {
+			_, err = w.Write(bundle)
+		}
+		if err == nil {
+			err = zw.Close()
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+		bundle = buf.Bytes()
+	}
+	files, err := BundleFiles(bundle)
+	return bundle, len(files), err
 }
 
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.example, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
 	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
-	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw, o.tin, o.tout, o.tcr, o.tcw
+	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, o.tin, o.tout, o.tcr, o.tcw
 	FROM agents a JOIN users u ON u.id = a.owner_id
 	LEFT JOIN LATERAL (SELECT coalesce(sum(r.tokens_in), 0) AS tin, coalesce(sum(r.tokens_out), 0) AS tout,
 			coalesce(sum(r.tokens_cache_read), 0) AS tcr, coalesce(sum(r.tokens_cache_write), 0) AS tcw
 		FROM runs r WHERE r.agent_id = a.id) o ON true
-	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true
-	LEFT JOIN LATERAL (` + rateSums + `) g ON true`
+	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true`
 
 // rateSums totals the finished runs that called a model and ran a while (the rows behind Rate).
 const rateSums = `SELECT count(*) AS n, sum(r.agent_seconds)::float8 AS secs, sum(r.tokens_in)::float8 AS tin,
@@ -293,11 +428,11 @@ func rate(n int, secs, in, out, cr, cw *float64) *Rate {
 
 func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var a Agent
-	var mn, gn int
-	var ms, mi, mo, mr, mw, gs, gi, gout, gr, gw *float64
+	var mn int
+	var ms, mi, mo, mr, mw *float64
 	var oi, oo, ocr, ocw int64
 	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Example, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
-		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw, &oi, &oo, &ocr, &ocw)
+		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &oi, &oo, &ocr, &ocw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
@@ -310,11 +445,7 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 		p := m.Price
 		a.Price = &p
 		a.SpentUSD = pricing.Spent(a.Model, a.Provider, oi, oo, ocr, ocw)
-		if a.Rate = rate(mn, ms, mi, mo, mr, mw); a.Rate == nil {
-			if a.Rate = rate(gn, gs, gi, gout, gr, gw); a.Rate != nil {
-				a.Rate.AllModels = true
-			}
-		}
+		a.Rate = rate(mn, ms, mi, mo, mr, mw)
 	}
 	if !withKey {
 		a.KeyHint = ""

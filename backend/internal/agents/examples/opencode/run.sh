@@ -31,4 +31,7 @@ in the brief working end to end, and a polished look on a desktop and a phone. N
 at start (no CDN). Look at your pages with the installed Playwright (screenshots on desktop and 390 px), fix what
 looks broken, then stop."
 
-opencode run --model "arena/$MODEL" "$PROMPT"
+# --auto approves its own permission prompts: headless, a prompt is auto-rejected, and it refused writing outside
+# /work (its /tmp logs) along with the start.sh in the same command, so runs ended without one. The sandbox is the
+# boundary, as for the other agents (--yolo, --dangerously-bypass-...).
+opencode run --auto --model "arena/$MODEL" "$PROMPT"

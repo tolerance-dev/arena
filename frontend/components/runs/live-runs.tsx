@@ -53,11 +53,12 @@ export function outcome(run: Run, t: T): { text: string; tone: 'good' | 'bad' | 
 
 // What is running right now (each run's stage, clock, tokens and last step) and what just finished, with why.
 // Active runs can be ticked and cancelled together; the API lets only their owner (or an admin) do it.
-export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: string; onChange?: () => void }) {
+export function LiveRuns({ runs, empty, onChange, recent = true }: { runs: Run[]; empty?: string; onChange?: () => void; recent?: boolean }) {
   const t = useT()
   const now = useNow()
   const active = runs.filter(isActive).sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const finished = runs.filter((r) => !isActive(r)).slice(0, 8)
+  // "Recently finished" under them, unless the page has its own history (My agents).
+  const finished = recent ? runs.filter((r) => !isActive(r)).slice(0, 8) : []
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -101,7 +102,7 @@ export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: strin
         )}>{t('Сейчас идёт', 'Running now')}</SectionTitle>
         {err && <p role="alert" className="mb-3 text-body text-destructive">{err}</p>}
         {active.length === 0 ? <EmptyState>{empty ?? t('Сейчас ничего не идёт. Выберите задачу у агента ниже и нажмите «Запустить».', 'Nothing is running. Pick a task for an agent below and press “Start”.')}</EmptyState> : (
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {active.map((r) => (
               <li key={r.id} className="relative">
                 <LiveCard run={r} now={now} picked={picked.has(r.id)} />

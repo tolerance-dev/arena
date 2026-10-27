@@ -236,6 +236,83 @@ func (s *Service) Active(ctx context.Context) ([]Run, error) {
 	return s.query(ctx, `WHERE r.status IN ('queued', 'agent', 'checking') ORDER BY r.created_at`)
 }
 
+// Latest is the newest run of each of ownerID's agents at each task: the cells of the agents × tasks table on /my.
+func (s *Service) Latest(ctx context.Context, ownerID string) ([]Run, error) {
+	return s.query(ctx, `WHERE r.id IN (SELECT DISTINCT ON (agent_id, task) id FROM runs
+		WHERE agent_id IN (SELECT id FROM agents WHERE owner_id = $1) ORDER BY agent_id, task, created_at DESC)
+		ORDER BY r.created_at DESC`, ownerID)
+}
+
+// HistoryPage is one page of the finished runs of a user's agents (the run history on /my), with totals over every
+// run the filter matches.
+type HistoryPage struct {
+	Items  []Run `json:"items"`
+	Total  int   `json:"total"` // runs the filter matches
+	Page   int   `json:"page"`
+	Per    int   `json:"per"`
+	Totals struct {
+		Good         int     `json:"good"` // the app started
+		AgentSeconds int64   `json:"agent_seconds"`
+		Tokens       int64   `json:"tokens"` // in + out + cache writes, as the budget counts them
+		CostUSD      float64 `json:"cost_usd"`
+	} `json:"totals"`
+}
+
+// The outcomes the history filters by; the same split as the site's outcome(): the app started, the run was
+// cancelled, or anything else (no app, a refused key, a platform failure).
+const (
+	goodRun      = `(r.status = 'done' AND r.app_started AND coalesce(r.agent_exit, '') <> 'key_rejected')`
+	cancelledRun = `(r.status = 'infra_error' AND r.failure_reason = 'cancelled')`
+)
+
+// History is page (from 1) of ownerID's finished runs, newest first, per to a page, optionally of one agent, one
+// task and one outcome (good, bad, cancelled).
+func (s *Service) History(ctx context.Context, ownerID, agentID, task, outcome string, page, per int) (HistoryPage, error) {
+	where := `WHERE a.owner_id = $1 AND r.status IN ('done', 'infra_error') AND ($2 = '' OR r.agent_id = $2) AND ($3 = '' OR r.task = $3)`
+	switch outcome {
+	case "good":
+		where += ` AND ` + goodRun
+	case "cancelled":
+		where += ` AND ` + cancelledRun
+	case "bad":
+		where += ` AND NOT ` + goodRun + ` AND NOT ` + cancelledRun
+	}
+	out := HistoryPage{Page: max(page, 1), Per: per}
+	// Totals over everything the filter matches: the cost needs each run's model, so it is summed here.
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT coalesce(r.manifest->>'model', ''), coalesce(r.manifest->>'provider', ''), r.tokens_in,
+			r.tokens_out, r.tokens_cache_read, r.tokens_cache_write, coalesce(r.agent_seconds, 0), `+goodRun+`
+			FROM runs r JOIN agents a ON a.id = r.agent_id `+where, ownerID, agentID, task)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var model, provider string
+			var in, o, cr, cw, secs int64
+			var good bool
+			if err := rows.Scan(&model, &provider, &in, &o, &cr, &cw, &secs, &good); err != nil {
+				return err
+			}
+			out.Total++
+			out.Totals.AgentSeconds += secs
+			out.Totals.Tokens += in + o + cw
+			if c := pricing.Spent(model, provider, in, o, cr, cw); c != nil {
+				out.Totals.CostUSD += *c
+			}
+			if good {
+				out.Totals.Good++
+			}
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return out, err
+	}
+	out.Items, err = s.query(ctx, where+` ORDER BY r.created_at DESC LIMIT $4 OFFSET $5`, ownerID, agentID, task, per, (out.Page-1)*per)
+	return out, err
+}
+
 // Mine lists the latest runs of ownerID's agents.
 func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, error) {
 	return s.query(ctx, `WHERE a.owner_id = $1 ORDER BY r.created_at DESC LIMIT $2`, ownerID, limit)
