@@ -17,12 +17,12 @@ import { compact, duration, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import { errorText } from '@/lib/errors'
 import type { T } from '@/lib/i18n'
-import type { Check as CheckResult, Run } from '@/lib/types'
+import { isVoted, type Check as CheckResult, type Run } from '@/lib/types'
 import { providerLabel } from '@/lib/providers'
 import { useMe } from '@/lib/use-me'
 import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, exitLabel, isActive, phase, queueLine, scoreTone, Stack, StatusPill, taskTitle } from './bits'
+import { AgentAvatar, Ago, exitLabel, isActive, phase, queueLine, Scenarios, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { LiveBuild } from './live-build'
 import { agentElapsed, useNow } from './live-runs'
@@ -56,6 +56,12 @@ export function RunView({ id }: { id: string }) {
             <Header run={run} />
             {/* What the agent built comes first; below 1280px the aside drops under the page, so the verdict follows. */}
             {done && !keyRejected && <Preview run={run} />}
+            {isVoted(run.task_kind) && !!run.task_scenarios?.length && (
+              <section>
+                <SectionTitle aside={<Link href={`/vote?task=${run.task}`} className="hover:text-primary">{t('Голосовать за эту задачу', 'Vote on this task')}</Link>}>{t('Что пробуют голосующие', 'What voters try')}</SectionTitle>
+                <Scenarios items={run.task_scenarios} />
+              </section>
+            )}
             {keyRejected && (
               <p role="alert" className="rounded-xl border-2 border-destructive/20 bg-destructive/5 px-4 py-3 text-body text-destructive">
                 {t('Провайдер отклонил ключ агента (неверный ключ, у ключа нет доступа к API или кончились деньги на счёте), поэтому агент не получил ни одного ответа модели. Причина есть в логе агента. Прогон не оценивался и не засчитан в лимит. Если агент ваш, замените ключ на странице',
@@ -197,6 +203,7 @@ function Verdict({ run }: { run: Run }) {
   const done = run.status === 'done'
   const passed = run.checks.filter((c) => c.passed).length
   const failed = run.checks.length - passed
+  if (isVoted(run.task_kind)) return <VoteVerdict run={run} />
   return (
     <section aria-label={t('Оценка', 'Score')} className="rounded-xl border-2 border-border p-5">
       <div className="text-body text-muted-foreground">{t('Оценка', 'Score')}</div>
@@ -221,8 +228,46 @@ function Verdict({ run }: { run: Run }) {
       {run.checks_version && !run.checks_current && (
         <p className="mt-3 text-ui text-faint">{t('Проверки задачи с тех пор изменились: прогон не в рейтинге.', 'The task’s checks have changed since: the run isn’t ranked.')}</p>
       )}
+      {run.agent_rating && <p className="mt-3 border-t border-border pt-3 text-ui text-muted-foreground"><Elo run={run} /></p>}
     </section>
   )
+}
+
+// A voted task (invent, startup) has no score: the checks only admit the run, and people's blind votes rank the agent.
+function VoteVerdict({ run }: { run: Run }) {
+  const t = useT()
+  const done = run.status === 'done'
+  const failed = run.checks.filter((c) => !c.passed).length
+  const r = run.agent_rating
+  const gate = !done ? { tone: 'text-faint', text: t('Входные проверки пройдут, когда агент закончит.', 'The entry checks run once the agent finishes.') }
+    : run.agent_exit === 'key_rejected' ? { tone: 'text-destructive', text: t('Провайдер отклонил ключ: в голосование не попадает.', 'The provider rejected the key: not in the votes.') }
+    : !run.app_started ? { tone: 'text-destructive', text: t('Приложение не запустилось: в голосование не попадает.', 'The app didn’t start: not in the votes.') }
+    : failed > 0 ? { tone: 'text-destructive', text: t.plural(failed, ['{n} входная проверка не прошла', '{n} входные проверки не прошли', '{n} входных проверок не прошли'], ['{n} entry check failed', '{n} entry checks failed']) }
+    : { tone: 'text-success', text: t('Входные проверки пройдены', 'Entry checks passed') }
+  return (
+    <section aria-label={t('Голосование', 'Votes')} className="rounded-xl border-2 border-border p-5">
+      <div className="text-body text-muted-foreground">{t('Место по голосам', 'Rank by votes')}</div>
+      <div className={cn('numeral mt-2 text-[56px]', r ? 'text-foreground' : 'text-pending')}>{r ? r.elo : '—'}</div>
+      <p className="mt-1 text-body text-muted-foreground">{r ? <Elo run={run} bare /> : t('Голосов за агента пока нет.', 'No votes for the agent yet.')}</p>
+      <p className={cn('mt-3 flex items-center gap-1.5 text-ui font-medium', gate.tone)}>
+        {done && run.app_started && failed === 0 && run.agent_exit !== 'key_rejected' && <Check className="size-4" />}{gate.text}
+      </p>
+      <p className="mt-3 border-t border-border pt-3 text-ui text-faint">
+        {t('Здесь нет балла: люди сравнивают приложения двух агентов вслепую, в паре участвует лучший прогон агента.', 'There’s no score here: people compare two agents’ apps blind, each with its best run.')}{' '}
+        <Link href={`/vote?task=${run.task}`} className="font-medium text-primary hover:underline">{t('Голосовать', 'Vote')}</Link>
+      </p>
+    </section>
+  )
+}
+
+// The agent's Elo at the task from people's blind votes, with its record.
+function Elo({ run, bare }: { run: Run; bare?: boolean }) {
+  const t = useT()
+  const r = run.agent_rating
+  if (!r) return null
+  const record = t(`${r.wins} побед, ${r.losses} поражений, ${r.ties} ничьих`, `${r.wins} won, ${r.losses} lost, ${r.ties} tied`)
+  const votes = t.plural(r.votes, ['{n} голос', '{n} голоса', '{n} голосов'], ['{n} vote', '{n} votes'])
+  return bare ? <>{votes}: {record}</> : <>{t('В голосовании', 'In the votes')}: <span className="font-semibold text-foreground tnum">Elo {r.elo}</span> · {votes}</>
 }
 
 // The run's numbers as label/value lines, like Product Hunt's "Company info".
@@ -348,14 +393,18 @@ function Checks({ run }: { run: Run }) {
   const groups = groupChecks(run.checks, t)
   const passed = run.checks.filter((c) => c.passed).length
   const skipped = run.checks.filter((c) => !c.passed && cascade.test(c.detail ?? '')).length
+  const voted = isVoted(run.task_kind)
   return (
     <section id="checks" className="scroll-mt-20">
       <SectionTitle count={`${passed}/${run.checks.length}`} aside={run.rechecks > 0
         ? t.plural(run.rechecks, ['Проверено заново {n} раз: тот же код, текущие проверки', 'Проверено заново {n} раза: тот же код, текущие проверки', 'Проверено заново {n} раз: тот же код, текущие проверки'], ['Checked again once: the same code, the current checks', 'Checked again {n} times: the same code, the current checks'])
-        : <Link href="/how" className="hover:text-primary">{t('Как считаем', 'How we score')}</Link>}>{t('Проверки', 'Checks')}</SectionTitle>
+        : <Link href="/how" className="hover:text-primary">{t('Как считаем', 'How we score')}</Link>}>{voted ? t('Входные проверки', 'Entry checks') : t('Проверки', 'Checks')}</SectionTitle>
       <p className="mb-4 max-w-[70ch] text-body text-muted-foreground">
-        {t('Платформа запустила приложение на чистом сервере и прошла по его страницам и API по сценариям из задания, одна проверка за другой. Оценка — доля пройденных.',
-          'The platform started the app on a fresh server and went through its pages and API along the task’s scenarios, one check after another. The score is the share passed.')}
+        {voted
+          ? t('Платформа запустила приложение на чистом сервере и посмотрела, что оно открывается и показывает данные. Эти проверки только допускают прогон в голосование и на место не влияют.',
+            'The platform started the app on a fresh server and saw that it opens and shows the data. These checks only admit the run to the votes and don’t affect its rank.')
+          : t('Платформа запустила приложение на чистом сервере и прошла по его страницам и API по сценариям из задания, одна проверка за другой. Оценка — доля пройденных.',
+            'The platform started the app on a fresh server and went through its pages and API along the task’s scenarios, one check after another. The score is the share passed.')}
       </p>
       {skipped > 0 && (
         <p className="mb-3 flex items-start gap-2 text-ui text-faint">

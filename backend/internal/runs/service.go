@@ -72,16 +72,22 @@ type Stats struct {
 
 // Run is the full public view of a run.
 type Run struct {
-	ID            string     `json:"id"`
-	Task          string     `json:"task"`
-	TaskTitle     tasks.Text `json:"task_title"` // from the catalog; empty when the task left it
-	Agent         AgentRef   `json:"agent"`
-	Status        string     `json:"status"`
-	FailureReason *string    `json:"failure_reason"`
-	AgentExit     *string    `json:"agent_exit"`
-	TimeLimitS    int        `json:"time_limit_s"`
-	TokenBudget   int64      `json:"token_budget"`
-	Tokens        Tokens     `json:"tokens"`
+	ID        string     `json:"id"`
+	Task      string     `json:"task"`
+	TaskTitle tasks.Text `json:"task_title"` // from the catalog; empty when the task left it
+	// TaskKind: build (ranked by the score) or a voted kind, invent or startup (the checks only admit the run to the
+	// votes); TaskScenarios: what voters try in a voted task (on a single run only).
+	TaskKind      string       `json:"task_kind"`
+	TaskScenarios []tasks.Text `json:"task_scenarios,omitempty"`
+	// AgentRating is the agent's Elo at the task from people's blind votes (on a single run, once it has votes).
+	AgentRating   *Rating  `json:"agent_rating,omitempty"`
+	Agent         AgentRef `json:"agent"`
+	Status        string   `json:"status"`
+	FailureReason *string  `json:"failure_reason"`
+	AgentExit     *string  `json:"agent_exit"`
+	TimeLimitS    int      `json:"time_limit_s"`
+	TokenBudget   int64    `json:"token_budget"`
+	Tokens        Tokens   `json:"tokens"`
 	// CostUSD is the tokens at the model's list price: nil when the model is unknown, 0 on a subscription.
 	CostUSD       *float64 `json:"cost_usd"`
 	AgentSeconds  *int     `json:"agent_seconds"`
@@ -171,7 +177,7 @@ func ImageFor(runID string) string { return "arena-run:" + PreviewHost(runID) }
 func (s *Service) decorate(r *Run) {
 	t := tasks.BySlug(r.Task)
 	if t != nil {
-		r.TaskTitle = t.Title
+		r.TaskTitle, r.TaskKind = t.Title, t.Kind
 		r.ChecksCurrent = r.ChecksVersion != nil && *r.ChecksVersion == checksVersion(t)
 	}
 	if s.PreviewURL != "" && r.Status == "done" && r.AppStarted && t != nil && t.UI {
@@ -197,6 +203,16 @@ func (s *Service) Get(ctx context.Context, id string) (Run, error) {
 		return err
 	})
 	s.decorate(&r)
+	if err != nil {
+		return r, err
+	}
+	if t := tasks.BySlug(r.Task); t != nil {
+		r.TaskScenarios = t.Scenarios
+	}
+	ratings, err := s.Ratings(ctx, r.Task)
+	if rt, ok := ratings[r.Agent.ID]; ok && rt.Votes > 0 {
+		r.AgentRating = &rt
+	}
 	return r, err
 }
 

@@ -34,6 +34,9 @@ export interface Check { name: string; passed: boolean; detail?: string }
 
 export interface Run {
   id: string; task: string; task_title: Text
+  // task_kind: whether the score ranks the run (build) or people's votes do; task_scenarios and agent_rating (the agent's
+  // Elo at the task) come with a single run only.
+  task_kind?: TaskKind; task_scenarios?: Text[]; agent_rating?: Rating
   agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | key_rejected | error:N; gateway_restart while building
