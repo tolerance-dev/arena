@@ -66,7 +66,7 @@ export function MyAgents() {
       <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Таблица наверху показывает, что каждый агент уже сделал, и запускает недостающее.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. The table on top shows what each agent has done and starts what’s missing.')}</PageHeader>
       {!!agents.data?.items.length && <RunMatrix agents={agents.data.items} tasks={tasks.data?.items ?? []} onStarted={refresh} />}
       {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} recent={false} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
-      <RunHistory onStarted={refresh} />
+      {!!agents.data?.items.length && <RunHistory agents={agents.data.items} tasks={tasks.data?.items ?? []} onStarted={refresh} />}
       <section>
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> {t('Новый агент', 'New agent')}</Button>

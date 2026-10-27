@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -12,41 +12,39 @@ import { post } from '@/lib/api'
 import { errorText } from '@/lib/errors'
 import { compact, duration, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
-import type { Run } from '@/lib/types'
+import type { Agent, Run, TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, isActive, Score, taskTitle } from './bits'
+import { AgentAvatar, Ago, Score, taskTitle } from './bits'
 import { outcome } from './live-runs'
 import { TaskGlyph } from './task-glyph'
 
 type Kind = 'all' | 'good' | 'bad' | 'cancelled'
 
-// The same split as outcome(): the app started, it didn't (or the platform failed), or the run was cancelled.
-function kindOf(run: Run): Exclude<Kind, 'all'> {
-  if (run.status === 'infra_error') return run.failure_reason === 'cancelled' ? 'cancelled' : 'bad'
-  return run.app_started && run.agent_exit !== 'key_rejected' ? 'good' : 'bad'
+// GET /my/runs/history: one page, and totals over every run the filter matches.
+interface HistoryPage {
+  items: Run[]; total: number; page: number; per: number
+  totals: { good: number; agent_seconds: number; tokens: number; cost_usd: number }
 }
 
-// Every finished run of the user's agents, newest first, with its numbers and a button to run the same agent at the
-// same task again; filtered by agent, task and outcome, totals for what's shown on top. The running ones are above
-// (LiveRuns), the agents × tasks table above that.
-export function RunHistory({ onStarted }: { onStarted: () => void }) {
+// Every finished run of the user's agents, newest first, a page at a time, with its numbers and a button to run the
+// same agent at the same task again; filtered by agent, task and outcome on the server, so the totals on top cover
+// every run the filter matches. The running ones are above (LiveRuns), the agents × tasks table above that.
+export function RunHistory({ agents, tasks, onStarted }: { agents: Agent[]; tasks: TaskSummary[]; onStarted: () => void }) {
   const t = useT()
-  const [limit, setLimit] = useState(100)
-  const runs = usePoll<{ items: Run[] }>(`/my/runs?limit=${limit}`, 10_000)
   const [agent, setAgent] = useState('')
   const [task, setTask] = useState('')
   const [kind, setKind] = useState<Kind>('all')
+  const [page, setPage] = useState(1)
+  const q = new URLSearchParams({ page: String(page), ...(agent && { agent }), ...(task && { task }), ...(kind !== 'all' && { outcome: kind }) })
+  const history = usePoll<HistoryPage>(`/my/runs/history?${q}`, 10_000)
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
-  const finished = (runs.data?.items ?? []).filter((r) => !isActive(r))
-  const agents = [...new Map(finished.map((r) => [r.agent.id, r.agent.name])).entries()].sort((a, b) => a[1].localeCompare(b[1]))
-  const tasks = [...new Map(finished.map((r) => [r.task, taskTitle(r, t)])).entries()]
-  const shown = finished.filter((r) => (!agent || r.agent.id === agent) && (!task || r.task === task) && (kind === 'all' || kindOf(r) === kind))
-  const good = shown.filter((r) => kindOf(r) === 'good').length
-  const tokens = shown.reduce((s, r) => s + usedTokens(r.tokens), 0)
-  const spent = shown.reduce((s, r) => s + (r.cost_usd ?? 0), 0)
-  const agentTime = shown.reduce((s, r) => s + (r.agent_seconds ?? 0), 0)
+  const data = history.data
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.per)) : 1
+  // A filter starts again from the first page.
+  const filter = <V,>(set: (v: V) => void) => (v: V) => { set(v); setPage(1) }
+  const filtered = !!(agent || task || kind !== 'all')
 
   async function again(run: Run) {
     setBusy(run.id)
@@ -61,35 +59,35 @@ export function RunHistory({ onStarted }: { onStarted: () => void }) {
     }
   }
 
-  if (runs.data && !finished.length) return null
+  if (data && data.total === 0 && !filtered) return null
   return (
     <section>
-      <SectionTitle count={finished.length || undefined}>{t('История запусков', 'Run history')}</SectionTitle>
+      <SectionTitle count={data?.total || undefined}>{t('История запусков', 'Run history')}</SectionTitle>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select aria-label={t('Агент', 'Agent')} className={cn(fieldClass, 'h-8 w-auto max-w-[16rem] text-ui')} value={agent} onChange={(e) => setAgent(e.target.value)}>
+        <select aria-label={t('Агент', 'Agent')} className={cn(fieldClass, 'h-8 w-auto max-w-[16rem] text-ui')} value={agent} onChange={(e) => filter(setAgent)(e.target.value)}>
           <option value="">{t('Все агенты', 'All agents')}</option>
-          {agents.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          {[...agents].sort((a, b) => a.name.localeCompare(b.name)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select aria-label={t('Задание', 'Task')} className={cn(fieldClass, 'h-8 w-auto text-ui')} value={task} onChange={(e) => setTask(e.target.value)}>
+        <select aria-label={t('Задание', 'Task')} className={cn(fieldClass, 'h-8 w-auto text-ui')} value={task} onChange={(e) => filter(setTask)(e.target.value)}>
           <option value="">{t('Все задания', 'All tasks')}</option>
-          {tasks.map(([slug, title]) => <option key={slug} value={slug}>{title}</option>)}
+          {tasks.map((x) => <option key={x.slug} value={x.slug}>{t.text(x.title)}</option>)}
         </select>
-        <Segmented label={t('Исход', 'Outcome')} value={kind} onChange={setKind} options={[
+        <Segmented label={t('Исход', 'Outcome')} value={kind} onChange={filter(setKind)} options={[
           { value: 'all', label: t('Все', 'All') }, { value: 'good', label: t('Успешные', 'Succeeded') },
           { value: 'bad', label: t('Упавшие', 'Failed') }, { value: 'cancelled', label: t('Отменённые', 'Cancelled') },
         ]} />
       </div>
-      {shown.length > 0 && (
+      {data && data.total > 0 && (
         <p className="mb-3 text-body text-muted-foreground tnum">
-          {t.plural(shown.length, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])}
-          {' · '}{t(`успешных ${good}`, `${good} succeeded`)}
-          {' · '}{t(`время агентов ${duration(agentTime)}`, `agent time ${duration(agentTime)}`)}
-          {' · '}{t(`${compact(tokens)} токенов`, `${compact(tokens)} tokens`)}
-          {' · '}<b className="font-semibold text-foreground">{usd(spent)}</b>
+          {t.plural(data.total, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])}
+          {' · '}{t(`успешных ${data.totals.good}`, `${data.totals.good} succeeded`)}
+          {' · '}{t(`время агентов ${duration(data.totals.agent_seconds)}`, `agent time ${duration(data.totals.agent_seconds)}`)}
+          {' · '}{t(`${compact(data.totals.tokens)} токенов`, `${compact(data.totals.tokens)} tokens`)}
+          {' · '}<b className="font-semibold text-foreground">{usd(data.totals.cost_usd)}</b>
         </p>
       )}
       {err && <p role="alert" className="mb-3 text-body text-destructive">{err}</p>}
-      {!runs.data ? <div className="h-64 animate-pulse rounded-xl bg-muted" /> : !shown.length ? (
+      {!data ? <div className="h-64 animate-pulse rounded-xl bg-muted" /> : !data.items.length ? (
         <EmptyState>{t('Под этот фильтр прогонов нет.', 'No runs match this filter.')}</EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-xl border-2 border-border">
@@ -107,7 +105,7 @@ export function RunHistory({ onStarted }: { onStarted: () => void }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {shown.map((r) => {
+              {data.items.map((r) => {
                 const o = outcome(r, t)
                 return (
                   <tr key={r.id} className="transition-colors hover:bg-muted">
@@ -141,9 +139,25 @@ export function RunHistory({ onStarted }: { onStarted: () => void }) {
           </table>
         </div>
       )}
-      {runs.data && runs.data.items.length >= limit && limit < 500 && (
-        <Button variant="outline" size="sm" className="mt-3" onClick={() => setLimit((l) => Math.min(500, l + 200))}>{t('Показать ещё', 'Show more')}</Button>
-      )}
+      {pages > 1 && <Pager page={Math.min(page, pages)} pages={pages} onPage={setPage} />}
     </section>
+  )
+}
+
+// Previous, the pages around the current one with the first and the last, next.
+function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
+  const t = useT()
+  const near = [...new Set([1, page - 1, page, page + 1, pages])].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b)
+  return (
+    <nav aria-label={t('Страницы', 'Pages')} className="mt-3 flex flex-wrap items-center gap-1">
+      <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft /> {t('Назад', 'Previous')}</Button>
+      {near.map((p, i) => (
+        <span key={p} className="flex items-center gap-1">
+          {i > 0 && p - near[i - 1] > 1 && <span className="px-1 text-faint">…</span>}
+          <Button variant={p === page ? 'secondary' : 'ghost'} size="sm" aria-current={p === page ? 'page' : undefined} onClick={() => onPage(p)} className="tnum">{p}</Button>
+        </span>
+      ))}
+      <Button variant="ghost" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t('Вперёд', 'Next')} <ChevronRight /></Button>
+    </nav>
   )
 }
