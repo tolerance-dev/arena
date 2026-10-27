@@ -14,7 +14,7 @@ const VENDOR_FILL: Record<Vendor, string> = {
   deepseek: 'fill-vendor-deepseek', zhipu: 'fill-vendor-zhipu', alibaba: 'fill-vendor-alibaba', tencent: 'fill-vendor-tencent',
 }
 const TICKS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500]
-const H = 300, PAD = { l: 40, r: 16, t: 20, b: 48 }
+const BAND = 72, H = 300, PAD = { l: 40, r: 16, t: 20, b: 48 }
 
 // Agents that nobody beats on both: no other is at least as good for no more money. Cheapest first.
 export function frontier(points: Standing[]): Set<string> {
@@ -27,12 +27,13 @@ export function frontier(points: Standing[]): Set<string> {
 }
 
 // The overall score against the cost of a run (log scale), as arena boards' Pareto charts: up and left is better.
-// Only agents with a known, non-zero cost (an uploaded agent's model is unknown, a subscription costs 0).
+// Agents that pay nothing per run (a subscription, a free model) stand in a band left of the scale, which can't show
+// 0; an uploaded agent's model is unknown, so it has no cost and is left out.
 export function CostChart({ rows }: { rows: Standing[] }) {
   const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const [w, setW] = useState<number | null>(null)
-  const points = rows.filter((r) => r.cost != null && r.cost > 0)
+  const points = rows.filter((r) => r.cost != null)
   const shown = points.length >= 2
   // Drawn at the box's real width, so labels keep their size on a phone.
   useEffect(() => {
@@ -44,8 +45,9 @@ export function CostChart({ rows }: { rows: Standing[] }) {
   }, [shown])
   if (!shown) return null
 
-  const costs = points.map((p) => p.cost!)
-  const lo = Math.log10(Math.min(...costs) / 2), hi = Math.log10(Math.max(...costs) * 2)
+  const costs = points.flatMap((p) => (p.cost! > 0 ? [p.cost!] : []))
+  // With nobody paying the scale is empty: any range does.
+  const lo = costs.length ? Math.log10(Math.min(...costs) / 2) : -2, hi = costs.length ? Math.log10(Math.max(...costs) * 2) : 0
   const edge = new Set(frontier(points))
   const line = points.filter((p) => edge.has(p.id)).sort((a, b) => a.cost! - b.cost!)
 
@@ -57,7 +59,7 @@ export function CostChart({ rows }: { rows: Standing[] }) {
         {w != null && <Plot w={w} points={points} edge={edge} line={line} lo={lo} hi={hi} />}
       </div>
       {points.length < rows.length && (
-        <p className="mt-2 text-meta text-faint">{t('Без подписок и неизвестных моделей.', 'Subscriptions and unknown models left out.')}</p>
+        <p className="mt-2 text-meta text-faint">{t('Без агентов с неизвестной моделью.', 'Agents with an unknown model left out.')}</p>
       )}
     </section>
   )
@@ -65,13 +67,18 @@ export function CostChart({ rows }: { rows: Standing[] }) {
 
 function Plot({ w, points, edge, line, lo, hi }: { w: number; points: Standing[]; edge: Set<string>; line: Standing[]; lo: number; hi: number }) {
   const t = useT()
-  const iw = w - PAD.l - PAD.r, ih = H - PAD.t - PAD.b
-  const x = (cost: number) => PAD.l + ((Math.log10(cost) - lo) / (hi - lo)) * iw
+  const free = points.filter((p) => p.cost === 0).sort((a, b) => b.average - a.average)
+  const band = free.length ? BAND : 0
+  const x0 = PAD.l + band + (band ? 24 : 0), iw = w - x0 - PAD.r, ih = H - PAD.t - PAD.b
+  const scale = (cost: number) => x0 + ((Math.log10(cost) - lo) / (hi - lo)) * iw
+  // In the band, points close in score step sideways so they don't cover each other.
+  const step = new Map(free.map((p, i) => [p.id, i > 0 && free[i - 1].average - p.average < 8 ? (i % 2 ? 14 : -14) : 0]))
+  const x = (p: Standing) => (p.cost === 0 ? PAD.l + band / 2 + (step.get(p.id) ?? 0) : scale(p.cost!))
   const y = (score: number) => PAD.t + (1 - score / 100) * ih
   // At least 56px apart, so a phone gets fewer.
   const ticks = TICKS.filter((c) => Math.log10(c) >= lo && Math.log10(c) <= hi)
-    .reduce<number[]>((acc, c) => (acc.length && x(c) - x(acc[acc.length - 1]) < 56 ? acc : [...acc, c]), [])
-  const labels = placeLabels(points.map((p) => ({ id: p.id, x: x(p.cost!), y: y(p.average), text: agentLabel(p).title, first: edge.has(p.id) })), w)
+    .reduce<number[]>((acc, c) => (acc.length && scale(c) - scale(acc[acc.length - 1]) < 56 ? acc : [...acc, c]), [])
+  const labels = placeLabels(points.map((p) => ({ id: p.id, x: x(p), y: y(p.average), text: agentLabel(p).title, first: edge.has(p.id) })), w)
   return (
     <svg width={w} height={H} role="img" aria-label={t('Оценка агентов против цены прогона', 'Agents’ score against the cost of a run')} className="block">
       {[0, 25, 50, 75, 100].map((s) => (
@@ -80,17 +87,23 @@ function Plot({ w, points, edge, line, lo, hi }: { w: number; points: Standing[]
           <text x={PAD.l - 8} y={y(s)} dy="0.32em" textAnchor="end" className="fill-faint text-[11px] tnum">{s}</text>
         </g>
       ))}
+      {band > 0 && (
+        <>
+          <rect x={PAD.l} y={PAD.t - 8} width={band} height={ih + 16} rx={8} className="fill-success/8" />
+          <text x={PAD.l + band / 2} y={H - PAD.b + 18} textAnchor="middle" className="fill-success text-[11px] font-medium">{t('бесплатно', 'free')}</text>
+        </>
+      )}
       {ticks.map((c) => (
-        <text key={c} x={x(c)} y={H - PAD.b + 18} textAnchor="middle" className="fill-faint text-[11px] tnum">{usd(c)}</text>
+        <text key={c} x={scale(c)} y={H - PAD.b + 18} textAnchor="middle" className="fill-faint text-[11px] tnum">{usd(c)}</text>
       ))}
-      <text x={PAD.l + iw / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">{t('Цена прогона', 'Cost of a run')}</text>
-      <polyline points={line.map((p) => `${x(p.cost!)},${y(p.average)}`).join(' ')} fill="none" className="stroke-success" strokeWidth={2} strokeLinejoin="round" />
+      <text x={x0 + iw / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">{t('Цена прогона', 'Cost of a run')}</text>
+      <polyline points={line.map((p) => `${x(p)},${y(p.average)}`).join(' ')} fill="none" className="stroke-success" strokeWidth={2} strokeLinejoin="round" />
       {points.map((p) => {
         const v = vendorOf(p.name), at = labels.get(p.id)
         return (
           <Link key={p.id} href={`/agents/${p.id}`} className="group">
-            <title>{`${p.name}: ${p.average} · ${usd(p.cost)}${v ? ` · ${VENDOR_LABEL[v]}` : ''}`}</title>
-            <circle cx={x(p.cost!)} cy={y(p.average)} r={edge.has(p.id) ? 7 : 5} className={cn(v ? VENDOR_FILL[v] : 'fill-faint', edge.has(p.id) ? 'stroke-card' : 'opacity-60')} strokeWidth={2} />
+            <title>{`${p.name}: ${p.average} · ${p.cost ? usd(p.cost) : t('бесплатно', 'free')}${v ? ` · ${VENDOR_LABEL[v]}` : ''}`}</title>
+            <circle cx={x(p)} cy={y(p.average)} r={edge.has(p.id) ? 7 : 5} className={cn(v ? VENDOR_FILL[v] : 'fill-faint', edge.has(p.id) ? 'stroke-card' : 'opacity-60')} strokeWidth={2} />
             {at && (
               // A halo in the card's colour keeps the label readable where the line crosses it.
               <text x={at.x} y={at.y} dy="0.32em" textAnchor={at.anchor} strokeWidth={4} paintOrder="stroke" strokeLinejoin="round"
@@ -116,6 +129,7 @@ function placeLabels(items: { id: string; x: number; y: number; text: string; fi
       { x: p.x + 11, y: p.y, anchor: 'start' }, { x: p.x - 11, y: p.y, anchor: 'end' },
       { x: p.x + 4, y: p.y - 15, anchor: 'start' }, { x: p.x + 4, y: p.y + 15, anchor: 'start' },
       { x: p.x - 4, y: p.y - 15, anchor: 'end' }, { x: p.x - 4, y: p.y + 15, anchor: 'end' },
+      { x: p.x - 4, y: p.y + 28, anchor: 'start' }, { x: p.x - 4, y: p.y - 28, anchor: 'start' },
     ]
     for (const s of tries) {
       const box = { x0: s.anchor === 'start' ? s.x : s.x - len, x1: s.anchor === 'start' ? s.x + len : s.x, y0: s.y - 8, y1: s.y + 8 }
