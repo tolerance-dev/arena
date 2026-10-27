@@ -23,8 +23,9 @@ services:
       retries: 30
 
   gateway:
+    # No image name: compose tags the build <project>-gateway, so each checkout runs the gateway built from its own
+    # code. A shared tag let one checkout's build replace another's gateway on its next `up`.
     build: ./backend
-    image: tolerance-backend:local
     command: ["gateway"]
     restart: unless-stopped
     environment:
