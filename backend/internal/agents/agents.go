@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
@@ -63,8 +64,9 @@ type Agent struct {
 	// Price is the model's list price (nil when the model is unknown; on a subscription key no money is spent).
 	Price *pricing.Price `json:"price,omitempty"`
 	// Rate is how fast runs on this model spend tokens, per minute of agent work, from finished runs that called it
-	// (every agent's, any task): the site multiplies it by a time limit and the price for an estimate. With no run on
-	// this model yet it is every model's (AllModels). nil when nothing has run.
+	// (every agent's, any task): the site multiplies it by a typical run's minutes and the price for an estimate. nil
+	// while this model has no finished run: another model's pace says nothing about this one (Codex's rate, metered at
+	// whole reservations, once priced a Kimi run at $22).
 	Rate *Rate `json:"rate,omitempty"`
 	// SpentUSD is this agent's runs so far at list price (nil when the model is unknown, 0 on a subscription).
 	SpentUSD  *float64  `json:"spent_usd,omitempty"`
@@ -84,7 +86,6 @@ type Rate struct {
 	CacheWrite float64 `json:"cache_write"`
 	Runs       int     `json:"runs"`
 	AvgMinutes float64 `json:"avg_minutes"` // how long those runs worked, on average (many stop before their limit)
-	AllModels  bool    `json:"all_models,omitempty"`
 }
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_agent", msg) }
@@ -222,13 +223,7 @@ func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, 
 	if len(ins) == 0 || len(ins) > maxAgentsPerUser {
 		return nil, invalid("Send 1–10 agents")
 	}
-	type row struct {
-		in     CreateInput
-		sealed []byte
-		hint   string
-		files  int
-	}
-	rows := make([]row, len(ins))
+	rows := make([]newAgent, len(ins))
 	refused := map[string]string{} // provider → error code
 	keys := map[[2]string]bool{}   // {provider, key} to check with the provider
 	for i, in := range ins {
@@ -255,8 +250,11 @@ func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, 
 			return nil, err
 		}
 		in.Bundle = bundle
-		rows[i] = row{in: in, sealed: sealed, hint: hint, files: files}
+		rows[i] = newAgent{in: in, sealed: sealed, hint: hint, files: files}
 		keys[[2]string{in.Provider, in.APIKey}] = true
+	}
+	if err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error { return duplicates(ctx, tx, ownerID, rows) }); err != nil {
+		return nil, err
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -302,6 +300,10 @@ func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, 
 				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "That would be more than 10 agents: delete some first")
 			}
 		}
+		// Again under the transaction: one created meanwhile (a double click) doesn't slip through.
+		if err := duplicates(ctx, tx, ownerID, rows); err != nil {
+			return err
+		}
 		for i, r := range rows {
 			ids[i] = idgen.New("agent")
 			if _, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
@@ -322,6 +324,47 @@ func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, 
 		}
 	}
 	return out, nil
+}
+
+// newAgent is one agent of a batch, checked and sealed, waiting for its row.
+type newAgent struct {
+	in     CreateInput
+	sealed []byte
+	hint   string
+	files  int
+}
+
+// duplicates refuses an agent its owner already has: a ready one with the same CLI and model, an uploaded one with
+// the same bundle. A clone would only split one agent's runs and votes between two rows; more attempts are more runs
+// of the same agent. Rows left empty (a refused key) are skipped: the batch fails on the key anyway.
+func duplicates(ctx context.Context, tx pgx.Tx, ownerID string, rows []newAgent) error {
+	exists := httpx.New(http.StatusConflict, "agent_exists", "You already have this agent: run it again instead of a copy")
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if r.in.Bundle == nil {
+			continue
+		}
+		sum := sha256.Sum256(r.in.Bundle)
+		key := "bundle:" + string(sum[:])
+		if r.in.Example != "" {
+			key = "example:" + r.in.Example + "/" + r.in.Model
+		}
+		if seen[key] {
+			return exists
+		}
+		seen[key] = true
+		var found bool
+		err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agents WHERE owner_id = $1 AND
+			CASE WHEN $2 <> '' THEN example = $2 AND model = $3 ELSE example = '' AND sha256(bundle) = $4 END)`,
+			ownerID, r.in.Example, r.in.Model, sum[:]).Scan(&found)
+		if err != nil {
+			return err
+		}
+		if found {
+			return exists
+		}
+	}
+	return nil
 }
 
 // keyProblems are the messages of the key errors a batch reports by code only.
@@ -362,13 +405,12 @@ func normalizeBundle(bundle []byte) ([]byte, int, error) {
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.example, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
 	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
-	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, g.n, g.secs, g.tin, g.tout, g.tcr, g.tcw, o.tin, o.tout, o.tcr, o.tcw
+	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, o.tin, o.tout, o.tcr, o.tcw
 	FROM agents a JOIN users u ON u.id = a.owner_id
 	LEFT JOIN LATERAL (SELECT coalesce(sum(r.tokens_in), 0) AS tin, coalesce(sum(r.tokens_out), 0) AS tout,
 			coalesce(sum(r.tokens_cache_read), 0) AS tcr, coalesce(sum(r.tokens_cache_write), 0) AS tcw
 		FROM runs r WHERE r.agent_id = a.id) o ON true
-	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true
-	LEFT JOIN LATERAL (` + rateSums + `) g ON true`
+	LEFT JOIN LATERAL (` + rateSums + ` AND a.model <> '' AND b.model = a.model) m ON true`
 
 // rateSums totals the finished runs that called a model and ran a while (the rows behind Rate).
 const rateSums = `SELECT count(*) AS n, sum(r.agent_seconds)::float8 AS secs, sum(r.tokens_in)::float8 AS tin,
@@ -386,11 +428,11 @@ func rate(n int, secs, in, out, cr, cw *float64) *Rate {
 
 func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var a Agent
-	var mn, gn int
-	var ms, mi, mo, mr, mw, gs, gi, gout, gr, gw *float64
+	var mn int
+	var ms, mi, mo, mr, mw *float64
 	var oi, oo, ocr, ocw int64
 	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Example, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
-		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &gn, &gs, &gi, &gout, &gr, &gw, &oi, &oo, &ocr, &ocw)
+		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &oi, &oo, &ocr, &ocw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}
@@ -403,11 +445,7 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 		p := m.Price
 		a.Price = &p
 		a.SpentUSD = pricing.Spent(a.Model, a.Provider, oi, oo, ocr, ocw)
-		if a.Rate = rate(mn, ms, mi, mo, mr, mw); a.Rate == nil {
-			if a.Rate = rate(gn, gs, gi, gout, gr, gw); a.Rate != nil {
-				a.Rate.AllModels = true
-			}
-		}
+		a.Rate = rate(mn, ms, mi, mo, mr, mw)
 	}
 	if !withKey {
 		a.KeyHint = ""

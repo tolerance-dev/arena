@@ -22,8 +22,8 @@ export interface Agent {
   example?: string; example_name?: string
 }
 
-// Tokens per minute of agent work on a model, from finished runs (every model's when all_models).
-export interface Rate { in: number; out: number; cache_read: number; cache_write: number; runs: number; avg_minutes: number; all_models?: boolean
+// Tokens per minute of agent work on a model, from its finished runs.
+export interface Rate { in: number; out: number; cache_read: number; cache_write: number; runs: number; avg_minutes: number
 }
 
 export type RunStatus = 'queued' | 'agent' | 'checking' | 'done' | 'infra_error'

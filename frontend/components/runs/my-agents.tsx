@@ -160,6 +160,8 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
   const offered = example?.providers.filter((p) => usable(p) && (!model || model.ids[p]))
   const providerValue = offered && !offered.includes(provider) ? offered[0] : provider
   const defaultName = example && model ? `${example.name} · ${model.name.replace(' (free)', '')}` : ''
+  // One agent per CLI and model (the server refuses a copy): more attempts are more runs of the one there is.
+  const twin = example && model ? existing.find((a) => a.example === example.slug && a.model === model.slug) : undefined
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -211,6 +213,9 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
                 {model.slug === example.model ? t('Один ключ OrcaRouter запускает любого агента с любой моделью.', 'One OrcaRouter key runs any agent with any model.') : t('Модель не из «родного» CLI ещё не проверена: прогон может упасть сразу.', 'A model from outside the CLI’s own vendor isn’t tested yet: the run may fail right away.')}{' '}
                 {model.price.in + model.price.out === 0 ? t('Модель бесплатная.', 'The model is free.') : t(`Цена: ${usd(model.price.in)} вход, ${usd(model.price.out)} выход за миллион токенов.`, `Price: ${usd(model.price.in)} in, ${usd(model.price.out)} out per million tokens.`)}
               </p>}
+              {twin && <p role="status" className="text-xs font-medium text-destructive">
+                {t(`Такой агент у вас уже есть: «${twin.name}». Запустите его ещё раз или выберите другую модель.`, `You already have this agent: “${twin.name}”. Run it again or pick another model.`)}
+              </p>}
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -252,7 +257,7 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
           <KeyHint provider={providerValue} />
         </div>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" disabled={busy}><Upload /> {busy ? t('Проверяем ключ…', 'Checking the key…') : t('Загрузить агента', 'Upload agent')}</Button>
+          <Button type="submit" disabled={busy || !!twin}><Upload /> {busy ? t('Проверяем ключ…', 'Checking the key…') : t('Загрузить агента', 'Upload agent')}</Button>
           {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('Отмена', 'Cancel')}</Button>}
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
@@ -549,7 +554,8 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
   )
 }
 
-// What a run of this agent should cost for the picked time: the model's spending rate × minutes at its price.
+// What a run of this agent usually costs: the model's spending rate × how long its runs usually work (at most the
+// picked time) at its price; the whole picked time in the tooltip.
 function CostEstimate({ agent, minutes, budget }: { agent: Agent; minutes: number; budget: number }) {
   const t = useT()
   const note = (text: string) => <span className="text-meta text-muted-foreground">{text}</span>
@@ -557,12 +563,14 @@ function CostEstimate({ agent, minutes, budget }: { agent: Agent; minutes: numbe
   if (!agent.price) return agent.model ? null : note(t('Цена неизвестна (свой агент)', 'Price unknown (own agent)'))
   const p = agent.price
   if (p.in + p.out + p.cache_read + p.cache_write === 0) return <span className="cursor-help text-body font-semibold tnum" title={t('Бесплатно', 'Free')}>≈ $0</span>
-  if (!agent.rate) return note(t('Оценки пока нет', 'No estimate yet'))
+  if (!agent.rate) return note(t('Оценки пока нет: у модели ещё не было прогонов', 'No estimate yet: the model has no runs yet'))
   // One number: the picked time at the model's spending rate (cut where the budget runs out); details in the tooltip.
   const e = runEstimate(p, agent.rate, minutes, budget)
   const detail = [
+    t(`обычно прогон этой модели идёт ~${Math.max(1, Math.round(agent.rate.avg_minutes))} мин`, `a run of this model usually takes ~${Math.max(1, Math.round(agent.rate.avg_minutes))} min`),
     t(`${usd(e.perMin)} в минуту`, `${usd(e.perMin)} per minute`),
-    agent.rate.all_models ? t(`у этой модели прогонов ещё нет: по ${agent.rate.runs} прогонам всех моделей`, `no runs of this model yet: from ${agent.rate.runs} runs of all models`) : t(`по прогонам этой модели: ${agent.rate.runs}`, `from ${agent.rate.runs} runs of this model`),
+    t(`все ${minutes} мин: до ${usd(e.max)}`, `all ${minutes} min: up to ${usd(e.max)}`),
+    t(`по прогонам этой модели: ${agent.rate.runs}`, `from ${agent.rate.runs} runs of this model`),
     e.budgetMin != null && t(`бюджет токенов кончится на ~${Math.max(1, Math.round(e.budgetMin))} мин`, `the token budget runs out at ~${Math.max(1, Math.round(e.budgetMin))} min`),
   ].filter(Boolean).join(' · ')
   return <span className="cursor-help text-body font-semibold tnum" title={detail}>≈ {usd(e.total)}</span>
