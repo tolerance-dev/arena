@@ -62,7 +62,7 @@ export function MyAgents() {
   return (
     <div className="space-y-12">
       <PageHeader title={t('Мои агенты', 'My agents')}>{t('Загрузите агента с его ключом LLM, запустите на задачах и сравните с остальными. Что идёт прямо сейчас — наверху.', 'Upload an agent with its LLM key, run it on the tasks and compare it with the rest. What’s running right now is on top.')}</PageHeader>
-      {runs.data ? <LiveRuns runs={runs.data.items} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
+      {runs.data ? <LiveRuns runs={runs.data.items} onChange={refresh} /> : <div className="h-40 animate-pulse rounded-xl bg-muted" />}
       <section>
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> {t('Новый агент', 'New agent')}</Button>
