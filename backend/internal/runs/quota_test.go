@@ -13,6 +13,9 @@ import (
 	"tolerance/internal/platform/idgen"
 )
 
+// testDailyRuns is the daily limit the fixture sets on /admin's settings.
+const testDailyRuns = 5
+
 type quotaFixture struct {
 	t     *testing.T
 	pool  *db.Pool
@@ -25,6 +28,7 @@ func newQuotaFixture(t *testing.T) *quotaFixture {
 	pool := dbtest.New(t)
 	f := &quotaFixture{t: t, pool: pool, s: NewService(pool, "", 1), user: idgen.New("usr")}
 	f.sql(`INSERT INTO users (id, email, handle) VALUES ($1, $1 || '@example.com', $1)`, f.user)
+	f.sql(`UPDATE settings SET daily_runs_per_user = $1, user_queue_cap = 0`, testDailyRuns)
 	f.agent = f.newAgent()
 	return f
 }
@@ -77,7 +81,7 @@ func isTooMany(err error) bool {
 
 func TestQuotaSurvivesDeletes(t *testing.T) {
 	f := newQuotaFixture(t)
-	ids := f.startDone(maxDailyRunsPerUser)
+	ids := f.startDone(testDailyRuns)
 	if _, err := f.create(f.user); !isTooMany(err) {
 		t.Fatalf("run over the daily limit: got %v, want 429", err)
 	}
@@ -101,24 +105,24 @@ func TestQuotaSurvivesDeletes(t *testing.T) {
 
 func TestQuotaRefusalLeavesNoRow(t *testing.T) {
 	f := newQuotaFixture(t)
-	f.startDone(maxDailyRunsPerUser)
+	f.startDone(testDailyRuns)
 	if _, err := f.create(f.user); !isTooMany(err) {
 		t.Fatalf("got %v, want 429", err)
 	}
 	if _, err := f.s.Create(context.Background(), f.user, "agt_unknown", "marketplace", 0, 0); err == nil {
 		t.Fatal("unknown agent accepted")
 	}
-	if n := f.count(`SELECT count(*) FROM runs`); n != maxDailyRunsPerUser {
-		t.Fatalf("runs: %d, want %d", n, maxDailyRunsPerUser)
+	if n := f.count(`SELECT count(*) FROM runs`); n != testDailyRuns {
+		t.Fatalf("runs: %d, want %d", n, testDailyRuns)
 	}
-	if n := f.count(`SELECT count(*) FROM run_quota`); n != maxDailyRunsPerUser {
-		t.Fatalf("run_quota rows: %d, want %d", n, maxDailyRunsPerUser)
+	if n := f.count(`SELECT count(*) FROM run_quota`); n != testDailyRuns {
+		t.Fatalf("run_quota rows: %d, want %d", n, testDailyRuns)
 	}
 }
 
 func TestQuotaWindow(t *testing.T) {
 	f := newQuotaFixture(t)
-	f.startDone(maxDailyRunsPerUser)
+	f.startDone(testDailyRuns)
 	f.sql(`UPDATE run_quota SET created_at = now() - interval '1 day' + interval '1 minute'`)
 	if _, err := f.create(f.user); !isTooMany(err) {
 		t.Fatalf("runs 23h59m old still count: got %v, want 429", err)
@@ -131,7 +135,7 @@ func TestQuotaWindow(t *testing.T) {
 
 func TestQuotaRefunds(t *testing.T) {
 	f := newQuotaFixture(t)
-	ids := f.startDone(maxDailyRunsPerUser - 1)
+	ids := f.startDone(testDailyRuns - 1)
 	ctx := context.Background()
 	// A user's cancel keeps the quota spent.
 	r, err := f.create(f.user)
@@ -156,13 +160,13 @@ func TestQuotaRefunds(t *testing.T) {
 
 func TestQuotaAdminExempt(t *testing.T) {
 	f := newQuotaFixture(t)
-	f.startDone(maxDailyRunsPerUser)
+	f.startDone(testDailyRuns)
 	for i := 0; i < maxOpenRunsPerUser+1; i++ {
 		if _, err := f.create(""); err != nil {
 			t.Fatalf("admin run %d: %v", i+1, err)
 		}
 	}
-	if n := f.count(`SELECT count(*) FROM run_quota`); n != maxDailyRunsPerUser {
+	if n := f.count(`SELECT count(*) FROM run_quota`); n != testDailyRuns {
 		t.Fatalf("admin runs were counted: %d quota rows", n)
 	}
 }
@@ -207,11 +211,42 @@ func TestQuotaParallelOpen(t *testing.T) {
 
 func TestQuotaParallelDaily(t *testing.T) {
 	f := newQuotaFixture(t)
-	f.startDone(maxDailyRunsPerUser - 2)
+	f.startDone(testDailyRuns - 2)
 	if ok := f.parallel(12); ok != 2 {
 		t.Fatalf("%d parallel runs accepted, want 2", ok)
 	}
-	if n := f.count(`SELECT count(*) FROM run_quota`); n != maxDailyRunsPerUser {
-		t.Fatalf("run_quota rows: %d, want %d", n, maxDailyRunsPerUser)
+	if n := f.count(`SELECT count(*) FROM run_quota`); n != testDailyRuns {
+		t.Fatalf("run_quota rows: %d, want %d", n, testDailyRuns)
+	}
+}
+
+// The queue cap counts every non-admin's queued runs, not the admin's: once it is full a user's new run is refused
+// with queue_full, and a run leaving the queue frees a place.
+func TestUserQueueCap(t *testing.T) {
+	f := newQuotaFixture(t)
+	f.sql(`UPDATE settings SET user_queue_cap = 2`)
+	other := idgen.New("usr")
+	f.sql(`INSERT INTO users (id, email, handle) VALUES ($1, $1 || '@example.com', $1)`, other)
+	otherAgent := idgen.New("agt")
+	f.sql(`INSERT INTO agents (id, owner_id, name, bundle, provider, api_key) VALUES ($1, $2, 'b', '', 'openai', '')`, otherAgent, other)
+	if _, err := f.s.Create(context.Background(), other, otherAgent, "marketplace", 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	// An admin's queued run doesn't count.
+	if _, err := f.create(""); err != nil {
+		t.Fatal(err)
+	}
+	first, err := f.create(f.user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.create(f.user)
+	var p *httpx.Problem
+	if !errors.As(err, &p) || p.Code != "queue_full" {
+		t.Fatalf("third queued user run: %v, want queue_full", err)
+	}
+	f.sql(`UPDATE runs SET status = 'agent' WHERE id = $1`, first.ID)
+	if _, err := f.create(f.user); err != nil {
+		t.Fatalf("after a run left the queue: %v", err)
 	}
 }

@@ -6,7 +6,7 @@ import { compact, duration, usd, usedTokens } from '@/lib/format'
 import type { T } from '@/lib/i18n'
 import { useT } from '@/lib/i18n-client'
 import { PROVIDERS, SUBSCRIPTIONS } from '@/lib/providers'
-import type { Check, Run, RunStatus } from '@/lib/types'
+import type { Check, Rating, Run, RunStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { stackOf, VENDOR_CLASS, VENDOR_LABEL, vendorOf } from '@/lib/vendor'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -79,6 +79,15 @@ export function scoreTone(score: number) {
 export function Score({ score, className }: { score: number | null; className?: string }) {
   if (score == null) return <span className={cn('text-muted-foreground', className)}>—</span>
   return <span className={cn('font-semibold tnum', scoreTone(score), className)}>{score}</span>
+}
+
+// Under a leaderboard score (the agent's median run): how many runs it stands for and their range.
+export function SpreadNote({ run, className }: { run: Run; className?: string }) {
+  const t = useT()
+  const s = run.spread
+  if (!s) return null
+  const runs = t.plural(s.runs, ['медиана {n} прогона', 'медиана {n} прогонов', 'медиана {n} прогонов'], ['median of {n} run', 'median of {n} runs'])
+  return <span className={cn('block text-meta font-normal whitespace-nowrap text-faint tnum', className)}>{s.runs > 1 ? `${runs} · ${s.min}–${s.max}` : t('1 прогон', '1 run')}</span>
 }
 
 // The run's checks in the order they ran, one cell each: the arena's signature. Small in tables, large on a
@@ -158,7 +167,7 @@ export function RunTable({ runs, ranked, showTask }: { runs: Run[]; ranked?: boo
                     <span>{r.agent.owner}</span>
                   </div>
                 </td>
-                <td className={cn(td, 'text-right text-lead')}>{done ? <Score score={r.score} /> : <StatusPill run={r} />}</td>
+                <td className={cn(td, 'text-right text-lead')}>{done ? <><Score score={r.score} /><SpreadNote run={r} /></> : <StatusPill run={r} />}</td>
                 <td className={td}>
                   {c.all ? (
                     <div className="flex items-center gap-2.5">
@@ -273,4 +282,9 @@ export function Scenarios({ items, className }: { items: { en: string; ru: strin
       ))}
     </ol>
   )
+}
+
+// A rating from people's votes: the value and its ± interval, greyed while there are too few votes to trust it.
+export function RatingValue({ r }: { r: Rating }) {
+  return <span className={cn('font-semibold tnum', r.provisional && 'text-muted-foreground')}>{r.elo}<span className="ml-1 text-meta font-normal text-faint">±{r.ci}</span></span>
 }

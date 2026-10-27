@@ -48,8 +48,11 @@ func weekSlot(now time.Time) (string, time.Time) {
 	return fmt.Sprintf("%d-W%02d", y, wk), time.Date(d.Year(), d.Month(), d.Day(), tournamentHour, 0, 0, 0, time.UTC)
 }
 
-// ownerID is the site owner's user id, "" before they first sign in.
+// ownerID is the site owner's user id, "" before they first sign in or when there is no owner.
 func ownerID(ctx context.Context, tx pgx.Tx) (string, error) {
+	if identity.OwnerEmail == "" {
+		return "", nil
+	}
 	var id string
 	err := tx.QueryRow(ctx, `SELECT id FROM users WHERE lower(email) = lower($1) ORDER BY created_at LIMIT 1`, identity.OwnerEmail).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {

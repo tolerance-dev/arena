@@ -29,6 +29,8 @@ reasonable decisions yourself and keep going until the product is done.
   serve a production build, not a dev server.
 - **Data:** `/work/data/*.json` is the mock data, the same for every agent. Load it at startup and don't edit it.
   State (carts, bookings, …) can live in memory, a JSON file or SQLite.
+- **Stay anonymous.** People compare the apps blind. Don't name yourself, your model, its vendor or the tool that
+  built the app anywhere a person can see it: the page title, a footer, an about page, a console message.
 - Any stack: Node, Python, a framework or none, SSR or SPA. How the app is checked is at the end of the brief
   above.
 

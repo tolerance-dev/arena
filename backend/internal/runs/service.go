@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -32,7 +34,12 @@ type Service struct {
 	VoteAllowed func(r *http.Request, userID string) bool
 	// GuestPairAllowed rate-limits the pairs handed to guests (by client address); nil = no limit.
 	GuestPairAllowed func(r *http.Request) bool
+	// public keeps the public reads for a few seconds (memo.go).
+	public memo
 }
+
+// publicTTL is how long a public read (the standings, the feeds, the vote ratings) is served from memory.
+const publicTTL = 5 * time.Second
 
 func NewService(pool *db.Pool, previewURL string, slots int) *Service {
 	return &Service{pool: pool, PreviewURL: previewURL, Slots: slots}
@@ -120,6 +127,8 @@ type Run struct {
 	// such runs are ranked).
 	ChecksVersion *string `json:"checks_version"`
 	ChecksCurrent bool    `json:"checks_current"`
+	// Spread: on the leaderboard and Compare, the agent's ranked runs at the task this median run stands for.
+	Spread *Spread `json:"spread,omitempty"`
 }
 
 const runColumns = `r.id, r.task, a.id, a.name, a.description, r.manifest->>'provider', coalesce(r.manifest->>'model', ''), u.handle, r.status, r.failure_reason, r.agent_exit,
@@ -148,15 +157,28 @@ func scanRun(row pgx.Row, extra ...any) (Run, error) {
 		r.Agent.ModelName = m.Name
 	}
 	r.CostUSD = pricing.Spent(r.Agent.Model, r.Agent.Provider, r.Tokens.In, r.Tokens.Out, r.Tokens.CacheRead, r.Tokens.CacheWrite)
-	_ = json.Unmarshal(stats, &r.Stats)
+	r.Checks = []Check{}
+	r.Models = map[string]int{}
+	// A broken column shows the run without it rather than failing the page, but leaves a trace.
+	for col, v := range map[string]struct {
+		raw  []byte
+		into any
+	}{"stats": {stats, &r.Stats}, "checks": {checks, &r.Checks}, "manifest": {manifest, &r.Manifest}, "models": {models, &r.Models}} {
+		if len(v.raw) > 0 {
+			if err := json.Unmarshal(v.raw, v.into); err != nil {
+				slog.Warn("run column doesn't parse", "run", r.ID, "column", col, "err", err)
+			}
+		}
+	}
 	if r.Stats.Languages == nil {
 		r.Stats.Languages = map[string]int{}
 	}
-	r.Checks = []Check{}
-	_ = json.Unmarshal(checks, &r.Checks)
-	_ = json.Unmarshal(manifest, &r.Manifest)
-	r.Models = map[string]int{}
-	_ = json.Unmarshal(models, &r.Models)
+	if r.Checks == nil {
+		r.Checks = []Check{}
+	}
+	if r.Models == nil {
+		r.Models = map[string]int{}
+	}
 	r.CreatedAt = r.CreatedAt.UTC()
 	for _, t := range []**time.Time{&r.StartedAt, &r.FinishedAt} {
 		if *t != nil {
@@ -209,7 +231,7 @@ func (s *Service) Get(ctx context.Context, id string) (Run, error) {
 	if t := tasks.BySlug(r.Task); t != nil {
 		r.TaskScenarios = t.Scenarios
 	}
-	ratings, err := s.Ratings(ctx, r.Task)
+	ratings, err := s.CachedRatings(ctx, r.Task)
 	if rt, ok := ratings[r.Agent.ID]; ok && rt.Votes > 0 {
 		r.AgentRating = &rt
 	}
@@ -335,7 +357,6 @@ func (s *Service) Mine(ctx context.Context, ownerID string, limit int) ([]Run, e
 }
 
 // rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
-// rankedLimits keeps a ranking to runs within the task's limits ($2 time, $3 budget): an admin's run with more
 // time or tokens is an experiment, not a result to compare. And to runs scored by the task's current checks ($4):
 // scores from other checks aren't comparable (an admin can re-check an older run's snapshot to bring it back). A run
 // that spent more than its budget (the gateway's reservations keep that rare, see internal/gateway/budget.go) isn't
@@ -350,22 +371,70 @@ func taskLimits(task string) (int, int64, string) {
 	return 0, 0, ""
 }
 
-// Compare is each agent's best finished run at the task: best score first, then the newest.
-func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
-	limit, budget, checks := taskLimits(task)
-	return s.query(ctx, `WHERE r.id IN (
-			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done'`+rankedLimits+`
-			ORDER BY agent_id, score DESC NULLS LAST, created_at DESC)
-		ORDER BY r.score DESC NULLS LAST, r.created_at DESC`, task, limit, budget, checks)
+// Spread is how an agent's ranked runs at a task scored: their number and the lowest and highest score. The run
+// shown for the agent is its median one (medianRuns).
+type Spread struct {
+	Runs int `json:"runs"`
+	Min  int `json:"min"`
+	Max  int `json:"max"`
 }
 
-// Leaderboard is each agent's best finished run at the task, best first (ties: fewer tokens, then faster).
-func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
+// medianRuns picks each agent's median ranked run at the task, by id, with the agent's spread: the run that stands
+// for the agent, so that an agent run ten times doesn't outrank one run three times by luck alone. With an even
+// count it is the lower of the two middle runs. Ties: fewer tokens, then faster.
+func (s *Service) medianRuns(ctx context.Context, task string) (map[string]Spread, error) {
 	limit, budget, checks := taskLimits(task)
-	return s.query(ctx, `WHERE r.id IN (
-			SELECT DISTINCT ON (agent_id) id FROM runs WHERE task = $1 AND status = 'done' AND score IS NOT NULL`+rankedLimits+`
-			ORDER BY agent_id, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)
-		ORDER BY r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`, task, limit, budget, checks)
+	out := map[string]Spread{}
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT id, n, lo, hi FROM (
+				SELECT id, row_number() OVER w AS rn, count(*) OVER a AS n, min(score) OVER a AS lo, max(score) OVER a AS hi
+				FROM runs WHERE task = $1 AND status = 'done' AND score IS NOT NULL`+rankedLimits+`
+				WINDOW a AS (PARTITION BY agent_id),
+					w AS (a ORDER BY score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST, id)
+			) m WHERE rn = n / 2 + 1`, task, limit, budget, checks)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id string
+			var sp Spread
+			if err := rows.Scan(&id, &sp.Runs, &sp.Min, &sp.Max); err != nil {
+				return err
+			}
+			out[id] = sp
+		}
+		return rows.Err()
+	})
+	return out, err
+}
+
+// ranked lists the task's median runs (medianRuns) in the given order, each with its agent's spread.
+func (s *Service) ranked(ctx context.Context, task, order string) ([]Run, error) {
+	spread, err := s.medianRuns(ctx, task)
+	if err != nil || len(spread) == 0 {
+		return []Run{}, err
+	}
+	ids := make([]string, 0, len(spread))
+	for id := range spread {
+		ids = append(ids, id)
+	}
+	out, err := s.query(ctx, `WHERE r.id = ANY($1) ORDER BY `+order, ids)
+	for i := range out {
+		sp := spread[out[i].ID]
+		out[i].Spread = &sp
+	}
+	return out, err
+}
+
+// Compare is each agent's median run at the task (medianRuns), best score first, then the newest.
+func (s *Service) Compare(ctx context.Context, task string) ([]Run, error) {
+	return s.ranked(ctx, task, `r.score DESC, r.created_at DESC`)
+}
+
+// Leaderboard is each agent's median run at the task (medianRuns), best first (ties: fewer tokens, then faster).
+func (s *Service) Leaderboard(ctx context.Context, task string) ([]Run, error) {
+	return s.ranked(ctx, task, `r.score DESC, r.tokens_in + r.tokens_out + r.tokens_cache_write, r.agent_seconds NULLS LAST`)
 }
 
 // TaskSummary is a task with its standing, for the home page.
@@ -418,13 +487,12 @@ func (s *Service) Summaries(ctx context.Context) ([]TaskSummary, error) {
 
 func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invalid_run", msg) }
 
-// Per-user limits for non-admins: one run server is shared by everyone. The daily limit counts run_quota rows, which
-// stay when a run or its agent is deleted. Only the worker's infra_error (the platform's fault) gives the quota back
-// (refundQuota); a cancel doesn't, whoever made it: the run took a slot and may have spent tokens.
-const (
-	maxOpenRunsPerUser  = 3
-	maxDailyRunsPerUser = 30
-)
+// Per-user limits for non-admins: one run server is shared by everyone. The daily limit (admin.Settings, changed on
+// /admin) counts run_quota rows, which stay when a run or its agent is deleted. Only the worker's infra_error (the
+// platform's fault) gives the quota back (refundQuota); a cancel doesn't, whoever made it: the run took a slot and
+// may have spent tokens. The queue cap counts non-admins' queued runs (those with a run_quota row): the owner's
+// tournament doesn't fill it.
+const maxOpenRunsPerUser = 3
 
 // refundQuota wraps an UPDATE of runs to infra_error ending in RETURNING id: it also gives those runs' daily quota
 // back, and returns how many runs the UPDATE changed.
@@ -469,19 +537,27 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
 				return err
 			}
-			var open, day int
+			set, err := admin.Load(ctx, tx)
+			if err != nil {
+				return err
+			}
+			var open, day, queued int
 			if err := tx.QueryRow(ctx, `SELECT
 					(SELECT count(*) FROM runs r JOIN agents a ON a.id = r.agent_id
 						WHERE a.owner_id = $1 AND r.status IN ('queued', 'agent', 'checking')),
-					(SELECT count(*) FROM run_quota WHERE user_id = $1 AND NOT refunded AND created_at > now() - interval '1 day')`,
-				ownerID).Scan(&open, &day); err != nil {
+					(SELECT count(*) FROM run_quota WHERE user_id = $1 AND NOT refunded AND created_at > now() - interval '1 day'),
+					(SELECT count(*) FROM runs r JOIN run_quota q ON q.run_id = r.id WHERE r.status = 'queued')`,
+				ownerID).Scan(&open, &day, &queued); err != nil {
 				return err
 			}
 			if open >= maxOpenRunsPerUser {
-				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You already have 3 runs queued or running: wait for one to finish")
+				return httpx.New(http.StatusTooManyRequests, "too_many_runs", fmt.Sprintf("You already have %d runs queued or running: wait for one to finish", maxOpenRunsPerUser))
 			}
-			if day >= maxDailyRunsPerUser {
-				return httpx.New(http.StatusTooManyRequests, "too_many_runs", "You have started 30 runs in the last 24 hours: try again later")
+			if day >= set.DailyRuns {
+				return httpx.New(http.StatusTooManyRequests, "too_many_runs", fmt.Sprintf("You have started %d runs in the last 24 hours: try again later", set.DailyRuns))
+			}
+			if set.UserQueueCap > 0 && queued >= set.UserQueueCap {
+				return httpx.New(http.StatusTooManyRequests, "queue_full", "The queue is full: come back tomorrow, and meanwhile vote on the apps already built")
 			}
 		}
 		var provider, model, bundleHash, agentOwner string

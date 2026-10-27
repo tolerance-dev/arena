@@ -25,7 +25,8 @@ function transient(e: ApiError) {
 // failure is retried with backoff (3 s doubling up to 30 s, sooner when the browser comes back online) and keeps
 // the last data, so the page can show it as stale next to `error`. A 4xx stops polling until reload(). A response
 // for an old path (after navigation or unmount) is dropped. `initial` is data the server already rendered the page
-// with: it is shown at once and the first load waits one interval.
+// with: it is shown at once and the first load waits one interval. A hidden tab (background, minimized) doesn't poll:
+// a load due then waits until the tab is shown again, so forgotten tabs don't keep asking the server.
 export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => boolean, initial?: T | null): Poll<T> {
   const [state, setState] = useState<{ path: string | null; data: T | null; error: ApiError | null }>(
     () => ({ path: initial != null ? path : null, data: initial ?? null, error: null }))
@@ -41,12 +42,17 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
     let timer: ReturnType<typeof setTimeout> | undefined
     let busy = false
     let failures = 0
+    let asleep = false
     const ctrl = new AbortController()
     const tick = async () => {
       if (busy) return
-      busy = true
       clearTimeout(timer)
       timer = undefined
+      if (document.hidden) {
+        asleep = true
+        return
+      }
+      busy = true
       setInFlight(true)
       try {
         const d = await api<T>(path, { signal: ctrl.signal })
@@ -68,7 +74,13 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
       }
     }
     const online = () => { if (failures > 0 && timer) void tick() }
+    const shown = () => {
+      if (document.hidden || !asleep) return
+      asleep = false
+      void tick()
+    }
     window.addEventListener('online', online)
+    document.addEventListener('visibilitychange', shown)
     const wait = seeded.current?.path === path ? seeded.current.until - Date.now() : 0
     if (wait > 0) timer = setTimeout(tick, wait)
     else void tick()
@@ -77,6 +89,7 @@ export function usePoll<T>(path: string | null, ms: number, active?: (d: T) => b
       ctrl.abort()
       clearTimeout(timer)
       window.removeEventListener('online', online)
+      document.removeEventListener('visibilitychange', shown)
       setInFlight(false)
     }
   }, [path, ms, nonce])

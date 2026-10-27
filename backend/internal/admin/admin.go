@@ -19,14 +19,24 @@ import (
 type Settings struct {
 	RunsPaused bool `json:"runs_paused"` // the worker takes no queued runs
 	UserRuns   bool `json:"user_runs"`   // non-admins may upload agents and start runs
+	// DailyRuns is how many runs a non-admin may start in 24 hours; UserQueueCap how many non-admins' runs may wait
+	// in the queue at once before new ones are refused (0 = no cap).
+	DailyRuns    int `json:"daily_runs_per_user"`
+	UserQueueCap int `json:"user_queue_cap"`
+}
+
+const settingsColumns = `runs_paused, user_runs, daily_runs_per_user, user_queue_cap`
+
+func (s *Settings) dest() []any {
+	return []any{&s.RunsPaused, &s.UserRuns, &s.DailyRuns, &s.UserQueueCap}
 }
 
 // Load reads the switches inside tx.
 func Load(ctx context.Context, tx pgx.Tx) (Settings, error) {
 	var s Settings
-	err := tx.QueryRow(ctx, `SELECT runs_paused, user_runs FROM settings`).Scan(&s.RunsPaused, &s.UserRuns)
+	err := tx.QueryRow(ctx, `SELECT `+settingsColumns+` FROM settings`).Scan(s.dest()...)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Settings{UserRuns: true}, nil
+		return Settings{UserRuns: true, DailyRuns: 3, UserQueueCap: 20}, nil
 	}
 	return s, err
 }
@@ -240,16 +250,21 @@ func priceUsers(ctx context.Context, tx pgx.Tx, users []User) error {
 
 // SettingsPatch changes only the switches it names.
 type SettingsPatch struct {
-	RunsPaused *bool `json:"runs_paused"`
-	UserRuns   *bool `json:"user_runs"`
+	RunsPaused   *bool `json:"runs_paused"`
+	UserRuns     *bool `json:"user_runs"`
+	DailyRuns    *int  `json:"daily_runs_per_user"`
+	UserQueueCap *int  `json:"user_queue_cap"`
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (Settings, error) {
 	var out Settings
+	if (p.DailyRuns != nil && (*p.DailyRuns < 0 || *p.DailyRuns > 1000)) || (p.UserQueueCap != nil && (*p.UserQueueCap < 0 || *p.UserQueueCap > 10000)) {
+		return out, httpx.New(http.StatusBadRequest, "invalid_settings", "Limits must be between 0 and 1000 runs a day, 0 and 10000 queued")
+	}
 	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `UPDATE settings SET runs_paused = coalesce($1, runs_paused), user_runs = coalesce($2, user_runs),
-				updated_at = now()
-			RETURNING runs_paused, user_runs`, p.RunsPaused, p.UserRuns).Scan(&out.RunsPaused, &out.UserRuns)
+				daily_runs_per_user = coalesce($3, daily_runs_per_user), user_queue_cap = coalesce($4, user_queue_cap), updated_at = now()
+			RETURNING `+settingsColumns, p.RunsPaused, p.UserRuns, p.DailyRuns, p.UserQueueCap).Scan(out.dest()...)
 	})
 	return out, err
 }

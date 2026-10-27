@@ -172,6 +172,11 @@ cmd_deploy() {
     echo "BUNNY_API_KEY is missing from .env (Bunny's account API key, for Caddy's certificates; see the Caddyfile)" >&2
     exit 1
   fi
+  # The site owner's email is in .env, not in the code (identity.OwnerEmail): without it nobody would be the owner.
+  if ! grep -q '^ARENA_OWNER_EMAIL=.' .env; then
+    echo "ARENA_OWNER_EMAIL is missing from .env (the site owner's sign-in email)" >&2
+    exit 1
+  fi
   # The hidden checks (README.md), copied in by hand; made here so the api's bind mount isn't a root-owned dir.
   mkdir -p tasks-hidden
   prev=$(grep '^TAG=' .env | cut -d= -f2 || true)

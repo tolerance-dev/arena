@@ -35,8 +35,10 @@ export interface Check { name: string; passed: boolean; detail?: string }
 export interface Run {
   id: string; task: string; task_title: Text
   // task_kind: whether the score ranks the run (build) or people's votes do; task_scenarios and agent_rating (the agent's
-  // Elo at the task) come with a single run only.
+  // rating at the task) come with a single run only.
   task_kind?: TaskKind; task_scenarios?: Text[]; agent_rating?: Rating
+  // spread: on a leaderboard, the agent's ranked runs this median run stands for
+  spread?: { runs: number; min: number; max: number }
   agent: { id: string; name: string; description: string; provider: string; model?: string; model_name?: string; owner: string }
   status: RunStatus; failure_reason: string | null
   agent_exit: string | null // ok | timeout | budget | key_rejected | error:N; gateway_restart while building
@@ -81,10 +83,11 @@ export interface TaskSummary {
 
 export interface TaskView extends TaskSummary {
   brief: string; data_files: string[]; checks: string[]; compare: Run[]; recent: Run[]
-  ratings: Record<string, Rating> // by agent id: Elo from people's blind votes
+  ratings: Record<string, Rating> // by agent id: the rating from people's blind votes
 }
 
-export interface Rating { elo: number; votes: number; wins: number; losses: number; ties: number }
+// elo: Bradley–Terry from all the votes, on Elo's scale; ci: its 95% interval, ±points; provisional: too few votes.
+export interface Rating { elo: number; ci: number; provisional: boolean; votes: number; wins: number; losses: number; ties: number }
 
 // One side of a blind pair: what shows the app, nothing that names the agent.
 // alias stands for the run until the vote: its shots are /api/v1/vote/<alias>/shot.jpg.
@@ -106,7 +109,7 @@ export interface Tournament {
   players: TournamentPlayer[]; recent: TournamentRecord[]
 }
 
-export interface AdminSettings { runs_paused: boolean; user_runs: boolean }
+export interface AdminSettings { runs_paused: boolean; user_runs: boolean; daily_runs_per_user: number; user_queue_cap: number }
 export interface AdminSpend {
   period: '24h' | '7d' | '30d' | 'all'; runs: number; failed: number
   in: number; out: number; cache_read: number; cache_write: number; requests: number

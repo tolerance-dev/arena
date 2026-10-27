@@ -15,7 +15,7 @@ import { TaskGlyph } from './task-glyph'
 export type Standing = {
   id: string; name: string; owner: string; provider: string; model_name?: string; cells: Record<string, Run>
   average: number; rank: number; solved: number
-  cost: number | null; seconds: number | null // averages over its best runs with a known value
+  cost: number | null; seconds: number | null // averages over its median runs with a known value
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
@@ -23,7 +23,7 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.l
 // The tasks a score ranks: the voted ones (invent, startup) are ranked by people's votes, their checks only gate the run.
 export const scoredTasks = (tasks: TaskSummary[]) => tasks.filter((x) => !isVoted(x.kind))
 
-// Agents ranked by the average of their best score on every scored task (a task they have not run counts as 0). Equal
+// Agents ranked by the average of their median score on every scored task (a task they have not run counts as 0). Equal
 // averages share a place (1, 1, 3), as arena boards do.
 export function rankAgents(all: TaskSummary[]): Standing[] {
   const tasks = scoredTasks(all)
@@ -60,7 +60,7 @@ function sortValue(row: Standing, key: SortKey): number | null {
   return row.cells[key.slice(5)]?.score ?? null
 }
 
-// Agents down: place, the agent and its model, the overall score, then the best run at every task, the cost and
+// Agents down: place, the agent and its model, the overall score, then the median run at every task, the cost and
 // time of a run. Any column but the agent sorts; the place stays the overall one.
 export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; rows: Standing[] }) {
   const t = useT()
@@ -97,10 +97,10 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
           <tr className="border-b border-border text-left text-ui">
             <th className="h-12 w-12 pl-3 font-medium text-faint sm:w-14 sm:pl-4" title={t('Место по общей оценке', 'Place by the overall score')}>#</th>
             <th className="h-12 px-3 font-medium text-faint">{t('Агент', 'Agent')}</th>
-            {head('average', t('Оценка', 'Score'), t('Среднее лучших оценок по всем задачам, 0–100', 'Average of the best scores over every task, 0–100'), 'pr-4 sm:pr-3')}
+            {head('average', t('Оценка', 'Score'), t('Среднее медианных оценок по всем задачам, 0–100', 'Average of the median scores over every task, 0–100'), 'pr-4 sm:pr-3')}
             {tasks.map((x) => head(`task:${x.slug}`, <><TaskGlyph slug={x.slug} className="size-4 shrink-0" /><span>{t.text(x.title)}</span></>,
               t(`Лучшая оценка в задаче «${t.text(x.title)}»`, `Best score at “${t.text(x.title)}”`), 'hidden px-1.5 text-center md:table-cell', true))}
-            {head('cost', t('Цена', 'Cost'), t('Средняя цена лучшего прогона по прейскуранту модели', 'Average cost of a best run at the model’s list price'), 'hidden text-right sm:table-cell')}
+            {head('cost', t('Цена', 'Cost'), t('Средняя цена медианного прогона по прейскуранту модели', 'Average cost of a median run at the model’s list price'), 'hidden text-right sm:table-cell')}
             {head('seconds', t('Время', 'Time'), t('Сколько в среднем работал агент', 'How long the agent worked, on average'), 'hidden pr-4 text-right sm:table-cell')}
           </tr>
         </thead>

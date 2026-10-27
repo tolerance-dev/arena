@@ -12,7 +12,9 @@ export ARENA_GATEWAY_FAKE
 # networks and cleans up only its own sandboxes and snapshots.
 ARENA_STACK ?= arena-$(notdir $(CURDIR))
 export ARENA_STACK
-# The owner (ownerEmail) may key agents with their own Claude / ChatGPT subscription (prod too: deploy/compose.yml).
+# The site owner (always an admin, plays the tournament): ARENA_OWNER_EMAIL, best kept in $(LOCAL_SECRETS); unset =
+# no owner. The owner may key agents with their own Claude / ChatGPT subscription (prod too: deploy/compose.yml).
+export ARENA_OWNER_EMAIL
 ARENA_SUBSCRIPTIONS ?= true
 export ARENA_SUBSCRIPTIONS
 # Sign in as any email with no password (the form under the OAuth buttons), so flows can be clicked through

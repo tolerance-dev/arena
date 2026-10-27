@@ -29,8 +29,9 @@ func TestWeekSlot(t *testing.T) {
 	}
 }
 
-// owner adds the site owner with one ready agent per name.
+// owner adds the site owner (ARENA_OWNER_EMAIL, unset in tests) with one ready agent per name.
 func (f fixture) owner(names ...string) (string, []string) {
+	identity.OwnerEmail = "owner@example.com"
 	id := idgen.New("u")
 	f.exec(`INSERT INTO users (id, email, handle, role) VALUES ($1, $2, 'owner', 'admin')`, id, identity.OwnerEmail)
 	var agents []string

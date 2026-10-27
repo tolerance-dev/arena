@@ -11,7 +11,7 @@ import { AgentAvatar } from './bits'
 import { CostChart } from './cost-chart'
 import { rankAgents, ScoreChip, scoredTasks, StandingsTable } from './standings'
 
-// Every agent against every task, ranked by the average best score; agents with no score yet are listed in the aside.
+// Every agent against every task, ranked by the average median score; agents with no score yet are listed in the aside.
 // initialTasks and initialAgents come from the server render, so the table is in the HTML.
 export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?: { items: TaskSummary[] } | null; initialAgents?: { items: Agent[] } | null }) {
   const t = useT()

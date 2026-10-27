@@ -124,7 +124,7 @@ function Showcase({ tasks }: { tasks: TaskSummary[] }) {
   )
 }
 
-// A task with its best solution so far; it opens on the comparison of every agent's best run.
+// A task with its best solution so far; it opens on the comparison of every agent's median run.
 function TaskCard({ task }: { task: TaskSummary }) {
   const t = useT()
   const title = t.text(task.title)

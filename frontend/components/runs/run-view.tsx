@@ -22,7 +22,7 @@ import { providerLabel } from '@/lib/providers'
 import { useMe } from '@/lib/use-me'
 import { usePoll } from '@/lib/use-poll'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, Ago, exitLabel, isActive, phase, queueLine, Scenarios, scoreTone, Stack, StatusPill, taskTitle } from './bits'
+import { AgentAvatar, Ago, exitLabel, isActive, phase, queueLine, RatingValue, Scenarios, scoreTone, Stack, StatusPill, taskTitle } from './bits'
 import { TaskGlyph } from './task-glyph'
 import { LiveBuild } from './live-build'
 import { agentElapsed, useNow } from './live-runs'
@@ -246,28 +246,28 @@ function VoteVerdict({ run }: { run: Run }) {
     : { tone: 'text-success', text: t('Входные проверки пройдены', 'Entry checks passed') }
   return (
     <section aria-label={t('Голосование', 'Votes')} className="rounded-xl border-2 border-border p-5">
-      <div className="text-body text-muted-foreground">{t('Место по голосам', 'Rank by votes')}</div>
-      <div className={cn('numeral mt-2 text-[56px]', r ? 'text-foreground' : 'text-pending')}>{r ? r.elo : '—'}</div>
+      <div className="text-body text-muted-foreground">{t('Рейтинг по голосам', 'Rating by votes')}</div>
+      <div className={cn('numeral mt-2 text-[56px]', r && !r.provisional ? 'text-foreground' : 'text-pending')}>{r ? r.elo : '—'}{r && <span className="ml-2 text-section text-faint">±{r.ci}</span>}</div>
       <p className="mt-1 text-body text-muted-foreground">{r ? <Elo run={run} bare /> : t('Голосов за агента пока нет.', 'No votes for the agent yet.')}</p>
       <p className={cn('mt-3 flex items-center gap-1.5 text-ui font-medium', gate.tone)}>
         {done && run.app_started && failed === 0 && run.agent_exit !== 'key_rejected' && <Check className="size-4" />}{gate.text}
       </p>
       <p className="mt-3 border-t border-border pt-3 text-ui text-faint">
-        {t('Здесь нет балла: люди сравнивают приложения двух агентов вслепую, в паре участвует лучший прогон агента.', 'There’s no score here: people compare two agents’ apps blind, each with its best run.')}{' '}
+        {t('Здесь нет балла: люди сравнивают приложения двух агентов вслепую, в паре участвует медианный прогон агента.', 'There’s no score here: people compare two agents’ apps blind, each with its median run.')}{' '}
         <Link href={`/vote?task=${run.task}`} className="font-medium text-primary hover:underline">{t('Голосовать', 'Vote')}</Link>
       </p>
     </section>
   )
 }
 
-// The agent's Elo at the task from people's blind votes, with its record.
+// The agent's rating at the task from people's blind votes, with its record.
 function Elo({ run, bare }: { run: Run; bare?: boolean }) {
   const t = useT()
   const r = run.agent_rating
   if (!r) return null
   const record = t(`${r.wins} побед, ${r.losses} поражений, ${r.ties} ничьих`, `${r.wins} won, ${r.losses} lost, ${r.ties} tied`)
-  const votes = t.plural(r.votes, ['{n} голос', '{n} голоса', '{n} голосов'], ['{n} vote', '{n} votes'])
-  return bare ? <>{votes}: {record}</> : <>{t('В голосовании', 'In the votes')}: <span className="font-semibold text-foreground tnum">Elo {r.elo}</span> · {votes}</>
+  const votes = t.plural(r.votes, ['{n} голос', '{n} голоса', '{n} голосов'], ['{n} vote', '{n} votes']) + (r.provisional ? t(', пока мало', ', too few yet') : '')
+  return bare ? <>{votes}: {record}</> : <>{t('В голосовании', 'In the votes')}: <RatingValue r={r} /> · {votes}</>
 }
 
 // The run's numbers as label/value lines, like Product Hunt's "Company info".
