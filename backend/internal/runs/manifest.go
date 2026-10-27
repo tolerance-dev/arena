@@ -9,8 +9,9 @@ import (
 	"tolerance/internal/tasks"
 )
 
-// ScoringVersion is the version of Score; bump it when the formula changes (it is part of ChecksVersion, so runs
-// scored the old way leave the rankings).
+// ScoringVersion is the version of Score and of how verify.py judges a check; bump it when either changes so that old
+// scores no longer compare (it is part of ChecksVersion, so runs scored the old way leave the rankings). A verify.py
+// change that can't flip a check (logs, screenshots, refactoring) needs no bump.
 const ScoringVersion = 1
 
 // Manifest is what a run was set up with, fixed when it is created and never rewritten: changing the agent's key or
@@ -45,12 +46,17 @@ func sha(b []byte) string {
 	return hex.EncodeToString(s[:])
 }
 
-var verifierHash = sha(verifyPy)
+var verifierHash = sha(verifyPy) // recorded in each manifest, not in checksVersion
 
-// checksVersion is a short hash of everything that turns an app into a score: the task's check spec, verify.py and
-// the scoring version. Runs with different versions aren't ranked together.
+// checksVerifier stands where verify.py's hash was in checksVersion: the hash of the verify.py every run was scored
+// with when the file left the formula, so those runs kept their version. Every byte of verify.py used to unrank all
+// runs; now ScoringVersion does that on purpose.
+const checksVerifier = "1e67a9d1c8a15d9990808d1aa67760beae764513ad3728ecfbb18a9647ed7de4"
+
+// checksVersion is a short hash of what turns an app into a score: the task's check spec (public and hidden) and the
+// scoring version. Runs with different versions aren't ranked together.
 func checksVersion(t *tasks.Task) string {
-	return sha(fmt.Appendf(nil, "%s\x00%s\x00%d", t.ChecksHash, verifierHash, ScoringVersion))[:12]
+	return sha(fmt.Appendf(nil, "%s\x00%s\x00%d", t.ChecksHash, checksVerifier, ScoringVersion))[:12]
 }
 
 // newManifest is the manifest of a new run of an agent (provider, model, bundle hash) at task t.
