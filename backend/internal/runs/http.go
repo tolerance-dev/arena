@@ -198,12 +198,13 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 // (an admin: on any agent).
 func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/my/runs", func(w http.ResponseWriter, r *http.Request) {
-		// limit up to 500: the agents × tasks table on /my takes every pair's history.
-		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		if limit <= 0 || limit > 500 {
-			limit = 30
+		var items []Run
+		var err error
+		if r.URL.Query().Get("latest") == "1" {
+			items, err = s.Latest(r.Context(), identity.MustFromContext(r.Context()).UserID)
+		} else {
+			items, err = s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, 30)
 		}
-		items, err := s.Mine(r.Context(), identity.MustFromContext(r.Context()).UserID, limit)
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
