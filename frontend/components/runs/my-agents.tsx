@@ -541,6 +541,7 @@ function AgentRow({ agent, fresh, tasks, preset, onChange, onStarted, subscripti
                   <Button variant="ghost" onClick={cancelKey} disabled={keyState === 'checking'}>{t('Отмена', 'Cancel')}</Button>
                 </div>
                 {keyErr && <p role="alert" className="text-xs text-destructive">{keyErr}</p>}
+                {provider !== agent.provider && <p className="text-meta text-muted-foreground">{t('Ключ другого провайдера отменит прогоны этого агента, которые ещё в очереди или строятся.', 'A key of another provider cancels this agent’s runs that are still queued or building.')}</p>}
                 <KeyHint provider={provider} />
               </>
             )}

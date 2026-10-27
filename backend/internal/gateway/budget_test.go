@@ -477,6 +477,7 @@ func TestRejectedKey(t *testing.T) {
 		{"gemini", 403, `{"error":{"code":403,"status":"PERMISSION_DENIED","details":[{"reason": "API_KEY_SERVICE_BLOCKED"}]}}`, true},
 		{"gemini", 403, `{"error":{"code":403,"status":"PERMISSION_DENIED","details":[{"reason": "SERVICE_DISABLED"}]}}`, true},
 		{"gemini", 402, `{"error":{"code":402,"message":"Your prepayment credits are depleted."}}`, true},
+		{"gemini", 400, `{"error":{"code":400,"message":"User location is not supported for the API use.","status":"FAILED_PRECONDITION"}}`, true},
 		{"openai", 402, `{"error":{"message":"Insufficient credits"}}`, true},
 		{"openai", 429, `{"error":{"type":"insufficient_quota","code":"insufficient_quota"}}`, true},
 		{"anthropic", 400, `{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}`, true},

@@ -394,8 +394,8 @@ func (g *Gateway) llm(w http.ResponseWriter, r *http.Request, provider string) {
 func plainResponses(h http.Header) { h.Del("Accept-Encoding") }
 
 // keyRejected says the provider refused the key itself, so no request can get through: 401 everywhere, 402 (out of
-// prepaid credit), Gemini's API_KEY_* reasons (invalid, or the key not allowed this API, IP or referrer) and
-// SERVICE_DISABLED, OpenAI's insufficient_quota (a 429 that isn't a rate limit) and Anthropic's "credit balance is
+// prepaid credit), Gemini's API_KEY_* reasons (invalid, or the key not allowed this API, IP or referrer),
+// SERVICE_DISABLED and FAILED_PRECONDITION (the API isn't served where the gateway is, or not without billing), OpenAI's insufficient_quota (a 429 that isn't a rate limit) and Anthropic's "credit balance is
 // too low". An error body is read (it is small) and put back for the agent.
 func keyRejected(protocol string, resp *http.Response) bool {
 	switch resp.StatusCode {
@@ -415,7 +415,8 @@ func keyRejected(protocol string, resp *http.Response) bool {
 	}
 	switch {
 	case protocol == "gemini" && resp.StatusCode != http.StatusTooManyRequests:
-		return bytes.Contains(head, []byte(`"API_KEY_`)) || bytes.Contains(head, []byte(`"SERVICE_DISABLED"`))
+		return bytes.Contains(head, []byte(`"API_KEY_`)) || bytes.Contains(head, []byte(`"SERVICE_DISABLED"`)) ||
+			bytes.Contains(head, []byte(`"FAILED_PRECONDITION"`))
 	case protocol == "openai" && resp.StatusCode == http.StatusTooManyRequests:
 		return bytes.Contains(head, []byte("insufficient_quota"))
 	case protocol == "anthropic" && resp.StatusCode == http.StatusBadRequest:
