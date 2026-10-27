@@ -583,6 +583,157 @@
           ]
         }
       ]
+    },
+    {
+      "name": "browser: the search box finds titles",
+      "browser": {
+        "flow": "search",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "fill": "search",
+            "css": "input[type=search]",
+            "value": "last",
+            "key": "Enter",
+            "open": "search"
+          },
+          {
+            "expect": [
+              "The Last Garden",
+              "The Last Machine",
+              "The Last Frontier"
+            ]
+          },
+          {
+            "absent": [
+              "The Little Frontier"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "browser: sign in with email and password, Enter submits",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "signin": {
+              "email": "iris.kowalski@example.com",
+              "password": "pass009"
+            }
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "gives": "signin"
+      }
+    },
+    {
+      "name": "browser: still signed in after a reload",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
+    },
+    {
+      "name": "browser: My list on a title page adds it to /watchlist",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/titles/m5"
+          },
+          {
+            "click": "my list|watch\\s*list|watch later"
+          },
+          {
+            "wait": 1
+          },
+          {
+            "goto": "/watchlist"
+          },
+          {
+            "expect": [
+              "The Crimson Winter"
+            ]
+          }
+        ],
+        "needs": [
+          "signin"
+        ],
+        "gives": "watchlist"
+      }
+    },
+    {
+      "name": "browser: Remove in /watchlist takes it off",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "^\\W*remove\\b"
+          },
+          {
+            "wait": 1
+          },
+          {
+            "reload": true
+          },
+          {
+            "absent": [
+              "The Crimson Winter"
+            ]
+          }
+        ],
+        "needs": [
+          "watchlist"
+        ]
+      }
+    },
+    {
+      "name": "browser: sign out",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "no_control": "\\b(sign|log)\\s*-?\\s*out\\b"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
     }
   ]
 }

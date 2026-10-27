@@ -403,8 +403,8 @@ function Checks({ run }: { run: Run }) {
         {voted
           ? t('Платформа запустила приложение на чистом сервере и посмотрела, что оно открывается и показывает данные. Эти проверки только допускают прогон в голосование и на место не влияют.',
             'The platform started the app on a fresh server and saw that it opens and shows the data. These checks only admit the run to the votes and don’t affect its rank.')
-          : t('Платформа запустила приложение на чистом сервере и прошла по его страницам и API по сценариям из задания, одна проверка за другой. Оценка — доля пройденных.',
-            'The platform started the app on a fresh server and went through its pages and API along the task’s scenarios, one check after another. The score is the share passed.')}
+          : t('Платформа запустила приложение на чистом сервере, проверила его API и страницы, а потом прошла главные сценарии в браузере, как человек. Балл — половина доли пройденных проверок API и страниц плюс половина доли пройденных шагов в браузере.',
+            'The platform started the app on a fresh server, checked its API and pages, then went through the main flows in a browser like a person. The score is half the share of API and page checks passed plus half the share of browser steps passed.')}
       </p>
       {skipped > 0 && (
         <p className="mb-3 flex items-start gap-2 text-ui text-faint">

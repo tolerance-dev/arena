@@ -11,8 +11,9 @@ import (
 
 // ScoringVersion is the version of Score and of how verify.py judges a check; bump it when either changes so that old
 // scores no longer compare (it is part of ChecksVersion, so runs scored the old way leave the rankings). A verify.py
-// change that can't flip a check (logs, screenshots, refactoring) needs no bump.
-const ScoringVersion = 1
+// change that can't flip a check (logs, screenshots, refactoring) needs no bump. 2: browser scenarios, and a build
+// task's score is half the API and page checks, half the browser checks.
+const ScoringVersion = 2
 
 // Manifest is what a run was set up with, fixed when it is created and never rewritten: changing the agent's key or
 // provider later doesn't change how a past run reads or what the gateway lets it call. No secrets: it is public.

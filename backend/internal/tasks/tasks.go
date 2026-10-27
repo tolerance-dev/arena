@@ -34,7 +34,8 @@ type Text struct {
 
 // Check is one automatic check against the running app, run by verify.py in order. An HTTP check calls Method Path
 // ({var} in paths and expect paths = a value saved by an earlier check) and compares the status and the JSON. A page
-// check (Page set) opens the path in a browser and wants every Text on the rendered page.
+// check (Page set) opens the path in a browser and wants every Text on the rendered page (at least Min of them when
+// Min is set). A browser check (Browser set, named "browser: …") clicks through a flow; verify.py reads its steps.
 type Check struct {
 	Name     string            `json:"name"`
 	Method   string            `json:"method,omitempty"`
@@ -47,6 +48,8 @@ type Check struct {
 	Save     map[string]string `json:"save,omitempty"` // name → JSON path in the response
 	Page     string            `json:"page,omitempty"`
 	Text     []string          `json:"text,omitempty"`
+	Min      int               `json:"min,omitempty"`
+	Browser  json.RawMessage   `json:"browser,omitempty"`
 	Hidden   bool              `json:"hidden,omitempty"` // from the hidden set: verify.py reports no details
 }
 

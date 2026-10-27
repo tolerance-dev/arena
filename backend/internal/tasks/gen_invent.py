@@ -772,12 +772,17 @@ def generate(out, task_json):
                   {"en": "Open it on a phone (or a narrow window): is it just as comfortable?",
                    "ru": "Откройте на телефоне (или в узком окне): так же удобно?"},
               ])
-    for name, obj in trip().items():
+    files = trip()
+    for name, obj in files.items():
         dump(out, "city-trip", name, obj)
+    # The gate: Petya's plan, not an empty shell, on the first screen. A place's name counts without its "(…)" part.
+    names = [p["name"].split(" (")[0] for p in files["places.json"]]
+    assert len(set(names)) == len(names)
+    gate = [{"name": "first screen shows places from places.json", "page": "/", "text": names, "min": 3}]
     task_json("city-trip", 5, {"en": "Plan a city trip", "ru": "Спланировать поездку"},
               {"en": "Petya has 3 days and 10,000 ₽ in Saint Petersburg. Build the trip planner you'd actually trust, as close to a real product as you can.",
                "ru": "У Пети 3 дня и 10 000 ₽ на Петербург. Сделать планировщик поездки, которому веришь, — максимально близко к настоящему продукту."},
-              [], kind="startup", scenarios=[
+              [], gate, kind="startup", scenarios=[
                   {"en": "Look at Petya's plan for Saturday: does it fit — everything open, enough time to get around, and what does it cost?",
                    "ru": "Посмотрите план Пети на субботу: всё сходится — всё открыто, хватает времени на дорогу, сколько это стоит?"},
                   {"en": "It's raining on Saturday. Did the plan account for it? Swap an outdoor stop for something indoors: do times and the budget update?",

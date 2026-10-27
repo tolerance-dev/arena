@@ -532,6 +532,176 @@
           "len": 9
         }
       ]
+    },
+    {
+      "name": "browser: the home search form finds hotels for the dates",
+      "browser": {
+        "flow": "search",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "fill": "city|destination|where",
+            "value": "Lisbon"
+          },
+          {
+            "fill": "check.?in|arriv",
+            "value": "2027-01-12"
+          },
+          {
+            "fill": "check.?out|depart",
+            "value": "2027-01-15"
+          },
+          {
+            "fill": "guest|people|adult|travell?er",
+            "value": "2"
+          },
+          {
+            "click": "^\\W*(search|find)\\b"
+          },
+          {
+            "expect": [
+              "Hotel Aurora",
+              "Skyline Tower",
+              "Garden Court",
+              "Casa Azul",
+              "180"
+            ]
+          },
+          {
+            "absent": [
+              "Hostel Nomad"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "browser: sign in with email and password, Enter submits",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "signin": {
+              "email": "iris.kowalski@example.com",
+              "password": "pass009"
+            }
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "gives": "signin"
+      }
+    },
+    {
+      "name": "browser: still signed in after a reload",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
+    },
+    {
+      "name": "browser: Book on a room of the hotel page books it, shown in /bookings",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/hotels/h3?check_in=2027-01-12&check_out=2027-01-15&guests=2"
+          },
+          {
+            "click": "^\\W*(book|reserve)\\b"
+          },
+          {
+            "click": "^\\W*(confirm|complete)\\b",
+            "optional": true
+          },
+          {
+            "goto": "/bookings"
+          },
+          {
+            "expect": [
+              "Garden Court"
+            ]
+          }
+        ],
+        "needs": [
+          "signin"
+        ],
+        "gives": "booking"
+      }
+    },
+    {
+      "name": "browser: Cancel in /bookings cancels it",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "^\\W*cancel\\b"
+          },
+          {
+            "click": "^\\W*(yes|confirm)\\b",
+            "optional": true
+          },
+          {
+            "wait": 1
+          },
+          {
+            "reload": true
+          },
+          {
+            "absent": [
+              "Garden Court"
+            ]
+          }
+        ],
+        "needs": [
+          "booking"
+        ]
+      }
+    },
+    {
+      "name": "browser: sign out",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "no_control": "\\b(sign|log)\\s*-?\\s*out\\b"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
     }
   ]
 }

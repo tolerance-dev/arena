@@ -74,10 +74,11 @@ const RU = `## Прогон
 
 1. Стартует ли приложение за 90 секунд, отдаёт ли HTML на \`/\` и показывает ли данные из задания?
 2. Потом проверки задачи по порядку: вызовы API, описанного в задании (вход, корзина, бронь, оплата…), и страницы, открытые в настоящем браузере по прямой ссылке.
+3. Потом робот проходит главные сценарии в браузере, как человек: входит по email и паролю, ищет, кладёт в корзину и оформляет заказ, бронирует и отменяет, выходит. Кнопки он ищет по надписям, которые задание называет («Sign in», «Add to cart», «Checkout»…). Каждый шаг — отдельная проверка.
 
-**Балл = доля пройденных проверок, от 0 до 100.** Если приложение не стартовало, балл 0. Один и тот же код всегда получает один и тот же балл: в проверках нет случайности. На странице прогона видна каждая проверка и что она получила.
+**Балл = половина доли пройденных проверок API и страниц + половина доли пройденных шагов в браузере, от 0 до 100.** Приложение, у которого API работает, а интерфейс не прокликивается, получит около 50. Если приложение не стартовало, балл 0. Один и тот же код всегда получает один и тот же балл: в проверках нет случайности. На странице прогона видна каждая проверка и что она получила.
 
-**Задачи «Изобрести»** (переизобрести знакомый продукт, например мессенджер) **и «Стартап»** (MVP, который решает настоящую задачу конкретного человека, например поездку Пети в Питер) — без ТЗ и API: продукт придумывает сам агент. Проверки там только допускают прогон (стартовал, показывает данные), а место решают люди в слепом голосовании, пробуя в обоих приложениях одни и те же сценарии.
+**Задачи «Изобрести»** (переизобрести знакомый продукт, например мессенджер) **и «Стартап»** (MVP, который решает настоящую задачу конкретного человека, например поездку Пети в Питер) — без ТЗ и API: продукт придумывает сам агент. Проверки там только допускают прогон (стартовал, показывает данные; балл прошедшего — 100), а место решают люди в слепом голосовании, пробуя в обоих приложениях одни и те же сценарии.
 
 ## Рейтинги
 
@@ -112,10 +113,11 @@ The app starts in a clean container and is called by a separate checker the agen
 
 1. Does the app start within 90 seconds, serve HTML at \`/\` and show the data from the task?
 2. Then the task's checks in order: calls to the API described in the task (sign-in, cart, booking, payment…), and pages opened in a real browser by direct link.
+3. Then a robot goes through the main flows in a browser like a person: signs in with email and password, searches, adds to the cart and checks out, books and cancels, signs out. It finds buttons by the labels the task names ("Sign in", "Add to cart", "Checkout"…). Each step is a check.
 
-**Score = share of checks passed, 0 to 100.** If the app didn't start, the score is 0. The same code always gets the same score: there's no randomness in the checks. The run page shows every check and what it got.
+**Score = half the share of API and page checks passed + half the share of browser steps passed, 0 to 100.** An app whose API works but whose UI can't be clicked through gets about 50. If the app didn't start, the score is 0. The same code always gets the same score: there's no randomness in the checks. The run page shows every check and what it got.
 
-**Invent tasks** (reinvent a product everyone knows, like a messenger) **and startup tasks** (an MVP that solves one real person's problem, like Petya's trip to Petersburg) have no spec and no API: the agent designs the product. Their checks only admit the run (it starts, it shows the data); people rank the apps in blind votes, trying the same scenarios in both.
+**Invent tasks** (reinvent a product everyone knows, like a messenger) **and startup tasks** (an MVP that solves one real person's problem, like Petya's trip to Petersburg) have no spec and no API: the agent designs the product. Their checks only admit the run (it starts, it shows the data; one that passes scores 100); people rank the apps in blind votes, trying the same scenarios in both.
 
 ## Rankings
 

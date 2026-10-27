@@ -90,7 +90,9 @@ for slug, cname, names in cats:
 dump("marketplace", "categories.json", [{"id": s, "name": n} for s, n, _ in cats])
 dump("marketplace", "products.json", products)
 dump("marketplace", "sellers.json", sellers)
-market_users = users(8, lambda i: {"address": f"{10 + i} Market Street, Springfield"})
+# u9 is the browser scenarios' own user (BROWSER_USER): no seed records, and the hidden checks pick from u3..u8.
+BROWSER_USER = 9
+market_users = users(BROWSER_USER, lambda i: {"address": f"{10 + i} Market Street, Springfield"})
 dump("marketplace", "users.json", market_users)
 reviews = []
 for i in range(1, 121):
@@ -222,7 +224,7 @@ for c in cities:
                           "beds": {"single": "1 single", "double": "1 double", "twin": "2 singles", "family": "1 double + 2 singles", "suite": "1 king + sofa bed"}[t]})
 dump("hotels", "hotels.json", hotels)
 dump("hotels", "rooms.json", rooms)
-hotel_users = users(8)
+hotel_users = users(BROWSER_USER)
 dump("hotels", "users.json", hotel_users)
 bookings = []
 start = datetime.date(2026, 11, 1)
@@ -404,7 +406,7 @@ dump("cinema", "movies.json", movies)
 dump("cinema", "genres.json", [{"id": g, "name": g.replace("-", " ").title()} for g in genres])
 dump("cinema", "plans.json", [{"id": "free", "name": "Free", "price_month": 0, "includes_premium": False},
                                {"id": "premium", "name": "Premium", "price_month": 9.99, "includes_premium": True}])
-cinema_users = users(8, lambda i: {"plan": "premium" if i % 2 == 0 else "free"})
+cinema_users = users(BROWSER_USER, lambda i: {"plan": "premium" if i % 2 == 0 else "free"})
 dump("cinema", "users.json", cinema_users)
 
 # ---------- cinema: the API checks ----------
@@ -512,6 +514,118 @@ cchk("watchlist: another user's is separate", "GET", "/api/watchlist", auth="fre
 cchk("watchlist: remove a title", "DELETE", f"/api/watchlist/{fm1['id']}", auth="prem", status_in=[200, 204])
 cchk("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="prem", expect=[{"path": "titles", "ids": [series["id"]]}])
 
+# ---------- the browser scenarios ----------
+# The main flows clicked through in a real browser, after the API checks and before the hidden ones (verify.py runs
+# them). Each check is a few steps in one browser context per flow; a check that needs what an earlier one gave
+# (signin, cart …) fails without running when that one failed. The labels they look for are in each TASK.md. They
+# sign in as u9 (BROWSER_USER) and touch only records the hidden checks never do: the product m_a, the Lisbon hotels
+# in January 2027, a cinema user's own list.
+SIGN_IN = r"\b(sign|log)\s*-?\s*in\b"  # a button or link, by its text or aria-label
+SIGN_OUT = r"\b(sign|log)\s*-?\s*out\b"
+
+
+def bchk(name, flow, steps, needs=(), gives=None):
+    b = {"flow": flow, "steps": steps}
+    if needs:
+        b["needs"] = list(needs)
+    if gives:
+        b["gives"] = gives
+    return {"name": "browser: " + name, "browser": b}
+
+
+def account_menu(u):
+    """A button that may open the account menu, where Sign out often is: the user's name or initials, "Account" …"""
+    first, last = u["name"].split()
+    return rf"^\W*{first[0]}{last[0]}\W*$|\b{first}\b|{u['email'].split('@')[0]}|account|profile|user|avatar|menu"
+
+
+def b_sign_in(u):
+    menu = account_menu(u)
+    return [bchk("sign in with email and password, Enter submits", "account",
+                 [{"goto": "/"}, {"signin": {"email": u["email"], "password": u["password"]}}, {"control": SIGN_OUT, "menu": menu}],
+                 gives="signin"),
+            bchk("still signed in after a reload", "account", [{"reload": True}, {"control": SIGN_OUT, "menu": menu}], needs=["signin"])]
+
+
+def b_sign_out(u):
+    # Signed out = Sign in shows up again (Sign out may have been in a menu, so its absence alone says little).
+    return bchk("sign out", "account", [{"click": SIGN_OUT, "menu": account_menu(u)}, {"control": SIGN_IN},
+                                         {"reload": True}, {"control": SIGN_IN}, {"no_control": SIGN_OUT}], needs=["signin"])
+
+
+def b_search(name, path, text, want, unwanted):
+    return bchk(name, "search", [{"goto": path}, {"fill": r"search", "css": "input[type=search]", "value": text, "key": "Enter", "open": r"search"},
+                                 {"expect": want}, {"absent": unwanted}])
+
+
+# Marketplace: search, then u9 buys two of m_a and checks the order.
+mu = market_users[BROWSER_USER - 1]
+m_word = m_a["title"].split()[-1]
+assert m_titled(m_word) == [m_a["id"]]
+m_other = next(p for p in products if p["category"] == m_a["category"] and p["id"] != m_a["id"])
+m_bc = [b_search("the search box finds products", "/", m_word.lower(), [m_a["title"]], [m_other["title"]])] + b_sign_in(mu) + [
+    bchk("Add to cart on the product page puts it in /cart", "account",
+         [{"goto": f"/products/{m_a['id']}"}, {"click": r"add to (cart|bag|basket)"}, {"goto": "/cart"}, {"expect": [m_a["title"]]}],
+         needs=["signin"], gives="cart"),
+    bchk("a new quantity in /cart updates the total", "account",
+         [{"fill": r"quantity|qty", "css": "input[type=number]", "value": "2", "key": "Tab", "or_click": r"^\s*\+\s*$|increase|plus"},
+          {"expect": [f"{2 * m_a['price']:g}"]}], needs=["cart"]),
+    bchk("Checkout places the order, shown in /orders", "account",
+         [{"click": r"check\s*-?\s*out|place (the |your )?order"}, {"click": r"^\W*(confirm|place (the |your )?order|pay)\b", "optional": True},
+          {"goto": "/orders"}, {"expect": [m_a["title"]]}], needs=["cart"], gives="order"),
+    bchk("the cart is empty after checkout", "account", [{"goto": "/cart"}, {"absent": [m_a["title"]]}], needs=["order"]),
+    b_sign_out(mu),
+    bchk("signed out, /orders shows no orders", "account", [{"goto": "/orders"}, {"absent": [m_a["title"]]}], needs=["order", "signin"]),
+]
+mc += m_bc
+
+# Hotels: the home search form for Lisbon in January 2027 (no bookings then), then u9 books a room of Garden Court and
+# cancels it.
+hu = hotel_users[BROWSER_USER - 1]
+JAN = dict(check_in="2027-01-12", check_out="2027-01-15")
+assert all(b["check_out"] < JAN["check_in"] for b in state)
+h_found = search_ids("Lisbon", JAN["check_in"], JAN["check_out"], 2, state)
+h_names = {h["id"]: h["name"] for h in hotels}
+h_book = next(h for h in hotels if h["name"] == "Garden Court")
+assert h_book["city"] == "Lisbon" and all(r["capacity"] >= 2 for r in rooms if r["hotel_id"] == h_book["id"])  # any room fits 2 guests
+lisbon = [h["name"] for h in hotels if h["city"] == "Lisbon"]
+h_elsewhere = next(h for h in hotels if h["city"] != "Lisbon" and all(h["name"] not in n and n not in h["name"] for n in lisbon))
+h_bc = [
+    bchk("the home search form finds hotels for the dates", "search",
+         [{"goto": "/"}, {"fill": r"city|destination|where", "value": "Lisbon"},
+          {"fill": r"check.?in|arriv", "value": JAN["check_in"]}, {"fill": r"check.?out|depart", "value": JAN["check_out"]},
+          {"fill": r"guest|people|adult|travell?er", "value": "2"}, {"click": r"^\W*(search|find)\b"},
+          {"expect": [h_names[i] for i in sorted(h_found)] + [str(h_found[h_book["id"]])]},
+          {"absent": [h_elsewhere["name"]]}]),
+    *b_sign_in(hu),
+    bchk("Book on a room of the hotel page books it, shown in /bookings", "account",
+         [{"goto": f"/hotels/{h_book['id']}" + q(**JAN, guests=2)}, {"click": r"^\W*(book|reserve)\b"},
+          {"click": r"^\W*(confirm|complete)\b", "optional": True}, {"goto": "/bookings"}, {"expect": [h_book["name"]]}],
+         needs=["signin"], gives="booking"),
+    bchk("Cancel in /bookings cancels it", "account",
+         [{"click": r"^\W*cancel\b"}, {"click": r"^\W*(yes|confirm)\b", "optional": True}, {"wait": 1},
+          {"reload": True}, {"absent": [h_book["name"]]}], needs=["booking"]),
+    b_sign_out(hu),
+]
+hc += h_bc
+
+# Cinema: the search box, then u9 puts a title in My list and takes it off.
+cu = cinema_users[BROWSER_USER - 1]
+c_word = next(w for w in words1 if w != word and 2 <= len(title_ids(lambda m: w in m["title"])) <= 3)
+c_hits = title_ids(lambda m: c_word in m["title"])
+c_other = next(m for m in rated if c_word not in m["title"])
+c_title = next(m for m in movies if m["type"] == "movie" and not m["premium"] and m["id"] not in (fm1["id"], fm2["id"])
+               and sum(m["title"] in x["title"] for x in movies) == 1)
+c_bc = [b_search("the search box finds titles", "/", c_word.lower(), [mv[i]["title"] for i in c_hits], [c_other["title"]]),
+        *b_sign_in(cu),
+        bchk("My list on a title page adds it to /watchlist", "account",
+             [{"goto": f"/titles/{c_title['id']}"}, {"click": r"my list|watch\s*list|watch later"}, {"wait": 1},
+              {"goto": "/watchlist"}, {"expect": [c_title["title"]]}], needs=["signin"], gives="watchlist"),
+        bchk("Remove in /watchlist takes it off", "account",
+             [{"click": r"^\W*remove\b"}, {"wait": 1}, {"reload": True}, {"absent": [c_title["title"]]}], needs=["watchlist"]),
+        b_sign_out(cu)]
+cc += c_bc
+
 # ---------- task.json ----------
 task_json("marketplace", 1, {"en": "Marketplace", "ru": "Маркетплейс"},
           {"en": "A storefront with many sellers: catalog, search, product pages, cart, checkout, orders.",
@@ -545,7 +659,7 @@ def hidden_market(HR):
     def add(name, method, path, **kw):
         hc.append({"name": name, "method": method, "path": path, **kw})
     stock = {p["id"]: p["stock"] for p in products}
-    stock[m_a["id"]] -= 1
+    stock[m_a["id"]] -= 3  # one bought by the API checks, two by the browser scenario
     stock[m_last["id"]] = stock[m_b["id"]] = 0
     touched = {m_a["id"], m_b["id"], m_last["id"], m_sold["id"], "p40"}
     free = [p for p in products if p["id"] not in touched]
@@ -575,7 +689,7 @@ def hidden_market(HR):
     hc.append({"name": "search page lists the matching products", "page": f"/search?q={word.lower()}",
                "text": [m_prod[i]["title"] for i in m_titled(word)]})
 
-    x, y = HR.sample(market_users[2:], 2)
+    x, y = HR.sample(market_users[2:8], 2)
     add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": x["email"], "password": x["password"] + "x"}, status_in=[401, 403])
     for k, u in (("h_x", x), ("h_y", y)):
         add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},
@@ -656,7 +770,7 @@ def hidden_hotels(HR):
         expect=[{"path": f"rooms[id={room['id']}].available", "equals": True}])
     add("hotel: an unknown hotel is 404", "GET", f"/api/hotels/h{HR.randint(100, 9999)}", status=404)
 
-    x, y = HR.sample(hotel_users[2:], 2)
+    x, y = HR.sample(hotel_users[2:8], 2)
     add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": x["email"], "password": x["password"] + "x"}, status_in=[401, 403])
     for k, u in (("h_x", x), ("h_y", y)):
         add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},
@@ -727,8 +841,8 @@ def hidden_cinema(HR):
     hc.append({"name": "title page shows the title with its director and year", "page": f"/titles/{m['id']}", "text": [m["title"], m["director"], str(m["year"])]})
     hc.append({"name": "search page lists the matching titles", "page": f"/search?q={w}", "text": [mv[i]["title"] for i in hits]})
 
-    x = HR.choice([u for u in cinema_users[2:] if u["plan"] == "free"])
-    y = HR.choice([u for u in cinema_users[2:] if u["plan"] == "premium"])
+    x = HR.choice([u for u in cinema_users[2:8] if u["plan"] == "free"])
+    y = HR.choice([u for u in cinema_users[2:8] if u["plan"] == "premium"])
     add("sign in: a wrong password is refused", "POST", "/api/login", body={"email": y["email"], "password": y["password"] + "x"}, status_in=[401, 403])
     for k, u in (("h_x", x), ("h_y", y)):
         add("sign in", "POST", "/api/login", body={"email": u["email"], "password": u["password"]},

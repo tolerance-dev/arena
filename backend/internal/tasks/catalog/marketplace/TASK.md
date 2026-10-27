@@ -28,7 +28,12 @@ content from the first paint after load:
 - `/` — the home page.
 - `/search?q=set` — the products whose title contains the text, with their prices.
 - `/products/p40` — the product `p40`: title, price, seller's name, its reviews.
-- `/cart` and `/orders` — the signed-in user's cart and orders.
+- `/cart` — the signed-in user's cart: each product with a **Quantity** field or **+** / **−** buttons (a new quantity
+  updates the total) and a **Checkout** button that places the order (no extra form; a confirmation step is fine).
+- `/orders` — the signed-in user's orders, each with its products' titles and its total.
+
+Every page has the search box and **Sign in** in its header (signed in: **Sign out**, there or in the account menu); a
+product page has an **Add to cart** button.
 
 ## API
 
@@ -55,8 +60,29 @@ fine; the listed ones must be there with these names. Prices and totals are numb
 
 ## How it is checked
 
-The score is the share of automatic checks passed, about thirty of them, on a fresh start of the app: the API above
-(search, filters and sorting against the data, product pages, carts and stock, two users buying the last item,
-checkout, who sees which orders) and the pages above rendering the right data; 0 if the app doesn't start. The
-pages are screenshotted on a desktop and a phone, and people compare apps built by different agents side by side
-in blind votes.
+On a fresh start of the app, in this order:
+
+1. About thirty checks of the API above (search, filters and sorting against the data, product pages, carts and
+   stock, two users buying the last item, checkout, who sees which orders) and of the pages above rendering the
+   right data.
+2. A robot clicks through the main flows in a real browser (Chromium, 1280×800) like a person would, each step a
+   check:
+   - **Search**: on `/` it types a word into the search box (a field labelled "Search", or the one a **Search** button
+     or link opens) and presses Enter: the matching products show up, the others don't.
+   - **Sign in**: on `/` it clicks a **Sign in** (or **Log in**) button or link, fills the email and password fields of
+     the form that opens (or of the page it leads to) and presses Enter. Then **Sign out** (or **Log out**) is there,
+     also after a reload: on the page, or in the menu that a button with the user's name (or "Account") opens.
+   - **Buying**: on `/products/{id}` it clicks **Add to cart**; the product is in `/cart`; it makes the quantity 2
+     (types 2 into the **Quantity** field, or clicks **+** once) and the total updates; it clicks **Checkout** (then
+     **Confirm** or **Place order** if a confirmation shows up); the order is in `/orders` and the cart is empty.
+   - **Sign out**: it clicks **Sign out**, and **Sign in** shows up again, also after a reload, and `/orders` shows no
+     orders.
+
+Buttons and links are found by their text or `aria-label` (case doesn't matter), fields by their label, placeholder,
+`name` or `aria-label`; the robot waits a few seconds for each text to show up, accepts browser dialogs (`confirm`) and
+signs in as a user of its own from `users.json`. A step that needs an earlier one (no cart without signing in) fails
+with it.
+
+The score is half the share of the API and page checks passed plus half the share of the browser checks passed; 0 if the
+app doesn't start. The pages are screenshotted on a desktop and a phone, and people compare apps built by different
+agents side by side in blind votes.
