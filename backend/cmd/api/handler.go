@@ -74,6 +74,7 @@ func newHandler(cfg config, d deps) http.Handler {
 	public := http.NewServeMux()
 	agents.RegisterPublicRoutes(public, d.agents)
 	runs.RegisterPublicRoutes(public, d.runs)
+	runs.RegisterLiveRoutes(public, d.runs)
 
 	session := identity.RequireSession(d.users)
 	api := http.NewServeMux()

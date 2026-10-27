@@ -108,8 +108,38 @@ func drop(label string) {
 	sandbox.RemoveNetwork(containerName(label))
 }
 
+// probeLive marks each app started from a working agent's workspace ready once it answers (runs.LivePending), so
+// the run page reloads its frame onto it; the gateway is the one that reaches the run networks.
+func (p *Previews) probeLive(ctx context.Context) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+		apps, err := runs.LivePending(ctx, p.pool)
+		if err != nil {
+			continue
+		}
+		for _, a := range apps {
+			resp, err := client.Get("http://" + runs.LiveName(a.RunID, a.N) + ":" + sandbox.AppPort + "/")
+			if err != nil {
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode < 500 {
+				if err := runs.MarkLiveReady(ctx, p.pool, a.RunID, a.N); err != nil {
+					p.log.Error("mark live app ready", "run_id", a.RunID, "err", err)
+				}
+			}
+		}
+	}
+}
+
 // Run reaps idle previews until ctx ends.
 func (p *Previews) Run(ctx context.Context) {
+	go p.probeLive(ctx)
 	sandbox.RemoveByLabel(ctx, "arena.role=preview")
 	sandbox.RemoveNetworks(ctx, "arena.role=preview")
 	t := time.NewTicker(time.Minute)
@@ -181,6 +211,21 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	label, blind := p.runOf(r.Context(), label)
+	if !blind {
+		// While the agent works, the address shows the app started from its workspace as it is (runs/live.go).
+		target, agent, err := runs.LiveTarget(r.Context(), p.pool, "run_"+label)
+		if err == nil && agent {
+			if target == "" {
+				page(w, http.StatusServiceUnavailable, "The agent is still building", "Its app is started from the workspace once it has "+
+					"a start.sh and someone watches the run. This page refreshes by itself.", 5, "")
+				return
+			}
+			p.proxy(w, r, target, func() {
+				page(w, http.StatusBadGateway, "The app is restarting", "A newer build of it is on the way.", 3, "")
+			})
+			return
+		}
+	}
 	pv, st, err := p.ensure(r.Context(), label)
 	if errors.Is(err, errBusy) {
 		page(w, http.StatusServiceUnavailable, "All previews are busy", "Other people are watching the apps that run right now. "+
@@ -199,7 +244,18 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusServiceUnavailable, "Starting the app…", "The agent's app is booting from its snapshot. This page refreshes by itself.", 2, "")
 		return
 	}
-	target, _ := url.Parse("http://" + containerName(label) + ":" + sandbox.AppPort)
+	p.proxy(w, r, containerName(label), func() {
+		p.mu.Lock()
+		p.stop(pv)
+		p.mu.Unlock()
+		page(w, http.StatusBadGateway, "The app stopped", "It will be started again on the next request.", 2, "")
+	})
+}
+
+// proxy passes the request to an app container, framed only by the site; failed answers the request when the app
+// doesn't.
+func (p *Previews) proxy(w http.ResponseWriter, r *http.Request, container string, failed func()) {
+	target, _ := url.Parse("http://" + container + ":" + sandbox.AppPort)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
@@ -217,10 +273,7 @@ func (p *Previews) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if r.Context().Err() != nil {
 				return // the viewer went away mid-request: the app is fine
 			}
-			p.mu.Lock()
-			p.stop(pv)
-			p.mu.Unlock()
-			page(w, http.StatusBadGateway, "The app stopped", "It will be started again on the next request.", 2, "")
+			failed()
 		},
 	}
 	proxy.ServeHTTP(w, r)

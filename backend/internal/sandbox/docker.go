@@ -434,6 +434,17 @@ func Commit(ctx context.Context, id, image string, changes ...string) error {
 	return err
 }
 
+// CommitRunning snapshots a container while it keeps running (no pause): a moment of a workspace still being
+// written, good enough to show, never to check.
+func CommitRunning(ctx context.Context, id, image string, changes ...string) error {
+	args := []string{"commit", "--pause=false", "--change", "LABEL arena.stack=" + Stack}
+	for _, c := range changes {
+		args = append(args, "--change", c)
+	}
+	_, err := docker(ctx, nil, append(args, id, image)...)
+	return err
+}
+
 // CopyOut reads a path out of a container as a tar (docker cp's format: the last path element is the root).
 func CopyOut(ctx context.Context, id, path string, max int64) ([]byte, error) {
 	var data []byte
@@ -473,6 +484,23 @@ func StreamOut(ctx context.Context, id, path string, read func(io.Reader) error)
 		return fmt.Errorf("docker cp %s: %w: %s", path, err, tail(errBuf.String(), 500))
 	}
 	return nil
+}
+
+// Diff lists the paths a container added or changed against its image (docker diff, read by the daemon: nothing
+// runs inside). Deleted paths are left out.
+func Diff(ctx context.Context, id string) ([]string, error) {
+	out, err := docker(ctx, nil, "diff", id)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, line := range strings.Split(out, "\n") {
+		kind, p, ok := strings.Cut(line, " ")
+		if ok && kind != "D" {
+			paths = append(paths, p)
+		}
+	}
+	return paths, nil
 }
 
 // StartDetached starts a created container in the background.

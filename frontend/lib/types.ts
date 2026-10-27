@@ -108,3 +108,13 @@ export interface AdminOverview {
   settings: AdminSettings; spend: AdminSpend[]; providers: { provider: string; runs: number; used: number }[]
   users: AdminUser[]; queued: number; running: number
 }
+
+// The agent's workspace as the worker last sampled it (runs.Live): times are seconds since the agent started.
+export interface LiveFile { path: string; lines: number; loc: number; bytes: number; text: boolean; added_s: number; changed_s: number }
+export interface LivePoint { t: number; files: number; loc: number; tokens: number }
+export interface Live {
+  files: LiveFile[]; series: LivePoint[]
+  preview_ready: number // grows each time a newer build of the app answers
+  preview_url?: string // while the agent works and a build answers
+  updated_at: string | null
+}
