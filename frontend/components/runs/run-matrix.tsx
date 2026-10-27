@@ -34,17 +34,23 @@ function failure(run: Run, t: T) {
 
 // Every agent against every task in one table, so that all of them get done: a finished cell shows the app like a
 // tile, an empty one starts the first run, a red one (a platform failure, or no app that starts) starts it again.
-// "Start the missing ones" fills every empty and red cell in one click.
+// Under each cell, every run of the pair, newest first; by each agent, its numbers. "Start the missing ones" fills
+// every empty and red cell in one click.
 export function RunMatrix({ agents, tasks, onStarted }: { agents: Agent[]; tasks: TaskSummary[]; onStarted: () => void }) {
   const t = useT()
   const now = useNow()
-  const latest = usePoll<{ items: Run[] }>('/my/runs?latest=1', 3_000)
+  const history = usePoll<{ items: Run[] }>('/my/runs?limit=500', 3_000)
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [err, setErr] = useState('')
-  const byPair = new Map((latest.data?.items ?? []).map((r) => [`${r.agent.id}/${r.task}`, r]))
+  // Each pair's runs, newest first (the API sends them newest first).
+  const byPair = new Map<string, Run[]>()
+  for (const r of history.data?.items ?? []) {
+    const k = `${r.agent.id}/${r.task}`
+    byPair.set(k, [...(byPair.get(k) ?? []), r])
+  }
   const rows = [...agents].sort((a, b) => a.name.localeCompare(b.name))
   const missing = rows.flatMap((a) => tasks.filter((task) => {
-    const k = cellOf(byPair.get(`${a.id}/${task.slug}`)).kind
+    const k = cellOf(byPair.get(`${a.id}/${task.slug}`)?.[0]).kind
     return k === 'none' || k === 'failed'
   }).map((task) => ({ agent: a.id, task: task.slug })))
 
@@ -58,7 +64,7 @@ export function RunMatrix({ agents, tasks, onStarted }: { agents: Agent[]; tasks
     } catch (e) {
       setErr(errorText(e, t))
     } finally {
-      await latest.reload()
+      await history.reload()
       setBusy((b) => new Set([...b].filter((k) => !keys.includes(k))))
       onStarted()
     }
@@ -96,15 +102,18 @@ export function RunMatrix({ agents, tasks, onStarted }: { agents: Agent[]; tasks
                     <span className="min-w-0">
                       <span className="block truncate text-body font-semibold">{a.name}</span>
                       <span className="block truncate text-meta text-muted-foreground">{a.model_name ?? a.model ?? t('свой файл', 'own file')}</span>
+                      <AgentNumbers runs={tasks.map((task) => byPair.get(`${a.id}/${task.slug}`) ?? [])} />
                     </span>
                   </span>
                 </th>
                 {tasks.map((task) => {
                   const key = `${a.id}/${task.slug}`
+                  const runs = byPair.get(key) ?? []
                   return (
                     <td key={task.slug} className="p-2 align-top">
-                      <MatrixCell cell={cellOf(byPair.get(key))} now={now} busy={busy.has(key)} loading={!latest.data}
+                      <MatrixCell cell={cellOf(runs[0])} now={now} busy={busy.has(key)} loading={!history.data}
                         onStart={() => void start([{ agent: a.id, task: task.slug }])} />
+                      {runs.length > 0 && <History runs={runs} />}
                     </td>
                   )
                 })}
@@ -168,6 +177,61 @@ function MatrixCell({ cell, now, busy, loading, onStart }: { cell: Cell; now: nu
         className="absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-primary disabled:opacity-50">
         <RotateCcw className="size-3.5" />
       </button>
+    </div>
+  )
+}
+
+// The best finished score of a pair's runs, null when none finished with an app.
+function best(runs: Run[]) {
+  const scores = runs.filter((r) => r.status === 'done' && r.score != null).map((r) => r.score!)
+  return scores.length ? Math.max(...scores) : null
+}
+
+// An agent's numbers across the tasks: the average of its best score at each task it finished, its runs and what
+// they cost at list price.
+function AgentNumbers({ runs }: { runs: Run[][] }) {
+  const t = useT()
+  const all = runs.flat()
+  if (!all.length) return null
+  const bests = runs.map(best).filter((b): b is number => b != null)
+  const spent = all.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0)
+  return (
+    <span className="mt-2 block space-y-0.5 text-meta text-muted-foreground tnum">
+      {bests.length > 0 && (
+        <span className="block" title={t('Средний из лучших баллов по заданиям', 'The average of the best score at each task')}>
+          {t('Лучшие в среднем', 'Best, on average')} <Score score={Math.round(bests.reduce((a, b) => a + b, 0) / bests.length)} />
+          {bests.length < runs.length && <span className="text-faint"> · {bests.length}/{runs.length}</span>}
+        </span>
+      )}
+      <span className="block">{t.plural(all.length, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])} · {usd(spent)}</span>
+    </span>
+  )
+}
+
+// Every run of a pair, newest first, one mark each: coloured by its score, red when it failed, pulsing while it goes.
+function History({ runs }: { runs: Run[] }) {
+  const t = useT()
+  const top = best(runs)
+  const shown = runs.slice(0, 12)
+  return (
+    <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5">
+      <span className="flex gap-[3px]">
+        {shown.map((r) => {
+          const c = cellOf(r)
+          const tone = c.kind === 'active' ? 'animate-status-pulse bg-primary'
+            : c.kind === 'cancelled' ? 'bg-border-strong'
+            : c.kind === 'failed' ? 'bg-destructive'
+            : (r.score ?? 0) >= 75 ? 'bg-success' : (r.score ?? 0) >= 45 ? 'bg-warning' : 'bg-destructive'
+          const when = new Date(r.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+          const what = c.kind === 'done' ? `${r.score} / 100` : c.kind === 'active' ? t('идёт', 'running') : c.kind === 'cancelled' ? t('отменён', 'cancelled') : failure(r, t)
+          return <Link key={r.id} href={`/r/${r.id}`} title={`${when} · ${what}`} aria-label={`${when} · ${what}`}
+            className={cn('h-3.5 w-2 rounded-[2px] transition-transform hover:scale-y-125', tone)} />
+        })}
+        {runs.length > shown.length && <span className="text-meta text-faint">+{runs.length - shown.length}</span>}
+      </span>
+      <span className="shrink-0 text-meta text-muted-foreground tnum">
+        {runs.length > 1 && <>×{runs.length}</>}{top != null && runs.length > 1 && <> · {t('лучший', 'best')} <Score score={top} /></>}
+      </span>
     </div>
   )
 }
