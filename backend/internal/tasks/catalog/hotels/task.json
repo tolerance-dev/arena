@@ -1,5 +1,6 @@
 {
   "order": 2,
+  "kind": "build",
   "title": {
     "en": "Hotel booking",
     "ru": "Бронирование отелей"

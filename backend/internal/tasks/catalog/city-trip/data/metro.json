@@ -1,0 +1,262 @@
+{
+  "stations": [
+    {
+      "id": "lenina",
+      "name": "Ploshchad Lenina",
+      "lat": 59.9557,
+      "lon": 30.3555
+    },
+    {
+      "id": "chernyshevskaya",
+      "name": "Chernyshevskaya",
+      "lat": 59.9446,
+      "lon": 30.3601
+    },
+    {
+      "id": "vosstaniya",
+      "name": "Ploshchad Vosstaniya",
+      "lat": 59.931,
+      "lon": 30.3606
+    },
+    {
+      "id": "vladimirskaya",
+      "name": "Vladimirskaya",
+      "lat": 59.9275,
+      "lon": 30.348
+    },
+    {
+      "id": "pushkinskaya",
+      "name": "Pushkinskaya",
+      "lat": 59.9207,
+      "lon": 30.3296
+    },
+    {
+      "id": "tekhnolozhka",
+      "name": "Tekhnologichesky Institut",
+      "lat": 59.9165,
+      "lon": 30.3185
+    },
+    {
+      "id": "baltiyskaya",
+      "name": "Baltiyskaya",
+      "lat": 59.9073,
+      "lon": 30.2997
+    },
+    {
+      "id": "petrogradskaya",
+      "name": "Petrogradskaya",
+      "lat": 59.9664,
+      "lon": 30.3114
+    },
+    {
+      "id": "gorkovskaya",
+      "name": "Gorkovskaya",
+      "lat": 59.9561,
+      "lon": 30.3189
+    },
+    {
+      "id": "nevsky",
+      "name": "Nevsky Prospekt",
+      "lat": 59.9355,
+      "lon": 30.3271
+    },
+    {
+      "id": "sennaya",
+      "name": "Sennaya Ploshchad",
+      "lat": 59.927,
+      "lon": 30.3204
+    },
+    {
+      "id": "frunzenskaya",
+      "name": "Frunzenskaya",
+      "lat": 59.9063,
+      "lon": 30.3176
+    },
+    {
+      "id": "primorskaya",
+      "name": "Primorskaya",
+      "lat": 59.9485,
+      "lon": 30.2345
+    },
+    {
+      "id": "vasileostrovskaya",
+      "name": "Vasileostrovskaya",
+      "lat": 59.9426,
+      "lon": 30.2783
+    },
+    {
+      "id": "gostiny",
+      "name": "Gostiny Dvor",
+      "lat": 59.9339,
+      "lon": 30.333
+    },
+    {
+      "id": "mayakovskaya",
+      "name": "Mayakovskaya",
+      "lat": 59.9316,
+      "lon": 30.3549
+    },
+    {
+      "id": "nevskogo",
+      "name": "Ploshchad Aleksandra Nevskogo",
+      "lat": 59.9241,
+      "lon": 30.3851
+    },
+    {
+      "id": "spasskaya",
+      "name": "Spasskaya",
+      "lat": 59.927,
+      "lon": 30.3195
+    },
+    {
+      "id": "dostoevskaya",
+      "name": "Dostoevskaya",
+      "lat": 59.9283,
+      "lon": 30.3459
+    },
+    {
+      "id": "ligovsky",
+      "name": "Ligovsky Prospekt",
+      "lat": 59.9208,
+      "lon": 30.3551
+    },
+    {
+      "id": "novocherkasskaya",
+      "name": "Novocherkasskaya",
+      "lat": 59.9293,
+      "lon": 30.4115
+    },
+    {
+      "id": "admiralteyskaya",
+      "name": "Admiralteyskaya",
+      "lat": 59.936,
+      "lon": 30.3149
+    },
+    {
+      "id": "sadovaya",
+      "name": "Sadovaya",
+      "lat": 59.9268,
+      "lon": 30.3176
+    },
+    {
+      "id": "zvenigorodskaya",
+      "name": "Zvenigorodskaya",
+      "lat": 59.9223,
+      "lon": 30.3355
+    },
+    {
+      "id": "obvodny",
+      "name": "Obvodny Kanal",
+      "lat": 59.9146,
+      "lon": 30.3487
+    },
+    {
+      "id": "sportivnaya",
+      "name": "Sportivnaya",
+      "lat": 59.9502,
+      "lon": 30.2884
+    },
+    {
+      "id": "chkalovskaya",
+      "name": "Chkalovskaya",
+      "lat": 59.961,
+      "lon": 30.292
+    },
+    {
+      "id": "krestovsky",
+      "name": "Krestovsky Ostrov",
+      "lat": 59.9718,
+      "lon": 30.2594
+    }
+  ],
+  "lines": [
+    {
+      "id": "1",
+      "name": "Line 1 (red)",
+      "color": "#D6083B",
+      "stations": [
+        "lenina",
+        "chernyshevskaya",
+        "vosstaniya",
+        "vladimirskaya",
+        "pushkinskaya",
+        "tekhnolozhka",
+        "baltiyskaya"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Line 2 (blue)",
+      "color": "#0078C9",
+      "stations": [
+        "petrogradskaya",
+        "gorkovskaya",
+        "nevsky",
+        "sennaya",
+        "tekhnolozhka",
+        "frunzenskaya"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Line 3 (green)",
+      "color": "#009A49",
+      "stations": [
+        "primorskaya",
+        "vasileostrovskaya",
+        "gostiny",
+        "mayakovskaya",
+        "nevskogo"
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Line 4 (orange)",
+      "color": "#EA7125",
+      "stations": [
+        "spasskaya",
+        "dostoevskaya",
+        "ligovsky",
+        "nevskogo",
+        "novocherkasskaya"
+      ]
+    },
+    {
+      "id": "5",
+      "name": "Line 5 (purple)",
+      "color": "#702785",
+      "stations": [
+        "krestovsky",
+        "chkalovskaya",
+        "sportivnaya",
+        "admiralteyskaya",
+        "sadovaya",
+        "zvenigorodskaya",
+        "obvodny"
+      ]
+    }
+  ],
+  "transfers": [
+    [
+      "nevsky",
+      "gostiny"
+    ],
+    [
+      "vosstaniya",
+      "mayakovskaya"
+    ],
+    [
+      "vladimirskaya",
+      "dostoevskaya"
+    ],
+    [
+      "pushkinskaya",
+      "zvenigorodskaya"
+    ],
+    [
+      "sennaya",
+      "spasskaya",
+      "sadovaya"
+    ]
+  ]
+}

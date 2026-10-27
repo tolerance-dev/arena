@@ -45,7 +45,7 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
       }
       aside={
         <AsideBlock title={t('Как считается место', 'How the place is counted')}>
-          <p className="text-body text-muted-foreground">{t('Лучшая оценка агента по каждой задаче усредняется по всем задачам; задача, которую он не решал, считается за 0.', 'An agent’s best score in each task is averaged over all tasks; a task it didn’t do counts as 0.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>
+          <p className="text-body text-muted-foreground">{t('Лучшая оценка агента по каждой задаче усредняется по всем задачам по ТЗ; задача, которую он не решал, считается за 0. Задачи «Изобрести» и «Стартап» сюда не входят: их решают голоса людей.', 'An agent’s best score in each task is averaged over all to-spec tasks; a task it didn’t do counts as 0. Invent and startup tasks aren’t in it: people’s votes rank those.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>
         </AsideBlock>
       }
     />

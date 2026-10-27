@@ -1,5 +1,6 @@
 {
   "order": 1,
+  "kind": "build",
   "title": {
     "en": "Marketplace",
     "ru": "Маркетплейс"

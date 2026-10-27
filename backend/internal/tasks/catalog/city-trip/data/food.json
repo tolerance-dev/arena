@@ -1,0 +1,822 @@
+[
+  {
+    "id": "pyshki",
+    "name": "Pyshechnaya on Konyushennaya",
+    "kind": "street_food",
+    "area": "Center",
+    "lat": 59.938,
+    "lon": 30.324,
+    "avg_spend_rub": 250,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "20:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "20:00"
+      }
+    },
+    "description": "Soviet-style doughnuts (pyshki) with powdered sugar and milky coffee from a tank. A queue at lunchtime."
+  },
+  {
+    "id": "bulochnaya-7",
+    "name": "Bulochnaya No. 7",
+    "kind": "bakery",
+    "area": "Central",
+    "lat": 59.9305,
+    "lon": 30.36,
+    "avg_spend_rub": 350,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "tue": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "wed": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "fri": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "07:30",
+        "close": "21:00"
+      },
+      "sun": {
+        "open": "07:30",
+        "close": "21:00"
+      }
+    },
+    "description": "Right by the Moskovsky station: cinnamon buns and porridge for breakfast."
+  },
+  {
+    "id": "green-room",
+    "name": "Green Room",
+    "kind": "restaurant",
+    "area": "Central",
+    "lat": 59.9312,
+    "lon": 30.352,
+    "avg_spend_rub": 1100,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "23:00"
+      }
+    },
+    "description": "A fully vegetarian restaurant: beetroot tartare, mushroom pelmeni. Book for Friday and Saturday evenings."
+  },
+  {
+    "id": "rubinstein-hall",
+    "name": "Rubinstein Street Food Hall",
+    "kind": "food_court",
+    "area": "Central",
+    "lat": 59.929,
+    "lon": 30.346,
+    "avg_spend_rub": 700,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "02:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "02:00"
+      }
+    },
+    "description": "Twenty stalls on the city's bar street; open late."
+  },
+  {
+    "id": "stolovaya-1",
+    "name": "Stolovaya No. 1",
+    "kind": "canteen",
+    "area": "Center",
+    "lat": 59.9335,
+    "lon": 30.338,
+    "avg_spend_rub": 450,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "22:00"
+      }
+    },
+    "description": "A Soviet-style canteen: soups, salads, buckwheat. Some meat-free dishes every day."
+  },
+  {
+    "id": "falafel-sennaya",
+    "name": "Falafel & Shawarma Sennaya",
+    "kind": "street_food",
+    "area": "Admiralteysky",
+    "lat": 59.927,
+    "lon": 30.32,
+    "avg_spend_rub": 350,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "24/7. The falafel wrap is vegetarian."
+  },
+  {
+    "id": "dumplings-vo",
+    "name": "Dumpling House",
+    "kind": "restaurant",
+    "area": "Vasileostrovsky",
+    "lat": 59.942,
+    "lon": 30.28,
+    "avg_spend_rub": 600,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Pelmeni and vareniki, with potato and mushroom ones."
+  },
+  {
+    "id": "koryushka",
+    "name": "Koryushka Bistro",
+    "kind": "restaurant",
+    "area": "Petrogradsky",
+    "lat": 59.949,
+    "lon": 30.315,
+    "avg_spend_rub": 1800,
+    "vegetarian_friendly": false,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Fried smelt (koryushka) facing the Winter Palace. Not much for vegetarians."
+  },
+  {
+    "id": "khinkali",
+    "name": "Khinkali & Wine",
+    "kind": "restaurant",
+    "area": "Central",
+    "lat": 59.945,
+    "lon": 30.362,
+    "avg_spend_rub": 1200,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "24:00"
+      }
+    },
+    "description": "Georgian: khachapuri and mushroom khinkali."
+  },
+  {
+    "id": "plov",
+    "name": "Plov Center",
+    "kind": "restaurant",
+    "area": "Central",
+    "lat": 59.9265,
+    "lon": 30.3505,
+    "avg_spend_rub": 700,
+    "vegetarian_friendly": false,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Uzbek plov by the Kuznechny Market. Meat only."
+  },
+  {
+    "id": "blinnaya",
+    "name": "Night Blinnaya",
+    "kind": "cafe",
+    "area": "Center",
+    "lat": 59.933,
+    "lon": 30.348,
+    "avg_spend_rub": 400,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "tue": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "wed": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "thu": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "fri": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "sat": {
+        "open": "08:00",
+        "close": "02:00"
+      },
+      "sun": {
+        "open": "08:00",
+        "close": "02:00"
+      }
+    },
+    "description": "Russian pancakes sweet and savoury, open until 2 am."
+  },
+  {
+    "id": "eliseyev-cafe",
+    "name": "Eliseyev Café",
+    "kind": "cafe",
+    "area": "Center",
+    "lat": 59.9347,
+    "lon": 30.3394,
+    "avg_spend_rub": 900,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Pastries under gilded ceilings. Expensive coffee, good éclairs."
+  },
+  {
+    "id": "dom-knigi-cafe",
+    "name": "Singer Café (Dom Knigi)",
+    "kind": "cafe",
+    "area": "Center",
+    "lat": 59.9356,
+    "lon": 30.3253,
+    "avg_spend_rub": 500,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Window seats facing the Kazan Cathedral."
+  },
+  {
+    "id": "pho-petrograd",
+    "name": "Petrograd Pho",
+    "kind": "restaurant",
+    "area": "Petrogradsky",
+    "lat": 59.964,
+    "lon": 30.312,
+    "avg_spend_rub": 650,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Vietnamese, with a tofu pho."
+  },
+  {
+    "id": "sevkabel-food",
+    "name": "Sevkabel food court",
+    "kind": "food_court",
+    "area": "Vasileostrovsky",
+    "lat": 59.9238,
+    "lon": 30.241,
+    "avg_spend_rub": 800,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Containers on the waterfront: burgers, ramen, coffee."
+  },
+  {
+    "id": "new-holland-market",
+    "name": "New Holland food market",
+    "kind": "food_court",
+    "area": "Admiralteysky",
+    "lat": 59.9293,
+    "lon": 30.2895,
+    "avg_spend_rub": 800,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "22:00"
+      }
+    },
+    "description": "Stalls in the round courtyard: dumplings, bao, mulled wine."
+  },
+  {
+    "id": "vegan-burger",
+    "name": "Plant Burger",
+    "kind": "street_food",
+    "area": "Central",
+    "lat": 59.941,
+    "lon": 30.36,
+    "avg_spend_rub": 650,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "23:00"
+      }
+    },
+    "description": "Vegan burgers and fries."
+  },
+  {
+    "id": "coffee-admiralty",
+    "name": "Coffee 22",
+    "kind": "cafe",
+    "area": "Center",
+    "lat": 59.936,
+    "lon": 30.315,
+    "avg_spend_rub": 300,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "tue": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "wed": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "fri": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "08:00",
+        "close": "21:00"
+      },
+      "sun": {
+        "open": "08:00",
+        "close": "21:00"
+      }
+    },
+    "description": "Tiny specialty coffee bar by the Admiralty."
+  },
+  {
+    "id": "etagi-cafe",
+    "name": "Etagi roof café",
+    "kind": "cafe",
+    "area": "Central",
+    "lat": 59.92,
+    "lon": 30.354,
+    "avg_spend_rub": 600,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "23:00"
+      }
+    },
+    "description": "On the roof of the Loft Project; heated tent in winter."
+  },
+  {
+    "id": "hostel-kitchen",
+    "name": "Cook it yourself (supermarket + hostel kitchen)",
+    "kind": "self_catering",
+    "area": "Anywhere",
+    "lat": null,
+    "lon": null,
+    "avg_spend_rub": 300,
+    "vegetarian_friendly": true,
+    "hours": {
+      "mon": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "08:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "08:00",
+        "close": "23:00"
+      }
+    },
+    "description": "A supermarket breakfast or dinner cooked in the hostel kitchen. Only if the stay has a kitchen."
+  }
+]

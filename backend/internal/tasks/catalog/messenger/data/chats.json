@@ -1,0 +1,366 @@
+[
+  {
+    "id": "c1",
+    "type": "direct",
+    "title": "Mia Chen",
+    "members": [
+      "u0",
+      "u1"
+    ],
+    "pinned": true,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m13",
+    "contact_id": "u1"
+  },
+  {
+    "id": "c2",
+    "type": "group",
+    "title": "Design team",
+    "members": [
+      "u0",
+      "u6",
+      "u7",
+      "u16",
+      "u23",
+      "u29"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m91",
+    "admin": "u6"
+  },
+  {
+    "id": "c3",
+    "type": "group",
+    "title": "Azores trip",
+    "members": [
+      "u0",
+      "u8",
+      "u14",
+      "u15",
+      "u1"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m138",
+    "admin": "u8"
+  },
+  {
+    "id": "c4",
+    "type": "direct",
+    "title": "Sam Rivera",
+    "members": [
+      "u0",
+      "u6"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m158",
+    "contact_id": "u6"
+  },
+  {
+    "id": "c5",
+    "type": "group",
+    "title": "Family",
+    "members": [
+      "u0",
+      "u2",
+      "u3",
+      "u4",
+      "u5"
+    ],
+    "pinned": true,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m209",
+    "admin": "u2"
+  },
+  {
+    "id": "c6",
+    "type": "direct",
+    "title": "Jonas Berg",
+    "members": [
+      "u0",
+      "u8"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m220",
+    "contact_id": "u8"
+  },
+  {
+    "id": "c7",
+    "type": "group",
+    "title": "Building 12 · neighbours",
+    "members": [
+      "u0",
+      "u19",
+      "u20",
+      "u21",
+      "u22",
+      "u31",
+      "u32",
+      "u33",
+      "u24"
+    ],
+    "pinned": false,
+    "muted": true,
+    "archived": false,
+    "last_read_message_id": "m299",
+    "admin": "u19"
+  },
+  {
+    "id": "c8",
+    "type": "direct",
+    "title": "Rui Duarte (landlord)",
+    "members": [
+      "u0",
+      "u10"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m347",
+    "contact_id": "u10"
+  },
+  {
+    "id": "c9",
+    "type": "group",
+    "title": "Kate's 30th 🤫 (no Kate!)",
+    "members": [
+      "u0",
+      "u2",
+      "u1",
+      "u14",
+      "u17",
+      "u25"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m367",
+    "admin": "u2"
+  },
+  {
+    "id": "c10",
+    "type": "direct",
+    "title": "Lena Novak",
+    "members": [
+      "u0",
+      "u9"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m373",
+    "contact_id": "u9"
+  },
+  {
+    "id": "c11",
+    "type": "direct",
+    "title": "Clínica São Bento",
+    "members": [
+      "u0",
+      "u12"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m379",
+    "contact_id": "u12"
+  },
+  {
+    "id": "c12",
+    "type": "direct",
+    "title": "Theo Park",
+    "members": [
+      "u0",
+      "u11"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m381",
+    "contact_id": "u11"
+  },
+  {
+    "id": "c13",
+    "type": "group",
+    "title": "Football Thursdays ⚽️",
+    "members": [
+      "u0",
+      "u13",
+      "u26",
+      "u28",
+      "u22",
+      "u24",
+      "u8"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m441",
+    "admin": "u13"
+  },
+  {
+    "id": "c14",
+    "type": "group",
+    "title": "Book club 📚",
+    "members": [
+      "u0",
+      "u15",
+      "u25",
+      "u27",
+      "u1"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m470",
+    "admin": "u15"
+  },
+  {
+    "id": "c15",
+    "type": "group",
+    "title": "Climbing crew 🧗",
+    "members": [
+      "u0",
+      "u18",
+      "u30",
+      "u17"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m504",
+    "admin": "u18"
+  },
+  {
+    "id": "c16",
+    "type": "direct",
+    "title": "Mom",
+    "members": [
+      "u0",
+      "u2"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m507",
+    "contact_id": "u2"
+  },
+  {
+    "id": "c17",
+    "type": "direct",
+    "title": "Priya Nair",
+    "members": [
+      "u0",
+      "u7"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m512",
+    "contact_id": "u7"
+  },
+  {
+    "id": "c18",
+    "type": "direct",
+    "title": "Dad",
+    "members": [
+      "u0",
+      "u3"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m515",
+    "contact_id": "u3"
+  },
+  {
+    "id": "c19",
+    "type": "direct",
+    "title": "Kate Morgan",
+    "members": [
+      "u0",
+      "u4"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m519",
+    "contact_id": "u4"
+  },
+  {
+    "id": "c20",
+    "type": "group",
+    "title": "Old school friends",
+    "members": [
+      "u0",
+      "u28",
+      "u34",
+      "u24",
+      "u32"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": true,
+    "last_read_message_id": "m541",
+    "admin": "u28"
+  },
+  {
+    "id": "c21",
+    "type": "channel",
+    "title": "Nova Bank",
+    "members": [
+      "u0"
+    ],
+    "pinned": false,
+    "muted": true,
+    "archived": false,
+    "last_read_message_id": "m542"
+  },
+  {
+    "id": "c22",
+    "type": "channel",
+    "title": "Lisbon Tech Meetups",
+    "members": [
+      "u0"
+    ],
+    "pinned": false,
+    "muted": true,
+    "archived": false,
+    "last_read_message_id": "m560"
+  },
+  {
+    "id": "c23",
+    "type": "direct",
+    "title": "+351 912 000 777",
+    "members": [
+      "u0"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": null
+  },
+  {
+    "id": "c24",
+    "type": "direct",
+    "title": "Hugo Garcia",
+    "members": [
+      "u0",
+      "u14"
+    ],
+    "pinned": false,
+    "muted": false,
+    "archived": false,
+    "last_read_message_id": "m572",
+    "contact_id": "u14"
+  }
+]

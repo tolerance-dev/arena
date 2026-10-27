@@ -1,0 +1,248 @@
+[
+  {
+    "id": "free-walk",
+    "title": "Free walking tour of the center",
+    "kind": "tour",
+    "sessions": [
+      {
+        "date": "2026-11-13",
+        "start": "11:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "11:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "11:00"
+      }
+    ],
+    "duration_min": 150,
+    "price_rub": 0,
+    "notes": "Meet at the Kazan Cathedral colonnade. Free; guides expect a tip, usually 300–500 ₽. Goes ahead in the rain.",
+    "place_id": "kazan"
+  },
+  {
+    "id": "rooftop-tour",
+    "title": "Rooftop tour with a guide",
+    "kind": "tour",
+    "sessions": [
+      {
+        "date": "2026-11-13",
+        "start": "15:00"
+      },
+      {
+        "date": "2026-11-13",
+        "start": "20:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "15:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "15:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "20:00"
+      }
+    ],
+    "duration_min": 90,
+    "price_rub": 1200,
+    "notes": "Over the roofs of the center. Cancelled in rain and strong wind (the money is refunded).",
+    "venue": {
+      "name": "Liteyny Prospekt 26 (meeting point)",
+      "lat": 59.937,
+      "lon": 30.348
+    }
+  },
+  {
+    "id": "canal-boat",
+    "title": "Heated boat tour of the rivers and canals",
+    "kind": "tour",
+    "sessions": [
+      {
+        "date": "2026-11-13",
+        "start": "12:00"
+      },
+      {
+        "date": "2026-11-13",
+        "start": "14:00"
+      },
+      {
+        "date": "2026-11-13",
+        "start": "16:00"
+      },
+      {
+        "date": "2026-11-13",
+        "start": "19:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "12:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "14:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "16:00"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "19:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "12:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "14:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "16:00"
+      },
+      {
+        "date": "2026-11-15",
+        "start": "19:00"
+      }
+    ],
+    "duration_min": 60,
+    "price_rub": 1100,
+    "notes": "A covered, heated boat with an audio guide. Runs in any weather.",
+    "venue": {
+      "name": "Anichkov Bridge pier",
+      "lat": 59.933,
+      "lon": 30.343
+    }
+  },
+  {
+    "id": "bridges-boat",
+    "title": "Night boat to see the bridges go up",
+    "kind": "tour",
+    "sessions": [
+      {
+        "date": "2026-11-13",
+        "start": "00:50"
+      },
+      {
+        "date": "2026-11-14",
+        "start": "00:50"
+      }
+    ],
+    "duration_min": 120,
+    "price_rub": 1800,
+    "notes": "Departs 00:50 the night after the date shown (i.e. 14 and 15 Nov at 00:50). Ends at 02:50 at the same pier: the bridges are up, so mind which side of the river you sleep on.",
+    "venue": {
+      "name": "Admiralteyskaya embankment pier",
+      "lat": 59.9378,
+      "lon": 30.308
+    }
+  },
+  {
+    "id": "swan-lake",
+    "title": "Swan Lake (ballet) — Mariinsky Theatre",
+    "kind": "performance",
+    "sessions": [
+      {
+        "date": "2026-11-14",
+        "start": "19:00"
+      }
+    ],
+    "duration_min": 180,
+    "price_rub": 3500,
+    "notes": "The cheapest seats are in the upper tier with a partial view; 6,500 ₽ for the stalls. Sells out.",
+    "place_id": "mariinsky-building"
+  },
+  {
+    "id": "standup",
+    "title": "English-language stand-up night",
+    "kind": "performance",
+    "sessions": [
+      {
+        "date": "2026-11-13",
+        "start": "20:00"
+      }
+    ],
+    "duration_min": 120,
+    "price_rub": 900,
+    "notes": "Comedians from Moscow and Petersburg. A drink is included.",
+    "venue": {
+      "name": "Bar Ziferblat-Vibes, Rubinstein St 12",
+      "lat": 59.9298,
+      "lon": 30.3457
+    }
+  },
+  {
+    "id": "jazz",
+    "title": "Jazz Philharmonic Hall: big band night",
+    "kind": "concert",
+    "sessions": [
+      {
+        "date": "2026-11-14",
+        "start": "20:00"
+      }
+    ],
+    "duration_min": 120,
+    "price_rub": 800,
+    "notes": "",
+    "venue": {
+      "name": "Jazz Philharmonic Hall, Zagorodny Pr 27",
+      "lat": 59.9255,
+      "lon": 30.3405
+    }
+  },
+  {
+    "id": "organ",
+    "title": "Organ concert at St. Peter's Lutheran Church",
+    "kind": "concert",
+    "sessions": [
+      {
+        "date": "2026-11-15",
+        "start": "17:00"
+      }
+    ],
+    "duration_min": 70,
+    "price_rub": 700,
+    "notes": "Bach and Buxtehude in a church that was a swimming pool in Soviet times.",
+    "venue": {
+      "name": "Petrikirche, Nevsky Pr 22",
+      "lat": 59.9357,
+      "lon": 30.322
+    }
+  },
+  {
+    "id": "ice-rink-opening",
+    "title": "New Holland ice rink opening night",
+    "kind": "festival",
+    "sessions": [
+      {
+        "date": "2026-11-14",
+        "start": "18:00"
+      }
+    ],
+    "duration_min": 180,
+    "price_rub": 500,
+    "notes": "DJ, mulled wine, skates included.",
+    "place_id": "new-holland"
+  },
+  {
+    "id": "film-night",
+    "title": "Open-air film night under heaters: 'Brother' (1997)",
+    "kind": "screening",
+    "sessions": [
+      {
+        "date": "2026-11-15",
+        "start": "19:00"
+      }
+    ],
+    "duration_min": 100,
+    "price_rub": 0,
+    "notes": "Free, blankets provided. Russian with English subtitles.",
+    "place_id": "new-holland"
+  }
+]

@@ -484,6 +484,43 @@ if (path.startsWith("/titles/")) {
 </script></body></html>
 HTML
 
+cat > ui/messenger.html <<HTML
+<!doctype html><html lang="en"><head><title>Messenger</title>$HEAD</head><body>
+<header><b>Messenger</b></header>
+<main><div class="grid" style="grid-template-columns:minmax(220px,320px) 1fr"><div id="chats"></div><div id="thread" class="card body"></div></div></main>
+<script>
+// Not an invented product: the chat list (most recent first) and one thread, enough for the gate checks.
+Promise.all([get("chats"), get("messages"), get("contacts")]).then(([chats, msgs, people]) => {
+  const name = Object.fromEntries(people.map((p) => [p.id, p.name]))
+  const last = {}
+  for (const m of msgs) last[m.chat_id] = m
+  const live = chats.filter((c) => !c.archived).sort((a, b) => last[b.id].sent_at.localeCompare(last[a.id].sent_at))
+  const open = (id) => {
+    \$("#thread").innerHTML = msgs.filter((m) => m.chat_id === id).slice(-30)
+      .map((m) => \`<p><b>\${esc(m.from === "u0" ? "You" : name[m.from] || "")}</b> \${esc(m.text || (m.attachment && m.attachment.type) || "")}</p>\`).join("")
+  }
+  \$("#chats").innerHTML = live.map((c) => \`<div class="card body" style="margin-bottom:8px;cursor:pointer" data-id="\${c.id}">
+    <div>\${esc(c.title)}</div><div class="muted">\${esc((last[c.id].text || "").slice(0, 60))}</div></div>\`).join("")
+  \$("#chats").onclick = (e) => { const el = e.target.closest("[data-id]"); if (el) open(el.dataset.id) }
+  open(live[0].id)
+})
+</script></body></html>
+HTML
+
+cat > ui/city-trip.html <<HTML
+<!doctype html><html lang="en"><head><title>City trip</title>$HEAD</head><body>
+<header><b>Trip planner</b></header>
+<main><h2 id="who"></h2><div class="grid" id="places"></div></main>
+<script>
+// Not an invented product: the traveller and the places, enough for the gate checks.
+Promise.all([get("traveler"), get("places")]).then(([t, places]) => {
+  \$("#who").textContent = \`\${t.name}: \${t.budget_rub} ₽, \${t.arrival.at.slice(0, 10)} → \${t.departure.at.slice(0, 10)}\`
+  \$("#places").innerHTML = places.map((p) => \`<div class="card">\${art(p.id, p.name.split(" ")[0])}<div class="body">
+    <div>\${esc(p.name)}</div><div class="muted">\${p.price_rub ? p.price_rub + " ₽" : "Free"} · \${p.visit_min} min</div></div></div>\`).join("")
+})
+</script></body></html>
+HTML
+
 echo "$ARENA_TASK" > TASK
 printf '#!/bin/sh\ncd "$(dirname "$0")" && exec python3 server.py\n' > start.sh
 echo "demo storefront written for $ARENA_TASK"

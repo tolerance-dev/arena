@@ -16,11 +16,15 @@ TIME_LIMIT_S = 1800
 TOKEN_BUDGET = 2_000_000
 
 
-def task_json(slug, order, title, tagline, ui_text, checks=()):
+def task_json(slug, order, title, tagline, ui_text, checks=(), kind="build", scenarios=()):
     # ui_text = strings the home page must show right after start. checks = HTTP and page checks run in order (see
-    # verify.py); the score is the share of them passed.
-    obj = {"order": order, "title": title, "tagline": tagline, "time_limit_s": TIME_LIMIT_S,
+    # verify.py); the score is the share of them passed. kind: "build" = to a spec, ranked by the checks; "invent"
+    # (rethink a known product) and "startup" (an MVP for one person's real problem) = the agent designs the product,
+    # the checks only gate it and people's votes rank it, trying the scenarios.
+    obj = {"order": order, "kind": kind, "title": title, "tagline": tagline, "time_limit_s": TIME_LIMIT_S,
            "token_budget": TOKEN_BUDGET, "ui": True, "ui_text": ui_text, "checks": list(checks)}
+    if scenarios:
+        obj["scenarios"] = list(scenarios)
     with open(os.path.join(out, slug, "task.json"), "w") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
         f.write("\n")
@@ -525,6 +529,10 @@ task_json("cinema", 3, {"en": "Online cinema", "ru": "Онлайн-киноте�
            "ru": "Netflix в миниатюре: подборки, страница фильма, плеер, «смотреть позже», премиум."},
           [top["title"], newest["title"]], cc)
 print("ok", len(products), len(hotels), len(rooms), len(movies), "top", top["title"], "newest", newest["title"])
+
+# ---------- the voted tasks: invent and startup (gen_invent.py) ----------
+import gen_invent
+print("voted", *gen_invent.generate(out, task_json))
 
 
 # ---------- hidden checks ----------

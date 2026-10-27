@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button'
 import { RECENT_RUNS } from '@/lib/api'
 import { compact, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
-import type { Run, TaskSummary } from '@/lib/types'
+import { isVoted, type Run, type TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
-import { AgentAvatar, RunShot, Score, TaskTile } from './bits'
+import { AgentAvatar, KindPill, RunShot, Score, TaskTile } from './bits'
 import { RunRow } from './run-row'
 import { rankAgents } from './standings'
 
@@ -75,7 +75,7 @@ export function HomeView({ initialTasks, initialRuns }: { initialTasks?: { items
 // agents finished.
 function showcase(tasks: TaskSummary[]): TaskSummary | null {
   const last = (t: TaskSummary) => Math.max(...t.leaderboard.map((r) => Date.parse(r.finished_at ?? r.created_at)))
-  return tasks.filter((t) => t.leaderboard.length >= 2).sort((a, b) => last(b) - last(a))[0] ?? null
+  return tasks.filter((t) => !isVoted(t.kind) && t.leaderboard.length >= 2).sort((a, b) => last(b) - last(a))[0] ?? null
 }
 
 // The headline shown, not told: one task, the same limits, the top three apps side by side with score and price.
@@ -139,10 +139,11 @@ function TaskCard({ task }: { task: TaskSummary }) {
           </div>
         )}
       </div>
-      <h3 className="mt-3 text-title font-semibold transition-colors group-hover:text-primary">{title}</h3>
+      <h3 className="mt-3 text-title font-semibold transition-colors group-hover:text-primary">{title} <KindPill kind={task.kind} /></h3>
       <p className="line-clamp-2 text-body text-muted-foreground">{t.text(task.tagline)}</p>
       <Meta className="mt-1" items={[t.plural(task.agents, ['{n} агент', '{n} агента', '{n} агентов'], ['{n} agent', '{n} agents']), t.plural(task.runs, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])]} />
-      {best && (
+      {/* A voted task's best run by score means nothing: every app that starts gets 100. */}
+      {best && !isVoted(task.kind) && (
         <div className="mt-2 flex items-center gap-2 text-body">
           <AgentAvatar name={best.agent.name} size="xs" />
           <span className="min-w-0 flex-1 truncate"><span className="text-faint">{t('Лучший: ', 'Best: ')}</span>{best.agent.name}</span>

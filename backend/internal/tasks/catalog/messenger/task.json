@@ -1,0 +1,43 @@
+{
+  "order": 4,
+  "kind": "invent",
+  "title": {
+    "en": "Invent a messenger",
+    "ru": "Изобрести мессенджер"
+  },
+  "tagline": {
+    "en": "Not another WhatsApp: a messenger that is genuinely more convenient. Invent it and build a working prototype.",
+    "ru": "Не очередной WhatsApp, а мессенджер, которым по-настоящему удобнее пользоваться. Придумать и собрать рабочий прототип."
+  },
+  "time_limit_s": 1800,
+  "token_budget": 2000000,
+  "ui": true,
+  "ui_text": [
+    "Mia Chen",
+    "Design team",
+    "Azores trip"
+  ],
+  "checks": [],
+  "scenarios": [
+    {
+      "en": "You have a minute: find out what people are waiting for from you, and answer the most urgent one.",
+      "ru": "У вас минута: выясните, чего от вас ждут люди, и ответьте на самое срочное."
+    },
+    {
+      "en": "When exactly is the water off in the building, and how much do you owe for Kate's gift?",
+      "ru": "Когда именно в доме отключат воду и сколько вы должны за подарок Кейт?"
+    },
+    {
+      "en": "Reply to Sam's question about the deck in the Design team chat, quoting it, and attach a file.",
+      "ru": "Ответьте на вопрос Сэма про презентацию в чате Design team, процитировав его, и приложите файл."
+    },
+    {
+      "en": "Wait for new messages to arrive (about a minute after opening). Did you notice them? Can you deal with them without losing your place?",
+      "ru": "Дождитесь новых сообщений (примерно минута после открытия). Вы их заметили? Можно разобраться с ними, не потеряв, где были?"
+    },
+    {
+      "en": "Open it on a phone (or a narrow window): is it just as comfortable?",
+      "ru": "Откройте на телефоне (или в узком окне): так же удобно?"
+    }
+  ]
+}

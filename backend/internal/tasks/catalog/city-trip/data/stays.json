@@ -1,0 +1,146 @@
+[
+  {
+    "id": "station-hostel",
+    "name": "Station Hostel",
+    "type": "hostel · bed in 8-bed dorm",
+    "area": "Central",
+    "lat": 59.9318,
+    "lon": 30.359,
+    "price_per_night_rub": {
+      "2026-11-13": 1100,
+      "2026-11-14": 1400
+    },
+    "rating": 8.1,
+    "luggage_storage_rub": 0,
+    "kitchen": true,
+    "check_in": "14:00",
+    "check_out": "12:00",
+    "notes": "Two minutes from the Moskovsky station. Early check-in from 10:00 for 500 ₽."
+  },
+  {
+    "id": "nevsky-loft",
+    "name": "Nevsky Loft Hostel",
+    "type": "hostel · bed in 6-bed dorm",
+    "area": "Center",
+    "lat": 59.934,
+    "lon": 30.341,
+    "price_per_night_rub": {
+      "2026-11-13": 1450,
+      "2026-11-14": 1800
+    },
+    "rating": 9.0,
+    "luggage_storage_rub": 0,
+    "kitchen": true,
+    "check_in": "14:00",
+    "check_out": "11:00",
+    "notes": "On the Fontanka by the Anichkov Bridge. Quiet after 23:00."
+  },
+  {
+    "id": "capsule-hub",
+    "name": "Capsule Hub Sennaya",
+    "type": "capsule hotel · capsule",
+    "area": "Admiralteysky",
+    "lat": 59.9265,
+    "lon": 30.32,
+    "price_per_night_rub": {
+      "2026-11-13": 1700,
+      "2026-11-14": 2100
+    },
+    "rating": 8.6,
+    "luggage_storage_rub": 0,
+    "kitchen": false,
+    "check_in": "15:00",
+    "check_out": "12:00",
+    "notes": "Private capsules with curtains, women's and men's floors."
+  },
+  {
+    "id": "vo-dorm",
+    "name": "Vasilievsky Dorm",
+    "type": "hostel · bed in 10-bed dorm",
+    "area": "Vasileostrovsky",
+    "lat": 59.9425,
+    "lon": 30.279,
+    "price_per_night_rub": {
+      "2026-11-13": 950,
+      "2026-11-14": 1150
+    },
+    "rating": 7.4,
+    "luggage_storage_rub": null,
+    "kitchen": true,
+    "check_in": "14:00",
+    "check_out": "12:00",
+    "notes": "The cheapest. On Vasilievsky Island: when the bridges are up (from about 01:25) there's no way back from the center but the metro, which closes at 00:30."
+  },
+  {
+    "id": "petrograd-mini",
+    "name": "Petrograd Mini-hotel",
+    "type": "mini-hotel · private room",
+    "area": "Petrogradsky",
+    "lat": 59.962,
+    "lon": 30.312,
+    "price_per_night_rub": {
+      "2026-11-13": 2900,
+      "2026-11-14": 3400
+    },
+    "rating": 8.8,
+    "luggage_storage_rub": 0,
+    "kitchen": false,
+    "check_in": "14:00",
+    "check_out": "12:00",
+    "notes": "A private room with a shared bathroom. Across the bridges from the center."
+  },
+  {
+    "id": "fontanka-rooms",
+    "name": "Fontanka Rooms",
+    "type": "guesthouse · private double",
+    "area": "Center",
+    "lat": 59.93,
+    "lon": 30.34,
+    "price_per_night_rub": {
+      "2026-11-13": 3600,
+      "2026-11-14": 4200
+    },
+    "rating": 9.1,
+    "luggage_storage_rub": 0,
+    "kitchen": false,
+    "check_in": "15:00",
+    "check_out": "12:00",
+    "notes": "Comfortable, central, and most of the budget."
+  },
+  {
+    "id": "hermitage-view",
+    "name": "Hermitage View Hostel",
+    "type": "hostel · bed in 4-bed dorm",
+    "area": "Center",
+    "lat": 59.9375,
+    "lon": 30.318,
+    "price_per_night_rub": {
+      "2026-11-13": 2200,
+      "2026-11-14": 2600
+    },
+    "rating": 9.3,
+    "luggage_storage_rub": 0,
+    "kitchen": true,
+    "check_in": "15:00",
+    "check_out": "11:00",
+    "notes": "Five minutes from Palace Square, small dorms."
+  },
+  {
+    "id": "ligovsky-budget",
+    "name": "Ligovsky Budget Hostel",
+    "type": "hostel · bed in 12-bed dorm",
+    "area": "Central",
+    "lat": 59.922,
+    "lon": 30.355,
+    "price_per_night_rub": {
+      "2026-11-13": 800,
+      "2026-11-14": 950
+    },
+    "rating": 6.9,
+    "luggage_storage_rub": 200,
+    "kitchen": true,
+    "check_in": "13:00",
+    "check_out": "12:00",
+    "notes": "Cheap and loud. Luggage storage 200 ₽ a day."
+  }
+]

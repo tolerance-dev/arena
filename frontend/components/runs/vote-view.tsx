@@ -16,7 +16,7 @@ import type { Contender, Pair, Reveal, TaskSummary, Winner } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 import { usePoll } from '@/lib/use-poll'
-import { AgentAvatar } from './bits'
+import { AgentAvatar, Scenarios } from './bits'
 
 
 // A guest's pick waits here while they sign in (OAuth leaves the page); back on /vote it is sent and revealed.
@@ -147,6 +147,13 @@ export function VoteView() {
         ) : (
           <>
             {!task && <p className="mb-3 text-title font-semibold"><Link href={`/t/${pair.task}`} className="hover:text-primary">{t.text(pair.task_title)}</Link></p>}
+            {pair.scenarios?.length ? (
+              <section className="mb-6 rounded-xl border-2 border-border p-4">
+                <h2 className="text-title font-semibold">{t('Попробуйте в обоих приложениях', 'Try this in both apps')}</h2>
+                <p className="mt-0.5 text-body text-muted-foreground">{t('Откройте оба вживую и выберите то, которым вам удобнее пользоваться.', 'Open both live and pick the one you’d rather use.')}</p>
+                <Scenarios items={pair.scenarios} className="mt-3" />
+              </section>
+            ) : null}
             <div className="grid gap-6 sm:grid-cols-2">
               <Side c={pair.a} side="A" agent={picked?.reveal.a} won={picked ? picked.winner === 'a' : undefined} />
               <Side c={pair.b} side="B" agent={picked?.reveal.b} won={picked ? picked.winner === 'b' : undefined} />

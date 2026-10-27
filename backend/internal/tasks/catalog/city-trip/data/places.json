@@ -1,0 +1,1836 @@
+[
+  {
+    "id": "hermitage",
+    "name": "State Hermitage Museum (Winter Palace)",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9398,
+    "lon": 30.3146,
+    "price_rub": 700,
+    "visit_min": 150,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "10:30",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "One of the largest museums in the world. Queues are long on weekends (40–60 min) and short on Friday evenings (10–15 min). Tickets online skip the queue.",
+    "tags": [
+      "art",
+      "history",
+      "palace",
+      "must-see"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "general-staff",
+    "name": "General Staff Building (Hermitage: Impressionists)",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9385,
+    "lon": 30.3185,
+    "price_rub": 500,
+    "visit_min": 90,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "10:30",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "Monet, Matisse, Picasso in a modern wing across Palace Square. Rarely a queue.",
+    "tags": [
+      "art",
+      "modern"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "palace-square",
+    "name": "Palace Square",
+    "kind": "sight",
+    "area": "Center",
+    "lat": 59.939,
+    "lon": 30.3158,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "The main square, with the Alexander Column and the Winter Palace.",
+    "tags": [
+      "architecture",
+      "must-see",
+      "photo"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "isaac",
+    "name": "St. Isaac's Cathedral",
+    "kind": "cathedral",
+    "area": "Center",
+    "lat": 59.9341,
+    "lon": 30.3061,
+    "price_rub": 500,
+    "visit_min": 50,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": null,
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "The interior: malachite columns and mosaics. The colonnade is a separate ticket.",
+    "tags": [
+      "architecture",
+      "history"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "isaac-colonnade",
+    "name": "St. Isaac's Colonnade (viewpoint)",
+    "kind": "viewpoint",
+    "area": "Center",
+    "lat": 59.9341,
+    "lon": 30.3061,
+    "price_rub": 400,
+    "visit_min": 30,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "262 steps up for the best view over the center. Closed in heavy rain and strong wind.",
+    "tags": [
+      "view",
+      "rooftop",
+      "photo"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "spilled-blood",
+    "name": "Church of the Savior on Spilled Blood",
+    "kind": "cathedral",
+    "area": "Center",
+    "lat": 59.94,
+    "lon": 30.3289,
+    "price_rub": 500,
+    "visit_min": 40,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": null,
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "Onion domes outside, 7,500 m² of mosaics inside.",
+    "tags": [
+      "architecture",
+      "must-see",
+      "photo"
+    ],
+    "rating": 4.6
+  },
+  {
+    "id": "kazan",
+    "name": "Kazan Cathedral",
+    "kind": "cathedral",
+    "area": "Center",
+    "lat": 59.9343,
+    "lon": 30.3248,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "tue": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "wed": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "fri": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "sat": {
+        "open": "07:00",
+        "close": "20:00"
+      },
+      "sun": {
+        "open": "07:00",
+        "close": "20:00"
+      }
+    },
+    "description": "A working cathedral on Nevsky with a curved colonnade. Free; modest dress.",
+    "tags": [
+      "architecture",
+      "free"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "peter-paul",
+    "name": "Peter and Paul Fortress",
+    "kind": "sight",
+    "area": "Petrogradsky",
+    "lat": 59.95,
+    "lon": 30.3166,
+    "price_rub": 0,
+    "visit_min": 90,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "tue": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "wed": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "fri": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "06:00",
+        "close": "21:00"
+      },
+      "sun": {
+        "open": "06:00",
+        "close": "21:00"
+      }
+    },
+    "description": "Where the city began in 1703. The grounds and the beach are free; a noon cannon fires every day at 12:00.",
+    "tags": [
+      "history",
+      "free",
+      "walk"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "peter-paul-cathedral",
+    "name": "Peter and Paul Cathedral (tombs of the tsars)",
+    "kind": "cathedral",
+    "area": "Petrogradsky",
+    "lat": 59.9503,
+    "lon": 30.3163,
+    "price_rub": 550,
+    "visit_min": 40,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "18:00"
+      }
+    },
+    "description": "Inside the fortress: the needle spire and the Romanov tombs.",
+    "tags": [
+      "history"
+    ],
+    "rating": 4.4
+  },
+  {
+    "id": "strelka",
+    "name": "Spit of Vasilievsky Island (Rostral Columns)",
+    "kind": "viewpoint",
+    "area": "Vasileostrovsky",
+    "lat": 59.944,
+    "lon": 30.306,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "The classic panorama of the Neva, the fortress and the Winter Palace. Best at dusk.",
+    "tags": [
+      "view",
+      "free",
+      "photo"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "kunstkamera",
+    "name": "Kunstkamera",
+    "kind": "museum",
+    "area": "Vasileostrovsky",
+    "lat": 59.9415,
+    "lon": 30.3045,
+    "price_rub": 450,
+    "visit_min": 75,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "18:00"
+      }
+    },
+    "description": "Peter the Great's cabinet of curiosities. Not for the squeamish.",
+    "tags": [
+      "history",
+      "weird"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "new-holland",
+    "name": "New Holland Island",
+    "kind": "park",
+    "area": "Admiralteysky",
+    "lat": 59.9293,
+    "lon": 30.2895,
+    "price_rub": 0,
+    "visit_min": 60,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "22:00"
+      }
+    },
+    "description": "An old naval island turned into a park with food stalls and a round brick courtyard. The ice rink opens on 14 Nov (500 ₽, skates included).",
+    "tags": [
+      "free",
+      "food",
+      "locals",
+      "walk"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "russian-museum",
+    "name": "Russian Museum (Mikhailovsky Palace)",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9386,
+    "lon": 30.3323,
+    "price_rub": 600,
+    "visit_min": 120,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "tue": null,
+      "wed": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "13:00",
+        "close": "21:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "18:00"
+      }
+    },
+    "description": "The best collection of Russian art: icons to Malevich.",
+    "tags": [
+      "art"
+    ],
+    "rating": 4.4
+  },
+  {
+    "id": "faberge",
+    "name": "Fabergé Museum",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9339,
+    "lon": 30.3433,
+    "price_rub": 750,
+    "visit_min": 75,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "20:45"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "20:45"
+      }
+    },
+    "description": "Nine imperial Easter eggs in the Shuvalov Palace on the Fontanka.",
+    "tags": [
+      "art",
+      "palace"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "yusupov",
+    "name": "Yusupov Palace",
+    "kind": "museum",
+    "area": "Admiralteysky",
+    "lat": 59.9294,
+    "lon": 30.2994,
+    "price_rub": 750,
+    "visit_min": 75,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "sun": null
+    },
+    "description": "Where Rasputin was killed. The tour of the cellars is included.",
+    "tags": [
+      "history",
+      "palace"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "mariinsky-building",
+    "name": "Mariinsky Theatre (outside)",
+    "kind": "sight",
+    "area": "Admiralteysky",
+    "lat": 59.9256,
+    "lon": 30.296,
+    "price_rub": 0,
+    "visit_min": 15,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "The historic stage and the new glass one across the canal. Shows: see events.",
+    "tags": [
+      "architecture"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "erarta",
+    "name": "Erarta Museum of Contemporary Art",
+    "kind": "museum",
+    "area": "Vasileostrovsky",
+    "lat": 59.9318,
+    "lon": 30.2513,
+    "price_rub": 700,
+    "visit_min": 120,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "tue": null,
+      "wed": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "22:00"
+      }
+    },
+    "description": "Five floors of contemporary Russian art, open late.",
+    "tags": [
+      "art",
+      "modern"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "loft-etagi",
+    "name": "Loft Project Etagi",
+    "kind": "sight",
+    "area": "Central",
+    "lat": 59.92,
+    "lon": 30.354,
+    "price_rub": 0,
+    "visit_min": 60,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "23:00"
+      }
+    },
+    "description": "A former bakery with shops, galleries and a roof terrace (300 ₽).",
+    "tags": [
+      "locals",
+      "food",
+      "rooftop"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "sevkabel",
+    "name": "Sevkabel Port",
+    "kind": "sight",
+    "area": "Vasileostrovsky",
+    "lat": 59.9238,
+    "lon": 30.2408,
+    "price_rub": 0,
+    "visit_min": 60,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "12:00",
+        "close": "23:00"
+      }
+    },
+    "description": "A cable factory on the gulf turned into a waterfront with food courts. Windy.",
+    "tags": [
+      "locals",
+      "food",
+      "view"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "summer-garden",
+    "name": "Summer Garden",
+    "kind": "park",
+    "area": "Center",
+    "lat": 59.9447,
+    "lon": 30.3366,
+    "price_rub": 0,
+    "visit_min": 40,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "20:00"
+      }
+    },
+    "description": "Peter the Great's garden. From October the marble statues are in wooden winter boxes.",
+    "tags": [
+      "free",
+      "walk",
+      "history"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "mikhailovsky-garden",
+    "name": "Mikhailovsky Garden",
+    "kind": "park",
+    "area": "Center",
+    "lat": 59.9401,
+    "lon": 30.3317,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "20:00"
+      }
+    },
+    "description": "A quiet garden behind the Russian Museum, next to the Spilled Blood.",
+    "tags": [
+      "free",
+      "walk"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "smolny",
+    "name": "Smolny Cathedral (belfry)",
+    "kind": "viewpoint",
+    "area": "Central",
+    "lat": 59.949,
+    "lon": 30.3955,
+    "price_rub": 400,
+    "visit_min": 40,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "wed": null,
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "Baroque blue-and-white cathedral; the belfry has a view east over the Neva.",
+    "tags": [
+      "view",
+      "architecture"
+    ],
+    "rating": 4.7
+  },
+  {
+    "id": "lavra",
+    "name": "Alexander Nevsky Lavra",
+    "kind": "sight",
+    "area": "Central",
+    "lat": 59.9206,
+    "lon": 30.3884,
+    "price_rub": 0,
+    "visit_min": 60,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "tue": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "09:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "09:30",
+        "close": "18:00"
+      }
+    },
+    "description": "A monastery at the end of Nevsky. The grounds are free; the necropolis with Dostoevsky's and Tchaikovsky's graves is 500 ₽.",
+    "tags": [
+      "history",
+      "free",
+      "walk"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "kuznechny",
+    "name": "Kuznechny Market",
+    "kind": "market",
+    "area": "Central",
+    "lat": 59.9269,
+    "lon": 30.35,
+    "price_rub": 0,
+    "visit_min": 30,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "tue": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "wed": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "fri": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "sat": {
+        "open": "08:00",
+        "close": "20:00"
+      },
+      "sun": {
+        "open": "08:00",
+        "close": "19:00"
+      }
+    },
+    "description": "The farmers' market: pickles, honey, berries. Tastings are free if you smile.",
+    "tags": [
+      "food",
+      "locals"
+    ],
+    "rating": 4.4
+  },
+  {
+    "id": "dostoevsky",
+    "name": "Dostoevsky Memorial Museum",
+    "kind": "museum",
+    "area": "Central",
+    "lat": 59.9268,
+    "lon": 30.3508,
+    "price_rub": 350,
+    "visit_min": 60,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "wed": {
+        "open": "13:00",
+        "close": "20:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "18:00"
+      }
+    },
+    "description": "The flat where he wrote The Brothers Karamazov.",
+    "tags": [
+      "history",
+      "literature"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "pushkin-flat",
+    "name": "Pushkin Apartment Museum (Moika 12)",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9407,
+    "lon": 30.3209,
+    "price_rub": 350,
+    "visit_min": 45,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "tue": null,
+      "wed": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:30",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:30",
+        "close": "18:00"
+      }
+    },
+    "description": "Pushkin's last home, kept as it was.",
+    "tags": [
+      "history",
+      "literature"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "aurora",
+    "name": "Cruiser Aurora",
+    "kind": "museum",
+    "area": "Petrogradsky",
+    "lat": 59.9555,
+    "lon": 30.3378,
+    "price_rub": 600,
+    "visit_min": 60,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": null,
+      "wed": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "18:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "18:00"
+      }
+    },
+    "description": "The ship whose shot signalled the 1917 revolution.",
+    "tags": [
+      "history"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "mosque",
+    "name": "Cathedral Mosque",
+    "kind": "sight",
+    "area": "Petrogradsky",
+    "lat": 59.955,
+    "lon": 30.3236,
+    "price_rub": 0,
+    "visit_min": 15,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "A turquoise dome modelled on Samarkand. View from outside.",
+    "tags": [
+      "architecture",
+      "free",
+      "photo"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "arcade",
+    "name": "Museum of Soviet Arcade Machines",
+    "kind": "museum",
+    "area": "Center",
+    "lat": 59.9393,
+    "lon": 30.324,
+    "price_rub": 550,
+    "visit_min": 60,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "tue": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "21:00"
+      }
+    },
+    "description": "Play the 1970s–80s machines; tokens for 15 games included. Fun in the rain.",
+    "tags": [
+      "fun",
+      "indoor"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "dom-knigi",
+    "name": "Singer House (Dom Knigi)",
+    "kind": "sight",
+    "area": "Center",
+    "lat": 59.9356,
+    "lon": 30.3253,
+    "price_rub": 0,
+    "visit_min": 30,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "09:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "09:00",
+        "close": "24:00"
+      }
+    },
+    "description": "Art Nouveau bookstore on Nevsky with a café upstairs facing the Kazan Cathedral.",
+    "tags": [
+      "architecture",
+      "free",
+      "coffee"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "eliseyev",
+    "name": "Eliseyev Emporium",
+    "kind": "sight",
+    "area": "Center",
+    "lat": 59.9347,
+    "lon": 30.3394,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "23:00"
+      }
+    },
+    "description": "A gilded 1903 food hall. Look up, buy a chocolate, leave.",
+    "tags": [
+      "architecture",
+      "free",
+      "food"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "nevsky-walk",
+    "name": "Walk Nevsky Prospekt (Admiralty → Vosstaniya)",
+    "kind": "walk",
+    "area": "Center",
+    "lat": 59.937,
+    "lon": 30.315,
+    "price_rub": 0,
+    "visit_min": 60,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "4 km of the main avenue; ends at the Moskovsky railway station (59.9310, 30.3606).",
+    "tags": [
+      "walk",
+      "free",
+      "architecture"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "bank-bridge",
+    "name": "Bank Bridge (griffins)",
+    "kind": "sight",
+    "area": "Center",
+    "lat": 59.931,
+    "lon": 30.3248,
+    "price_rub": 0,
+    "visit_min": 10,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "A tiny footbridge with golden-winged griffins on the Griboedov Canal.",
+    "tags": [
+      "free",
+      "photo"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "lakhta",
+    "name": "Lakhta Center observation deck",
+    "kind": "viewpoint",
+    "area": "Primorsky",
+    "lat": 59.9871,
+    "lon": 30.1776,
+    "price_rub": 1200,
+    "visit_min": 90,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "tue": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "wed": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "10:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "10:00",
+        "close": "22:00"
+      }
+    },
+    "description": "The tallest building in Europe, 357 m deck. 45 minutes from the center; worth it only on a clear day.",
+    "tags": [
+      "view",
+      "modern"
+    ],
+    "rating": 4.9
+  },
+  {
+    "id": "yelagin",
+    "name": "Yelagin Island park",
+    "kind": "park",
+    "area": "Petrogradsky",
+    "lat": 59.979,
+    "lon": 30.265,
+    "price_rub": 0,
+    "visit_min": 90,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "06:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "06:00",
+        "close": "24:00"
+      }
+    },
+    "description": "A car-free island park with squirrels and a view to the gulf at the western tip.",
+    "tags": [
+      "walk",
+      "free",
+      "nature"
+    ],
+    "rating": 4.8
+  },
+  {
+    "id": "botanical",
+    "name": "Botanical Garden greenhouses",
+    "kind": "museum",
+    "area": "Petrogradsky",
+    "lat": 59.97,
+    "lon": 30.324,
+    "price_rub": 450,
+    "visit_min": 60,
+    "indoor": true,
+    "hours": {
+      "mon": null,
+      "tue": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "wed": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "thu": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "fri": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "sat": {
+        "open": "11:00",
+        "close": "17:00"
+      },
+      "sun": {
+        "open": "11:00",
+        "close": "17:00"
+      }
+    },
+    "description": "Tropical greenhouses: warm and green when it's grey outside.",
+    "tags": [
+      "nature",
+      "indoor"
+    ],
+    "rating": 4.6
+  },
+  {
+    "id": "street-art-museum",
+    "name": "Street Art Museum",
+    "kind": "museum",
+    "area": "Krasnogvardeysky",
+    "lat": 59.98,
+    "lon": 30.472,
+    "price_rub": 450,
+    "visit_min": 90,
+    "indoor": false,
+    "hours": {
+      "mon": null,
+      "tue": null,
+      "wed": null,
+      "thu": null,
+      "fri": null,
+      "sat": null,
+      "sun": null
+    },
+    "description": "Murals in a working factory. Closed for the season (November–April).",
+    "tags": [
+      "art",
+      "modern",
+      "street-art"
+    ],
+    "rating": 4.3
+  },
+  {
+    "id": "vitebsky",
+    "name": "Vitebsky railway station",
+    "kind": "sight",
+    "area": "Central",
+    "lat": 59.9198,
+    "lon": 30.329,
+    "price_rub": 0,
+    "visit_min": 20,
+    "indoor": true,
+    "hours": {
+      "mon": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "05:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "05:00",
+        "close": "24:00"
+      }
+    },
+    "description": "The first railway station in Russia, with an Art Nouveau interior almost nobody visits.",
+    "tags": [
+      "architecture",
+      "free"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "tauride",
+    "name": "Tauride Garden",
+    "kind": "park",
+    "area": "Central",
+    "lat": 59.945,
+    "lon": 30.372,
+    "price_rub": 0,
+    "visit_min": 30,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "tue": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "wed": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "thu": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "fri": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "sat": {
+        "open": "07:00",
+        "close": "22:00"
+      },
+      "sun": {
+        "open": "07:00",
+        "close": "22:00"
+      }
+    },
+    "description": "A locals' park with a pond and a greenhouse café.",
+    "tags": [
+      "free",
+      "walk",
+      "locals"
+    ],
+    "rating": 4.5
+  },
+  {
+    "id": "fontanka-walk",
+    "name": "Fontanka embankment walk (Anichkov Bridge → Summer Garden)",
+    "kind": "walk",
+    "area": "Center",
+    "lat": 59.933,
+    "lon": 30.343,
+    "price_rub": 0,
+    "visit_min": 40,
+    "indoor": false,
+    "hours": {
+      "mon": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "tue": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "wed": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "thu": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "fri": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sat": {
+        "open": "00:00",
+        "close": "24:00"
+      },
+      "sun": {
+        "open": "00:00",
+        "close": "24:00"
+      }
+    },
+    "description": "Palaces along the river and the horse tamers of the Anichkov Bridge.",
+    "tags": [
+      "walk",
+      "free",
+      "architecture"
+    ],
+    "rating": 4.6
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "currency": "RUB",
+  "metro": {
+    "fare_rub": 90,
+    "hours": {
+      "open": "05:45",
+      "close": "00:30"
+    },
+    "minutes_between_stations": 3,
+    "minutes_per_transfer": 4,
+    "minutes_to_enter_or_leave": 4
+  },
+  "bus": {
+    "fare_rub": 90,
+    "note": "Same fare as the metro; slow on Nevsky in the evening."
+  },
+  "walk": {
+    "km_per_hour": 4.5
+  },
+  "taxi": {
+    "base_rub": 200,
+    "per_km_rub": 30,
+    "night_multiplier": 1.5,
+    "night": {
+      "from": "00:00",
+      "to": "06:00"
+    },
+    "note": "Can't cross the Neva while the bridges are up."
+  },
+  "left_luggage": {
+    "place": "Moskovsky railway station",
+    "price_rub_per_day": 350,
+    "hours": "00:00-24:00"
+  }
+}

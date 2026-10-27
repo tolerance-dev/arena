@@ -14,9 +14,9 @@ import { Meta } from '@/components/ui/feed'
 import { PillTabs } from '@/components/ui/pill-tabs'
 import { compact } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
-import type { Run, TaskView as TV } from '@/lib/types'
+import { isVoted, type Run, type TaskView as TV } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
-import { AgentAvatar, CheckStrip, RunShot, RunTable, Score, Stack, TaskTile } from './bits'
+import { AgentAvatar, CheckStrip, KindPill, RunShot, RunTable, Scenarios, Score, Stack, TaskTile } from './bits'
 import { Compare } from './compare'
 import { StartRunButton } from './start-run-button'
 
@@ -46,7 +46,7 @@ export function TaskView({ slug }: { slug: string }) {
       <header className="mt-6 flex flex-wrap items-start gap-x-4 gap-y-4">
         <TaskTile slug={slug} size="lg" />
         <div className="min-w-0 flex-1 basis-72">
-          <h1 className="display text-page break-words">{title}</h1>
+          <h1 className="display text-page break-words">{title} <KindPill kind={data.kind} className="relative -top-1" /></h1>
           <p className="text-subtitle text-muted-foreground">{t.text(data.tagline)}</p>
           <Meta className="mt-1" items={[
             t(`${Math.round(data.time_limit_s / 60)} мин`, `${Math.round(data.time_limit_s / 60)} min`),
@@ -89,6 +89,12 @@ export function TaskView({ slug }: { slug: string }) {
           <Columns
             main={<div className="max-w-[72ch]"><Markdown>{data.brief}</Markdown></div>}
             aside={<>
+              {isVoted(data.kind) && (
+                <AsideBlock title={t('Что пробуют голосующие', 'What voters try')}>
+                  <Scenarios items={data.scenarios} />
+                  <p className="mt-3 text-body text-muted-foreground">{t('Тут нет ТЗ и API: продукт придумывает агент. Проверки только допускают прогон, место решают голоса людей.', 'There’s no spec or API here: the agent designs the product. The checks only admit the run; people’s votes rank it.')}</p>
+                </AsideBlock>
+              )}
               <AsideBlock title={t('Автоматические проверки', 'Automatic checks')}>
                 {data.checks.length ? (
                   <ol className="space-y-1.5 text-body">
@@ -102,7 +108,7 @@ export function TaskView({ slug }: { slug: string }) {
                     {t.plural(data.hidden_count, ['И ещё {n} скрытая проверка того же API на других записях из тех же данных: их запросы и ответы не показываем.', 'И ещё {n} скрытые проверки того же API на других записях из тех же данных: их запросы и ответы не показываем.', 'И ещё {n} скрытых проверок того же API на других записях из тех же данных: их запросы и ответы не показываем.'], ['Plus {n} hidden check of the same API on other records from the same data: we don’t show its requests and responses.', 'Plus {n} hidden checks of the same API on other records from the same data: we don’t show their requests and responses.'])}
                   </p>
                 )}
-                <p className="mt-3 text-body text-muted-foreground">{t('Балл — доля пройденных проверок; приложения сравнивают люди в слепом голосовании.', 'The score is the share of checks passed; people compare the apps in blind voting.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>
+                {!isVoted(data.kind) && <p className="mt-3 text-body text-muted-foreground">{t('Балл — доля пройденных проверок; приложения сравнивают люди в слепом голосовании.', 'The score is the share of checks passed; people compare the apps in blind voting.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>}
               </AsideBlock>
               {data.data_files.length > 0 && (
                 <AsideBlock title={t('Мок-данные', 'Mock data')}>

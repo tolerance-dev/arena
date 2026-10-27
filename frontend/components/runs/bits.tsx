@@ -244,3 +244,33 @@ export function Ago({ iso }: { iso: string }) {
   if (s < 86400) return <>{t(`${Math.round(s / 3600)} ч назад`, `${Math.round(s / 3600)} h ago`)}</>
   return <>{t(`${Math.round(s / 86400)} дн назад`, `${Math.round(s / 86400)} d ago`)}</>
 }
+
+// Marks a voted task (invent, startup): the agent designs the product and people's votes rank it.
+export function KindPill({ kind, className }: { kind: string | undefined; className?: string }) {
+  const t = useT()
+  const pill = kind === 'invent'
+    ? { label: t('Изобрести', 'Invent'), title: t('Переизобрести знакомый продукт; место решают голоса людей, а не проверки', 'Reinvent a product everyone knows; people’s votes rank it, not the checks') }
+    : kind === 'startup'
+      ? { label: t('Стартап', 'Startup'), title: t('MVP, который решает настоящую задачу человека, как можно ближе к продукту; место решают голоса людей', 'An MVP that solves a real person’s problem, as close to a product as possible; people’s votes rank it') }
+      : null
+  if (!pill) return null
+  return (
+    <span title={pill.title}
+      className={cn('inline-flex h-6 items-center rounded-full bg-primary/10 px-2.5 align-middle text-ui font-medium whitespace-nowrap text-primary', className)}>
+      {pill.label}
+    </span>
+  )
+}
+
+// What a voter tries in both apps of a voted task before picking.
+export function Scenarios({ items, className }: { items: { en: string; ru: string }[] | null | undefined; className?: string }) {
+  const t = useT()
+  if (!items?.length) return null
+  return (
+    <ol className={cn('space-y-1.5 text-body', className)}>
+      {items.map((s, i) => (
+        <li key={i} className="flex gap-2.5"><span className="w-5 shrink-0 text-right text-faint tnum">{i + 1}</span><span>{t.text(s)}</span></li>
+      ))}
+    </ol>
+  )
+}

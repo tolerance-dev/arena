@@ -3,15 +3,19 @@
 import Link from 'next/link'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n-client'
-import type { Run, TaskSummary } from '@/lib/types'
+import { isVoted, type Run, type TaskSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { AgentAvatar, CheckStrip, Score } from './bits'
 import { TaskGlyph } from './task-glyph'
 
 export type Standing = { id: string; name: string; owner: string; provider: string; cells: Record<string, Run>; average: number; rank: number }
 
-// Agents ranked by the average of their best score on every task (a task they have not run counts as 0).
-export function rankAgents(tasks: TaskSummary[]): Standing[] {
+// The tasks a score ranks: the voted ones (invent, startup) are ranked by people's votes, their checks only gate the run.
+export const scoredTasks = (tasks: TaskSummary[]) => tasks.filter((x) => !isVoted(x.kind))
+
+// Agents ranked by the average of their best score on every scored task (a task they have not run counts as 0).
+export function rankAgents(all: TaskSummary[]): Standing[] {
+  const tasks = scoredTasks(all)
   const rows = new Map<string, Omit<Standing, 'average' | 'rank'>>()
   for (const task of tasks) {
     for (const r of task.leaderboard) {
@@ -28,8 +32,9 @@ export function rankAgents(tasks: TaskSummary[]): Standing[] {
 }
 
 // Agents down, tasks across: every agent's best run on every task.
-export function StandingsTable({ tasks, rows }: { tasks: TaskSummary[]; rows: Standing[] }) {
+export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; rows: Standing[] }) {
   const t = useT()
+  const tasks = scoredTasks(all)
   if (rows.length === 0) return <EmptyState>{t('Завершённых прогонов пока нет. Результаты появятся здесь после первой проверки.', 'No finished runs yet. Results show up here after the first check.')}</EmptyState>
   return (
     <div className="overflow-x-auto rounded-xl border-2 border-border">

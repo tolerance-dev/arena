@@ -63,8 +63,16 @@ export interface RunManifest {
   runtime?: { image: string; versions?: Record<string, string> } // set when the agent's container starts
 }
 
+// build: to a spec, ranked by the checks' score. invent (rethink a known product) and startup (an MVP for one person's
+// real problem): the agent designs the product; the checks only gate it and people's blind votes rank it, trying the
+// scenarios in both apps.
+export type TaskKind = 'build' | 'invent' | 'startup'
+
+// Whether people's votes rank the task rather than the checks' score.
+export const isVoted = (kind: string | undefined) => kind === 'invent' || kind === 'startup'
+
 export interface TaskSummary {
-  slug: string; title: Text; tagline: Text; time_limit_s: number; token_budget: number; check_count: number; hidden_count: number
+  slug: string; kind: TaskKind; title: Text; tagline: Text; scenarios: Text[] | null; time_limit_s: number; token_budget: number; check_count: number; hidden_count: number
   runs: number; agents: number; best: Run | null; leaderboard: Run[]
 }
 
@@ -78,7 +86,7 @@ export interface Rating { elo: number; votes: number; wins: number; losses: numb
 // One side of a blind pair: what shows the app, nothing that names the agent.
 // alias stands for the run until the vote: its shots are /api/v1/vote/<alias>/shot.jpg.
 export interface Contender { alias: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
-export interface Pair { id: string; task: string; task_title: Text; a: Contender; b: Contender; left: number }
+export interface Pair { id: string; task: string; task_title: Text; scenarios?: Text[]; a: Contender; b: Contender; left: number }
 export interface Reveal { a: Run['agent']; b: Run['agent'] }
 export type Winner = 'a' | 'b' | 'tie'
 
