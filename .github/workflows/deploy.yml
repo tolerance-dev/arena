@@ -1,6 +1,6 @@
 name: deploy
 
-# One button: Actions → deploy → Run workflow (or `gh workflow run deploy [-f ref=<sha>] [-f reset_db=true]`).
+# One button: Actions → deploy → Run workflow (or `gh workflow run deploy [-f ref=<sha>] [-f reset_db=true [-f wipe_people=true]]`).
 # Builds the backend, web, caddy and sandbox runtime images at the chosen commit (default: HEAD of main), pushes them to
 # GHCR, ships deploy/compose.yml, deploy/Caddyfile, deploy/config.alloy and deploy/server.sh to /opt/tolerance on the server, then runs
 # `server.sh deploy <sha>` there: DB dump, migrations, api/gateway/web swap, health check, automatic return to the
@@ -14,6 +14,10 @@ on:
         default: ""
       reset_db:
         description: Wipe the database first (only to start over; schema changes go through migrations. server.sh dumps it first and loads users and agents back)
+        type: boolean
+        default: false
+      wipe_people:
+        description: With reset_db, also drop users, sign-ins and agents instead of loading them back (the dump still has them)
         type: boolean
         default: false
 
@@ -119,7 +123,7 @@ jobs:
         run: printf '%s' "$TOKEN" | ssh prod "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
 
       - name: deploy on the server
-        run: ssh prod "bash /opt/tolerance/server.sh deploy ${{ steps.sha.outputs.sha }} ${{ inputs.reset_db && 'reset' || '' }}"
+        run: ssh prod "bash /opt/tolerance/server.sh deploy ${{ steps.sha.outputs.sha }} ${{ inputs.reset_db && (inputs.wipe_people && 'wipe' || 'reset') || '' }}"
 
       - name: registry logout on the server
         if: always()

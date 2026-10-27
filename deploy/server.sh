@@ -2,11 +2,12 @@
 # Runs ON the server (/opt/tolerance) as `deploy`, called by .github/workflows/deploy.yml after it has synced
 # compose.yml and Caddyfile next to this file and logged docker into ghcr.io.
 #
-#   server.sh deploy <sha> [reset]   pull images at <sha>, migrate, swap api/gateway/web,
+#   server.sh deploy <sha> [reset|wipe]  pull images at <sha>, migrate, swap api/gateway/web,
 #                                    health-check; on a failed health check the previous tag is started again
 #                                    (migrations are not reverted). Once healthy, a new worker starts and the old
 #                                    one drains in the background (swap_worker). `reset` wipes the database first
-#                                    (only to start over: schema changes are migrations, backend/migrations).
+#                                    (only to start over: schema changes are migrations, backend/migrations) and
+#                                    loads people and agents back; `wipe` does the same without bringing anything back.
 #   server.sh backup [label]         pg_dump into backups/ (keeps the newest 30); cron runs it daily, deploy before
 #                                    every swap (a failed dump stops a reset)
 #                                    and, when BACKUP_REMOTE is set in .env, an encrypted copy off the server
@@ -164,7 +165,8 @@ healthy() {
 }
 
 cmd_deploy() {
-  local tag=$1 reset=${2:-} prev
+  local tag=$1 reset=${2:-} keep=yes prev
+  if [ "$reset" = "wipe" ]; then reset=reset; keep=; fi
   # Caddy gets the certificates through Bunny DNS (see the Caddyfile): without the key it can't.
   if ! grep -q '^BUNNY_API_KEY=.' .env; then
     echo "BUNNY_API_KEY is missing from .env (Bunny's account API key, for Caddy's certificates; see the Caddyfile)" >&2
@@ -212,7 +214,7 @@ cmd_deploy() {
     exit 1
   fi
 
-  if [ "$reset" = "reset" ] && [ -n "$LAST_BACKUP" ]; then
+  if [ "$reset" = "reset" ] && [ -n "$keep" ] && [ -n "$LAST_BACKUP" ]; then
     echo "--- bring back ${KEEP_ON_RESET[*]}"
     if ! cmd_restore_rows "$LAST_BACKUP" "${KEEP_ON_RESET[@]}"; then
       echo "WARNING: rows did not fit the new schema; they are in $LAST_BACKUP" >&2
@@ -254,10 +256,10 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  deploy) cmd_deploy "${2:?usage: server.sh deploy <sha> [reset]}" "${3:-}" ;;
+  deploy) cmd_deploy "${2:?usage: server.sh deploy <sha> [reset|wipe]}" "${3:-}" ;;
   backup) cmd_backup "${2:-}" ;;
   offsite-get) cmd_offsite_get "${2:?usage: server.sh offsite-get <name>.dump.enc}" ;;
   restore) shift; cmd_restore "${1:?usage: server.sh restore <dump> [table...]}" "${@:2}" ;;
   status) cmd_status ;;
-  *) echo "usage: server.sh deploy <sha> [reset] | backup [label] | restore <dump> [table...] | status" >&2; exit 2 ;;
+  *) echo "usage: server.sh deploy <sha> [reset|wipe] | backup [label] | restore <dump> [table...] | status" >&2; exit 2 ;;
 esac
