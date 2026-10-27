@@ -589,6 +589,216 @@
         401,
         403
       ]
+    },
+    {
+      "name": "browser: the search box finds products",
+      "browser": {
+        "flow": "search",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "fill": "search",
+            "css": "input[type=search]",
+            "value": "earbuds",
+            "key": "Enter",
+            "open": "search"
+          },
+          {
+            "expect": [
+              "Oakline Wireless Earbuds"
+            ]
+          },
+          {
+            "absent": [
+              "Acme Smart Watch"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "browser: sign in with email and password, Enter submits",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/"
+          },
+          {
+            "signin": {
+              "email": "iris.kowalski@example.com",
+              "password": "pass009"
+            }
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "gives": "signin"
+      }
+    },
+    {
+      "name": "browser: still signed in after a reload",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
+    },
+    {
+      "name": "browser: Add to cart on the product page puts it in /cart",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/products/p1"
+          },
+          {
+            "click": "add to (cart|bag|basket)"
+          },
+          {
+            "goto": "/cart"
+          },
+          {
+            "expect": [
+              "Oakline Wireless Earbuds"
+            ]
+          }
+        ],
+        "needs": [
+          "signin"
+        ],
+        "gives": "cart"
+      }
+    },
+    {
+      "name": "browser: a new quantity in /cart updates the total",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "fill": "quantity|qty",
+            "css": "input[type=number]",
+            "value": "2",
+            "key": "Tab",
+            "or_click": "^\\s*\\+\\s*$|increase|plus"
+          },
+          {
+            "expect": [
+              "38"
+            ]
+          }
+        ],
+        "needs": [
+          "cart"
+        ]
+      }
+    },
+    {
+      "name": "browser: Checkout places the order, shown in /orders",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "check\\s*-?\\s*out|place (the |your )?order"
+          },
+          {
+            "click": "^\\W*(confirm|place (the |your )?order|pay)\\b",
+            "optional": true
+          },
+          {
+            "goto": "/orders"
+          },
+          {
+            "expect": [
+              "Oakline Wireless Earbuds"
+            ]
+          }
+        ],
+        "needs": [
+          "cart"
+        ],
+        "gives": "order"
+      }
+    },
+    {
+      "name": "browser: the cart is empty after checkout",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/cart"
+          },
+          {
+            "absent": [
+              "Oakline Wireless Earbuds"
+            ]
+          }
+        ],
+        "needs": [
+          "order"
+        ]
+      }
+    },
+    {
+      "name": "browser: sign out",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "click": "\\b(sign|log)\\s*-?\\s*out\\b",
+            "menu": "^\\W*IK\\W*$|\\bIris\\b|iris.kowalski|account|profile|user|avatar|menu"
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "reload": true
+          },
+          {
+            "control": "\\b(sign|log)\\s*-?\\s*in\\b"
+          },
+          {
+            "no_control": "\\b(sign|log)\\s*-?\\s*out\\b"
+          }
+        ],
+        "needs": [
+          "signin"
+        ]
+      }
+    },
+    {
+      "name": "browser: signed out, /orders shows no orders",
+      "browser": {
+        "flow": "account",
+        "steps": [
+          {
+            "goto": "/orders"
+          },
+          {
+            "absent": [
+              "Oakline Wireless Earbuds"
+            ]
+          }
+        ],
+        "needs": [
+          "order",
+          "signin"
+        ]
+      }
     }
   ]
 }

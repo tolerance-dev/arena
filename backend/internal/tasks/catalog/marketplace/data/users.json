@@ -54,5 +54,12 @@
     "email": "hugo.garcia@example.com",
     "password": "pass008",
     "address": "18 Market Street, Springfield"
+  },
+  {
+    "id": "u9",
+    "name": "Iris Kowalski",
+    "email": "iris.kowalski@example.com",
+    "password": "pass009",
+    "address": "19 Market Street, Springfield"
   }
 ]

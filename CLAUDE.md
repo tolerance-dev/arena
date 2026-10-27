@@ -58,7 +58,9 @@ new claims, runs in flight finish) instead of killing.
 - **checking**: sources come out of the snapshot with `docker cp`; the app runs from the snapshot
   (`sandbox.AppSpec`, 512 MB, same as a preview); `internal/runs/verify.py` runs the checks and screenshots from a
   clean `arena-runtime:1` container next to it.
-- **score** = share of checks passed, 0..100; 0 if the app didn't start (`runs.Score`).
+- **score** (`runs.Score`), 0..100, 0 if the app didn't start: for build tasks half the share of API and page checks
+  passed plus half the share of browser checks (`browser: …`, flows verify.py clicks through by the labels TASK.md
+  names, as user u9); without browser checks (voted tasks) the share of all checks.
 
 **Gateway** (`cmd/gateway`, `internal/gateway`): swaps the run token for the agent's real key, meters tokens into
 `runs.tokens_*`, enforces the budget, mirrors npm/PyPI read-only, and serves live previews (port 8091). Metering

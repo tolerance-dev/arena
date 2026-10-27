@@ -22,7 +22,9 @@ them, look at the rooms and book.
 
 ## The home page
 
-Right after start it shows a search form and the six cities by name (for example as popular destinations).
+Right after start it shows a search form and the six cities by name (for example as popular destinations). The form
+has the fields **City** (a text field or a list), **Check-in** and **Check-out** (date fields, or text fields that
+take `YYYY-MM-DD`) and **Guests**, and a **Search** button that shows the results.
 
 ## Pages
 
@@ -33,7 +35,11 @@ content from the first paint after load:
 - `/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2` — the results for those parameters, each
   hotel with its price for the whole stay.
 - `/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2` — the hotel `h2` with its rooms for those dates.
-- `/bookings` — the signed-in user's bookings.
+- `/bookings` — the signed-in user's bookings, each with its hotel's name and a **Cancel** button (a cancelled
+  booking leaves the list).
+
+On a hotel page each free room has a **Book** button that books it for the dates in the address (a confirmation step is
+fine). Every page has **Sign in** in its header (signed in: **Sign out**, there or in the account menu).
 
 ## API
 
@@ -60,8 +66,28 @@ fine; the listed ones must be there with these names. Dates are `YYYY-MM-DD`, pr
 
 ## How it is checked
 
-The score is the share of automatic checks passed, about thirty of them, on a fresh start of the app: the API above
-(search results and totals against the data, availability night by night, `inventory`, two users booking the same
-room, cancelling, who sees what) and the pages above rendering the right data; 0 if the app doesn't start. The pages
-are screenshotted on a desktop and a phone, and people compare apps built by different agents side by side in blind
-votes.
+On a fresh start of the app, in this order:
+
+1. About thirty checks of the API above (search results and totals against the data, availability night by night,
+   `inventory`, two users booking the same room, cancelling, who sees what) and of the pages above rendering the
+   right data.
+2. A robot clicks through the main flows in a real browser (Chromium, 1280×800) like a person would, each step a
+   check:
+   - **Search**: on `/` it fills **City**, **Check-in**, **Check-out** and **Guests** and clicks **Search**: the hotels
+     with a free room show up with their price for the stay, hotels of other cities don't.
+   - **Sign in**: on `/` it clicks a **Sign in** (or **Log in**) button or link, fills the email and password fields of
+     the form that opens (or of the page it leads to) and presses Enter. Then **Sign out** (or **Log out**) is there,
+     also after a reload: on the page, or in the menu that a button with the user's name (or "Account") opens.
+   - **Booking**: on `/hotels/{id}?check_in=…&check_out=…&guests=…` it clicks **Book** on a room (then **Confirm** if a
+     confirmation shows up); the booking is in `/bookings` with the hotel's name; it clicks **Cancel** there (then
+     **Yes** or **Confirm**), and after a reload the booking is gone.
+   - **Sign out**: it clicks **Sign out**, and **Sign in** shows up again, also after a reload.
+
+Buttons and links are found by their text or `aria-label` (case doesn't matter), fields by their label, placeholder,
+`name` or `aria-label`; the robot waits a few seconds for each text to show up, accepts browser dialogs (`confirm`) and
+signs in as a user of its own from `users.json`. A step that needs an earlier one (no cart without signing in) fails
+with it.
+
+The score is half the share of the API and page checks passed plus half the share of the browser checks passed; 0 if the
+app doesn't start. The pages are screenshotted on a desktop and a phone, and people compare apps built by different
+agents side by side in blind votes.

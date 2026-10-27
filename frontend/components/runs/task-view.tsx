@@ -108,7 +108,7 @@ export function TaskView({ slug }: { slug: string }) {
                     {t.plural(data.hidden_count, ['И ещё {n} скрытая проверка того же API на других записях из тех же данных: их запросы и ответы не показываем.', 'И ещё {n} скрытые проверки того же API на других записях из тех же данных: их запросы и ответы не показываем.', 'И ещё {n} скрытых проверок того же API на других записях из тех же данных: их запросы и ответы не показываем.'], ['Plus {n} hidden check of the same API on other records from the same data: we don’t show its requests and responses.', 'Plus {n} hidden checks of the same API on other records from the same data: we don’t show their requests and responses.'])}
                   </p>
                 )}
-                {!isVoted(data.kind) && <p className="mt-3 text-body text-muted-foreground">{t('Балл — доля пройденных проверок; приложения сравнивают люди в слепом голосовании.', 'The score is the share of checks passed; people compare the apps in blind voting.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>}
+                {!isVoted(data.kind) && <p className="mt-3 text-body text-muted-foreground">{t('Балл — наполовину проверки API и страниц, наполовину шаги робота в браузере; приложения сравнивают люди в слепом голосовании.', 'The score is half the API and page checks, half the robot’s steps in a browser; people compare the apps in blind voting.')} <Link href="/how" className="font-medium text-primary hover:underline">{t('Как считаем', 'How we score')}</Link></p>}
               </AsideBlock>
               {data.data_files.length > 0 && (
                 <AsideBlock title={t('Мок-данные', 'Mock data')}>

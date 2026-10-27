@@ -823,18 +823,36 @@ func (w *Worker) watchStatus(ctx context.Context, id, status string) (<-chan str
 	return stop, cancel
 }
 
-// Score is the share of automatic checks passed, 0..100; 0 when the app doesn't start.
+// BrowserPrefix starts the names of the browser scenario checks (gen_data.py, verify.py).
+const BrowserPrefix = "browser: "
+
+// Score is 0..100, 0 when the app doesn't start. With browser scenario checks (the build tasks) it is half the share
+// of the other checks passed (start, pages, API, hidden) plus half the share of the browser checks passed, so an app
+// whose API passes but whose UI can't be clicked through gets about 50. Without them (the voted tasks' entry checks)
+// it is the share of all checks passed.
 func Score(checks []Check, started bool) int {
 	if !started {
 		return 0
 	}
-	passed := 0
+	var api, apiOK, ui, uiOK int
 	for _, c := range checks {
-		if c.Passed {
-			passed++
+		if strings.HasPrefix(c.Name, BrowserPrefix) {
+			ui++
+			if c.Passed {
+				uiOK++
+			}
+		} else {
+			api++
+			if c.Passed {
+				apiOK++
+			}
 		}
 	}
-	return int(math.Round(100 * float64(passed) / float64(max(1, len(checks)))))
+	share := func(ok, n int) float64 { return float64(ok) / float64(max(1, n)) }
+	if ui == 0 {
+		return int(math.Round(100 * share(apiOK, api)))
+	}
+	return int(math.Round(50*share(apiOK, api) + 50*share(uiOK, ui)))
 }
 
 func untar(b []byte) map[string][]byte {

@@ -355,6 +355,8 @@ main{max-width:1180px;margin:0 auto;padding:20px}h2{margin:28px 0 12px;font-size
 .card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px #0001}.card .art{height:150px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:28px}
 .card .body{padding:10px 12px}.muted{color:#6b6b74;font-size:13px}.price{font-weight:700}.old{text-decoration:line-through;color:#999;margin-left:6px;font-weight:400}
 .row{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px}.row .card{flex:0 0 160px}.row .art{height:220px;font-size:16px;padding:12px;text-align:center}
+header a{color:#fff}button{padding:7px 12px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#1b1b1f;cursor:pointer}
+#auth{margin-left:auto;display:flex;gap:8px;align-items:center}#auth form{display:flex;gap:6px}#auth form[hidden]{display:none}#auth input{width:170px;flex:none}
 @media (max-width:600px){header{flex-wrap:wrap}main{padding:14px}}
 </style>
 <script>
@@ -363,13 +365,41 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const hue = (id) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
 const art = (id, text) => `<div class="art" style="background:linear-gradient(135deg,hsl(${hue(id)} 60% 45%),hsl(${(hue(id) + 60) % 360} 70% 30%))">${esc(text)}</div>`
 const get = (name) => fetch("/api/" + name).then((r) => r.json())
+// The API, with the token of the signed-in user: { ok, status, data }.
+const call = (method, p, body) => fetch("/api/" + p, { method, body: body ? JSON.stringify(body) : undefined,
+  headers: { "Content-Type": "application/json", ...(localStorage.token ? { Authorization: "Bearer " + localStorage.token } : {}) } })
+  .then(async (r) => ({ ok: r.ok, status: r.status, data: r.status === 204 ? null : await r.json().catch(() => null) }))
+// The #auth slot in the header: Sign in opens an email and password form (Enter submits); signed in, the email and Sign out.
+function auth() {
+  const el = $("#auth")
+  if (localStorage.token) {
+    el.innerHTML = `<span>${esc(localStorage.who || "")}</span><button id="signout">Sign out</button>`
+    $("#signout").onclick = () => { localStorage.removeItem("token"); localStorage.removeItem("who"); location.reload() }
+    return
+  }
+  el.innerHTML = `<button id="signin">Sign in</button><form id="login" hidden>
+    <input type="email" name="email" placeholder="Email" aria-label="Email" required>
+    <input type="password" name="password" placeholder="Password" aria-label="Password" required>
+    <button>Sign in</button><span id="loginerr"></span></form>`
+  $("#signin").onclick = () => { $("#login").hidden = false; $("#signin").hidden = true; $("#login").email.focus() }
+  $("#login").onsubmit = async (e) => {
+    e.preventDefault()
+    const f = e.target, r = await call("POST", "login", { email: f.email.value, password: f.password.value })
+    if (!r.ok) { $("#loginerr").textContent = "Wrong email or password"; return }
+    localStorage.token = r.data.token
+    localStorage.who = f.email.value
+    location.reload()
+  }
+}
 </script>'
 
 cat > ui/marketplace.html <<HTML
 <!doctype html><html lang="en"><head><title>Marketplace</title>$HEAD</head><body>
-<header><b>Marketplace</b><input id="q" placeholder="Search products" aria-label="Search products"></header>
+<header><b><a href="/" style="text-decoration:none">Marketplace</a></b><input id="q" placeholder="Search products" aria-label="Search products">
+<a href="/cart">Cart</a><a href="/orders">Orders</a><span id="auth"></span></header>
 <main><div class="chips" id="cats"></div><h2 id="heading">All products</h2><div class="grid" id="grid"></div></main>
 <script>
+auth()
 let cat = "", products = [], cats = []
 function draw() {
   const q = \$("#q").value.toLowerCase()
@@ -381,12 +411,50 @@ function draw() {
     <div class="muted">\${p.stock ? p.stock + " in stock" : "Sold out"}</div></div></div>\`).join("")
 }
 const params = new URLSearchParams(location.search)
+const wide = (html) => \`<div class="card" style="grid-column:1/-1"><div class="body">\${html}</div></div>\`
+const signedOut = (what) => wide(\`Sign in to see your \${what}.\`)
 if (location.pathname.startsWith("/products/")) {
   fetch("/api/products/" + location.pathname.split("/")[2]).then((r) => r.json()).then((p) => {
     \$("#heading").textContent = p.title
-    \$("#grid").innerHTML = \`<div class="card" style="grid-column:1/-1"><div class="body"><div class="price">\$\${p.price}</div>
+    \$("#grid").innerHTML = wide(\`<div class="price">\$\${p.price}</div>
       <div>\${esc(p.description)}</div><div class="muted">Sold by \${esc(p.seller.name)} · \${p.stock ? p.stock + " in stock" : "Sold out"}</div>
-      \${p.reviews.map((r) => \`<p>\${"★".repeat(r.rating)} \${esc(r.text)}</p>\`).join("")}</div></div>\`
+      <p><button id="add">Add to cart</button> <span id="added" class="muted"></span></p>
+      \${p.reviews.map((r) => \`<p>\${"★".repeat(r.rating)} \${esc(r.text)}</p>\`).join("")}\`)
+    \$("#add").onclick = async () => {
+      if (!localStorage.token) { \$("#added").textContent = "Sign in to add to the cart"; return }
+      const cart = await call("GET", "cart")
+      const have = (cart.data?.items || []).find((i) => i.product_id === p.id)?.quantity || 0
+      const r = await call("POST", "cart", { product_id: p.id, quantity: have + 1 })
+      \$("#added").innerHTML = r.ok ? \`In the cart: \${have + 1}. <a href="/cart">Go to the cart</a>\` : esc(r.data?.error || "Could not add")
+    }
+  })
+} else if (location.pathname === "/cart") {
+  \$("#heading").textContent = "Your cart"
+  const draw = async () => {
+    if (!localStorage.token) { \$("#grid").innerHTML = signedOut("cart"); return }
+    const c = (await call("GET", "cart")).data
+    \$("#grid").innerHTML = c.items.length ? wide(c.items.map((i) => \`<p>\${esc(i.title)} · \$\${i.price} ×
+        <input type="number" min="0" value="\${i.quantity}" aria-label="Quantity" data-id="\${i.product_id}" style="width:64px"> = \$\${i.subtotal}</p>\`).join("")
+      + \`<p class="price">Total: \$\${c.total}</p><button id="checkout">Checkout</button> <span id="err"></span>\`) : wide("Your cart is empty.")
+    if (\$("#checkout")) \$("#checkout").onclick = async () => {
+      const o = await call("POST", "orders")
+      if (o.ok) location.href = "/orders"
+      else \$("#err").textContent = o.data?.error || "Could not check out"
+    }
+  }
+  \$("#grid").onchange = async (e) => {
+    if (!e.target.dataset.id) return
+    const r = await call("POST", "cart", { product_id: e.target.dataset.id, quantity: Number(e.target.value) })
+    if (!r.ok) alert(r.data?.error || "Could not change the quantity")
+    draw()
+  }
+  draw()
+} else if (location.pathname === "/orders") {
+  \$("#heading").textContent = "Your orders"
+  if (!localStorage.token) \$("#grid").innerHTML = signedOut("orders")
+  else call("GET", "orders").then((r) => {
+    \$("#grid").innerHTML = r.data.orders.length ? r.data.orders.map((o) => wide(\`<div class="price">Order \${esc(o.id)} · \$\${o.total}</div>
+      \${o.items.map((i) => \`<div>\${esc(i.title)} × \${i.quantity} · \$\${i.price}</div>\`).join("")}\`)).join("") : wide("No orders yet.")
   })
 } else {
   \$("#q").value = params.get("q") || ""
@@ -399,35 +467,67 @@ HTML
 
 cat > ui/hotels.html <<HTML
 <!doctype html><html lang="en"><head><title>Hotel booking</title>$HEAD</head><body>
-<header><b>Stays</b></header>
+<header><b><a href="/" style="text-decoration:none">Stays</a></b><a href="/bookings">My bookings</a><span id="auth"></span></header>
 <main>
 <form id="search" class="chips" style="align-items:end">
   <label>City<br><select id="city"></select></label>
   <label>Check-in<br><input type="date" id="in" value="2027-02-10"></label>
   <label>Check-out<br><input type="date" id="out" value="2027-02-12"></label>
   <label>Guests<br><input type="number" id="guests" value="2" min="1" max="6" style="width:70px"></label>
+  <button>Search</button>
 </form>
 <h2>Popular destinations</h2><div class="grid" id="cities"></div>
 <h2 id="heading"></h2><div class="grid" id="hotels"></div>
 </main>
 <script>
-// /search and /hotels/{id} (deep links from TASK.md) render from the API; / shows the destinations.
+auth()
+// /search, /hotels/{id} and /bookings (deep links from TASK.md) render from the API; / shows the destinations.
 const params = new URLSearchParams(location.search)
 const stay = ["check_in", "check_out", "guests"].map((k) => k + "=" + encodeURIComponent(params.get(k) || "")).join("&")
 const card = (h, price) => \`<div class="card">\${art(h.id, "★".repeat(h.stars))}<div class="body"><a href="/hotels/\${h.id}?\${stay}">\${esc(h.name)}</a>
   <div class="muted">\${h.rating} · \${h.distance_to_center_km} km from the centre</div><div>\${price}</div></div></div>\`
+const wide = (html) => \`<div class="card" style="grid-column:1/-1"><div class="body">\${html}</div></div>\`
+\$("#search").onsubmit = (e) => {
+  e.preventDefault()
+  location.href = "/search?" + new URLSearchParams({ city: \$("#city").value, check_in: \$("#in").value, check_out: \$("#out").value, guests: \$("#guests").value })
+}
 if (location.pathname === "/search") {
   fetch("/api/search" + location.search).then((r) => r.json()).then((d) => {
     \$("#heading").textContent = "Hotels in " + params.get("city")
-    \$("#hotels").innerHTML = (d.hotels || []).map((h) => card(h, \`<span class="price">€\${h.price_total}</span> for the stay\`)).join("")
+    \$("#hotels").innerHTML = (d.hotels || []).map((h) => card(h, \`<span class="price">€\${h.price_total}</span> for the stay\`)).join("") || wide("No free hotels for these dates.")
   })
 } else if (location.pathname.startsWith("/hotels/")) {
   fetch("/api" + location.pathname + "?" + stay).then((r) => r.json()).then((h) => {
     \$("#heading").textContent = h.name
-    \$("#hotels").innerHTML = \`<div class="card" style="grid-column:1/-1"><div class="body">\${esc(h.description)}<div class="muted">\${esc(h.address)} · \${h.amenities.join(", ")}</div></div></div>\`
+    \$("#hotels").innerHTML = wide(\`\${esc(h.description)}<div class="muted">\${esc(h.address)} · \${h.amenities.join(", ")}</div>\`)
       + h.rooms.map((r) => \`<div class="card"><div class="body"><div>\${esc(r.type)} · up to \${r.capacity}</div>
-        <div class="muted">€\${r.price_per_night} / night</div><div><span class="price">€\${r.price_total ?? ""}</span> \${r.available ? "free" : "not available"}</div></div></div>\`).join("")
+        <div class="muted">€\${r.price_per_night} / night</div><div><span class="price">€\${r.price_total ?? ""}</span> \${r.available ? "free" : "not available"}</div>
+        \${r.available ? \`<button data-room="\${r.id}">Book</button>\` : ""}</div></div>\`).join("") + '<p id="err"></p>'
   })
+  \$("#hotels").onclick = async (e) => {
+    const room = e.target.dataset.room
+    if (!room) return
+    if (!localStorage.token) { \$("#err").textContent = "Sign in to book"; return }
+    const r = await call("POST", "bookings", { room_id: room, check_in: params.get("check_in"), check_out: params.get("check_out"), guests: Number(params.get("guests") || 1) })
+    if (r.ok) location.href = "/bookings"
+    else \$("#err").textContent = r.data?.error || "Could not book"
+  }
+} else if (location.pathname === "/bookings") {
+  \$("#heading").textContent = "My bookings"
+  const draw = async () => {
+    if (!localStorage.token) { \$("#hotels").innerHTML = wide("Sign in to see your bookings."); return }
+    const [b, hs] = await Promise.all([call("GET", "bookings"), get("hotels")])
+    const name = Object.fromEntries(hs.map((h) => [h.id, h.name]))
+    \$("#hotels").innerHTML = b.data.bookings.map((x) => wide(\`<div class="price">\${esc(name[x.hotel_id] || x.hotel_id)}</div>
+      <div>\${x.check_in} → \${x.check_out} · \${x.guests} guests · €\${x.total}</div><button data-id="\${x.id}">Cancel</button>\`)).join("") || wide("No bookings yet.")
+  }
+  \$("#hotels").onclick = async (e) => {
+    const id = e.target.dataset.id
+    if (!id || !confirm("Cancel this booking?")) return
+    await call("DELETE", "bookings/" + id)
+    draw()
+  }
+  draw()
 }
 let hotels = [], rooms = []
 function show(city) {
@@ -454,9 +554,11 @@ HTML
 cat > ui/cinema.html <<HTML
 <!doctype html><html lang="en"><head><title>Online cinema</title>$HEAD</head><body style="background:#111;color:#eee">
 <header><b><a href="/" style="color:#fff;text-decoration:none">Cinema</a></b>
-<form action="/search" style="flex:1"><input name="q" placeholder="Search titles" aria-label="Search titles"></form></header>
+<form action="/search" style="flex:1"><input name="q" placeholder="Search titles" aria-label="Search titles"></form>
+<a href="/watchlist">My list</a><span id="auth"></span></header>
 <main id="rows"></main>
 <script>
+auth()
 // /titles/{id}, /search and /watchlist (deep links from TASK.md) render from the API; / shows the home rows.
 const card = (m) => \`<div class="card" style="background:#1d1d22;color:#eee"><a href="/titles/\${m.id}" style="color:inherit">
   \${art(m.id, m.title)}</a><div class="body"><div>\${esc(m.title)}</div><div class="muted">\${m.year} · ★ \${m.rating}\${m.premium ? " · Premium" : ""}</div></div></div>\`
@@ -467,13 +569,29 @@ if (path.startsWith("/titles/")) {
   api("titles/" + path.split("/")[2]).then((m) => {
     \$("#rows").innerHTML = \`<h2>\${esc(m.title)}</h2><p>\${esc(m.description)}</p>
       <p class="muted">\${m.year} · \${m.genres.join(", ")} · \${m.age_rating} · \${m.duration_min ? m.duration_min + " min" : m.seasons.length + " seasons"}</p>
-      <p>Director: \${esc(m.director)}</p><p class="muted">Cast: \${m.cast.map(esc).join(", ")}</p>\`
+      <p>Director: \${esc(m.director)}</p><p class="muted">Cast: \${m.cast.map(esc).join(", ")}</p>
+      <p><button id="mylist">+ My list</button> <span id="note" class="muted"></span></p>\`
+    \$("#mylist").onclick = async () => {
+      if (!localStorage.token) { \$("#note").textContent = "Sign in to keep a list"; return }
+      const r = await call("PUT", "watchlist/" + m.id)
+      \$("#note").innerHTML = r.ok ? 'In your list. <a href="/watchlist" style="color:inherit">Open My list</a>' : esc(r.data?.error || "Could not add")
+    }
   })
 } else if (path === "/search") {
   const q = new URLSearchParams(location.search).get("q") || ""
   api("titles?q=" + encodeURIComponent(q)).then((d) => { \$("#rows").innerHTML = row("Results for " + q, d.titles) })
 } else if (path === "/watchlist") {
-  api("watchlist").then((d) => { \$("#rows").innerHTML = d.titles ? row("My list", d.titles) : "<h2>Sign in to see your list</h2>" })
+  const draw = () => api("watchlist").then((d) => {
+    \$("#rows").innerHTML = !d.titles ? "<h2>Sign in to see your list</h2>" : \`<h2>My list</h2>\` + (d.titles.length
+      ? \`<div class="row">\${d.titles.map((m) => card(m).replace("</div></div></div>", \`</div><button data-id="\${m.id}">Remove</button></div></div>\`)).join("")}</div>\`
+      : '<p class="muted">Nothing here yet.</p>')
+  })
+  \$("#rows").onclick = async (e) => {
+    if (!e.target.dataset.id) return
+    await call("DELETE", "watchlist/" + e.target.dataset.id)
+    draw()
+  }
+  draw()
 } else {
   Promise.all([api("home"), get("movies"), get("genres")]).then(([home, movies, genres]) => {
     \$("#rows").innerHTML = (home.continue_watching?.length ? row("Continue watching", home.continue_watching) : "")

@@ -55,6 +55,8 @@ hostels and events are invented. Times are local (UTC+3), prices in rubles.
 
 ## How it is checked
 
-There is no fixed API and no list of features to tick off. The automatic checks only gate the run: the app starts
-and `/` serves HTML; the score of a run that passes them is 100. The ranking comes from people: the pages are
-screenshotted on a desktop and a phone, and people use the live apps of two agents side by side in blind votes.
+There is no fixed API and no list of features to tick off. The automatic checks only gate the run: the app starts, `/`
+serves HTML, and its first screen, right after load, already shows Petya's trip: at least three places from
+`places.json` by name (the part before any brackets is enough). The score of a run that passes them is 100. The ranking
+comes from people: the pages are screenshotted on a desktop and a phone, and people use the live apps of two agents side
+by side in blind votes.

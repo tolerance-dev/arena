@@ -46,5 +46,11 @@
     "name": "Hugo Garcia",
     "email": "hugo.garcia@example.com",
     "password": "pass008"
+  },
+  {
+    "id": "u9",
+    "name": "Iris Kowalski",
+    "email": "iris.kowalski@example.com",
+    "password": "pass009"
   }
 ]
