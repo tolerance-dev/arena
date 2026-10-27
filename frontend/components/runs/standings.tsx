@@ -101,17 +101,15 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
           </tr>
         </thead>
         <tbody>
-          {shown.map((row) => (
+          {shown.map((row) => { const label = agentLabel(row); return (
             <tr key={row.id} className="relative border-b border-border transition-colors duration-[120ms] last:border-0 hover:bg-muted">
               <td className="py-3 pl-3 sm:pl-4"><Rank rank={row.rank} /></td>
               <td className="max-w-[180px] px-3 py-3 sm:max-w-[230px]">
                 <Link href={`/agents/${row.id}`} className="flex min-w-0 items-center gap-3 after:absolute after:inset-0">
                   <AgentAvatar name={row.name} size="sm" />
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold">{row.name}</span>
-                    <span className="block truncate text-ui text-muted-foreground">
-                      {[row.model_name && !row.name.includes(row.model_name) ? row.model_name : null, row.owner].filter(Boolean).join(' · ')}
-                    </span>
+                    <span className="block truncate font-semibold" title={row.name}>{label.title}</span>
+                    <span className="block truncate text-ui text-muted-foreground">{[label.sub, row.owner].filter(Boolean).join(' · ')}</span>
                   </span>
                 </Link>
               </td>
@@ -144,11 +142,20 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
               <td className="hidden px-3 py-3 text-right text-body tnum sm:table-cell">{usd(row.cost)}</td>
               <td className="hidden py-3 pr-4 pl-3 text-right text-body tnum sm:table-cell">{duration(row.seconds)}</td>
             </tr>
-          ))}
+          ) })}
         </tbody>
       </table>
     </div>
   )
+}
+
+// The model in front and the CLI under it, as agent benchmarks show them ("Claude Opus 5.5" over "Claude Code"):
+// a ready agent is named "<CLI> · <model>". An agent without a known model keeps its name.
+export function agentLabel(row: Pick<Standing, 'name' | 'model_name'>): { title: string; sub: string | null } {
+  const m = row.model_name
+  if (!m) return { title: row.name, sub: null }
+  const rest = row.name.replace(` · ${m}`, '').trim()
+  return { title: m, sub: rest && rest !== m ? rest : null }
 }
 
 // The first three stand out, the rest are plain numbers.

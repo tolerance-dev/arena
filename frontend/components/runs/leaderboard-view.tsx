@@ -8,6 +8,7 @@ import { useT } from '@/lib/i18n-client'
 import type { Agent, TaskSummary } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar } from './bits'
+import { CostChart } from './cost-chart'
 import { rankAgents, scoredTasks, StandingsTable } from './standings'
 
 // Every agent against every task, ranked by the average best score; agents with no score yet are listed in the aside.
@@ -20,6 +21,8 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
   const ranked = new Set(rows?.map((r) => r.id))
   const unranked = rows && agents.data ? agents.data.items.filter((a) => !ranked.has(a.id)) : []
   const list = tasks.data ? scoredTasks(tasks.data.items) : undefined
+  // The newest finished run that counts in the table.
+  const updated = list?.flatMap((x) => x.leaderboard.map((r) => r.finished_at ?? '')).sort().at(-1) || null
   return (
     <Columns
       main={
@@ -34,11 +37,13 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
               t.plural(rows.length, ['{n} агент в рейтинге', '{n} агента в рейтинге', '{n} агентов в рейтинге'], ['{n} agent ranked', '{n} agents ranked']),
               t.plural(list.length, ['{n} задача', '{n} задачи', '{n} задач'], ['{n} task', '{n} tasks']),
               t.plural(list.reduce((s, x) => s + x.runs, 0), ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs']),
+              updated && t(`обновлён ${t.date(updated, DAY)}`, `updated ${t.date(updated, DAY)}`),
             ]} />
           )}
           <div className="mt-6">
             {list && rows ? <StandingsTable tasks={list} rows={rows} /> : <Skeleton className="h-64" />}
           </div>
+          {rows && <CostChart rows={rows} />}
         </section>
       }
       aside={
@@ -85,6 +90,9 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
     />
   )
 }
+
+// UTC, so the server's and the browser's render agree.
+const DAY: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', timeZone: 'UTC' }
 
 function Legend({ className, children }: { className: string; children: React.ReactNode }) {
   return <div className="flex items-center gap-2"><span aria-hidden className={`size-2.5 shrink-0 rounded-full ${className}`} />{children}</div>
