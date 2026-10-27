@@ -15,7 +15,7 @@ export interface ExampleModel { slug: string; name: string; ids: Record<string, 
 
 export interface Agent {
   id: string; name: string; description: string; provider: 'anthropic' | 'openai' | 'google' | 'orcarouter' | 'claude-sub' | 'chatgpt-sub'
-  key_hint?: string; files: number; owner: string; runs: number; best_score: number | null; created_at: string
+  key_hint?: string; files: number; owner: string; runs: number; created_at: string
   // A ready agent's model; price absent when unknown or on a subscription; typical = average finished run on it.
   model?: string; model_name?: string; price?: Price; rate?: Rate; spent_usd?: number
   // The ready agent (CLI) it was made from; absent for an uploaded one.
@@ -93,7 +93,10 @@ export interface Rating { elo: number; ci: number; provisional: boolean; votes: 
 // alias stands for the run until the vote: its shots are /api/v1/vote/<alias>/shot.jpg.
 export interface Contender { alias: string; has_shot: boolean; has_shot_mobile: boolean; preview_url?: string }
 export interface Pair { id: string; task: string; task_title: Text; scenarios?: Text[]; a: Contender; b: Contender; left: number }
-export interface Reveal { a: Run['agent']; b: Run['agent'] }
+export interface Reveal {
+  a: Run['agent']; b: Run['agent']
+  counts_at?: string // a new account's votes count from then on (absent once they do)
+}
 export type Winner = 'a' | 'b' | 'tie'
 
 // The weekly tournament (GET /admin/tournament): the site owner's ready agents at every task, `rounds` runs each.
@@ -102,6 +105,11 @@ export interface TournamentRecord {
   id: string; week: string | null // null: started by hand
   created_at: string; runs: number; open: number; done: number; failed: number
   cost_usd: number // at list price, a subscription included
+}
+// Runs scored by older checks that a recheck of their kept snapshot would bring back into the rankings.
+export interface RecheckState {
+  stale: number; queued: number
+  failed: number // rechecks that ended in a platform error (counted in stale too)
 }
 export interface Tournament {
   can_manage: boolean // the viewer is the site owner

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Square } from 'lucide-react'
+import { ChevronRight, Eye, Square } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -66,6 +66,10 @@ export function LiveRuns({ runs, empty, onChange, recent = true }: { runs: Run[]
   // Runs that finished meanwhile drop out of the selection.
   const selected = active.filter((r) => picked.has(r.id)).map((r) => r.id)
   const all = active.length > 0 && selected.length === active.length
+  // Two runs building side by side: the picked ones if two are, else the first two.
+  const building = active.filter((r) => r.status === 'agent')
+  const pickedBuilding = building.filter((r) => picked.has(r.id))
+  const watch = (pickedBuilding.length === 2 ? pickedBuilding : building.slice(0, 2)).map((r) => r.id)
   const toggle = (id: string) => setPicked((p) => {
     const next = new Set(p)
     if (!next.delete(id)) next.add(id)
@@ -88,6 +92,11 @@ export function LiveRuns({ runs, empty, onChange, recent = true }: { runs: Run[]
       <section>
         <SectionTitle count={active.length || undefined} aside={active.length > 0 && (
           <span className="flex items-center gap-3">
+            {watch.length === 2 && (
+              <Link href={`/watch?runs=${watch.join(',')}`} className="inline-flex items-center gap-1.5 text-ui font-medium text-primary hover:underline">
+                <Eye className="size-4" />{t('Смотреть вживую', 'Watch live')}
+              </Link>
+            )}
             <label className="flex cursor-pointer items-center gap-2 text-ui text-muted-foreground">
               <input type="checkbox" className="size-4 accent-primary" checked={all}
                 onChange={() => setPicked(all ? new Set() : new Set(active.map((r) => r.id)))} />

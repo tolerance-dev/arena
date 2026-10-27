@@ -74,7 +74,6 @@ type Agent struct {
 	Files     int       `json:"files"`
 	Owner     string    `json:"owner"`
 	Runs      int       `json:"runs"`
-	BestScore *int      `json:"best_score"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -404,7 +403,6 @@ func normalizeBundle(bundle []byte) ([]byte, int, error) {
 
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.example, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
 	(SELECT count(*) FROM runs r WHERE r.agent_id = a.id),
-	(SELECT max(score) FROM runs r WHERE r.agent_id = a.id AND r.status = 'done'),
 	m.n, m.secs, m.tin, m.tout, m.tcr, m.tcw, o.tin, o.tout, o.tcr, o.tcw
 	FROM agents a JOIN users u ON u.id = a.owner_id
 	LEFT JOIN LATERAL (SELECT coalesce(sum(r.tokens_in), 0) AS tin, coalesce(sum(r.tokens_out), 0) AS tout,
@@ -432,7 +430,7 @@ func scan(row pgx.Row, withKey bool) (Agent, error) {
 	var ms, mi, mo, mr, mw *float64
 	var oi, oo, ocr, ocw int64
 	err := row.Scan(&a.ID, &a.Name, &a.Description, &a.Provider, &a.Example, &a.Model, &a.KeyHint, &a.Files, &a.Owner, &a.CreatedAt,
-		&a.Runs, &a.BestScore, &mn, &ms, &mi, &mo, &mr, &mw, &oi, &oo, &ocr, &ocw)
+		&a.Runs, &mn, &ms, &mi, &mo, &mr, &mw, &oi, &oo, &ocr, &ocw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return a, httpx.NotFound()
 	}

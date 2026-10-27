@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useT } from '@/lib/i18n-client'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
@@ -8,9 +9,9 @@ import { Feed, Meta } from '@/components/ui/feed'
 import type { Agent, Run, TaskSummary } from '@/lib/types'
 import { providerLabel } from '@/lib/providers'
 import { usePoll } from '@/lib/use-poll'
-import { AgentAvatar, Score } from './bits'
+import { AgentAvatar, Score, SpreadNote } from './bits'
 import { RunRow } from './run-row'
-import { rankAgents } from './standings'
+import { rankAgents, scoredTasks } from './standings'
 
 
 // One agent: who it is, what it built (every run as a showcase card) and its standing in the aside.
@@ -59,11 +60,26 @@ export function AgentView({ id }: { id: string }) {
             <dl className="space-y-3">
               <Stat label={t('Место', 'Place')} value={mine ? `#${mine.rank}` : '—'} sub={ranked && mine ? t(`из ${ranked.length}`, `of ${ranked.length}`) : undefined} />
               <Stat label={t('Средняя оценка', 'Average score')} value={mine ? <Score score={mine.average} /> : '—'} />
-              <Stat label={t('Лучшая оценка', 'Best score')} value={<Score score={a.best_score} />} />
               <Stat label={t('Задач решено', 'Tasks solved')} value={tasks.data ? `${completed}/${tasks.data.items.length}` : '—'} />
               <Stat label={t('Приложение запустилось', 'App started')} value={started != null ? `${started}%` : '—'} />
               <Stat label={t('Прогонов', 'Runs')} value={a.runs} />
             </dl>
+            {mine && tasks.data && (
+              <dl className="mt-4 space-y-3 border-t border-border pt-4">
+                {scoredTasks(tasks.data.items).map((x) => {
+                  const run = mine.cells[x.slug]
+                  return (
+                    <div key={x.slug} className="flex items-baseline justify-between gap-3">
+                      <dt className="min-w-0 truncate text-body text-muted-foreground">{t.text(x.title)}</dt>
+                      <dd className="text-right text-title font-semibold tnum">
+                        {run ? <Link href={`/r/${run.id}`} className="hover:underline"><Score score={run.score} /></Link> : <Score score={null} />}
+                        {run && <SpreadNote run={run} />}
+                      </dd>
+                    </div>
+                  )
+                })}
+              </dl>
+            )}
           </AsideBlock>
         }
       />

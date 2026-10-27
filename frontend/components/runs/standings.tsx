@@ -99,7 +99,7 @@ export function StandingsTable({ tasks: all, rows }: { tasks: TaskSummary[]; row
             <th className="h-12 px-3 font-medium text-faint">{t('Агент', 'Agent')}</th>
             {head('average', t('Оценка', 'Score'), t('Среднее медианных оценок по всем задачам, 0–100', 'Average of the median scores over every task, 0–100'), 'pr-4 sm:pr-3')}
             {tasks.map((x) => head(`task:${x.slug}`, <><TaskGlyph slug={x.slug} className="size-4 shrink-0" /><span>{t.text(x.title)}</span></>,
-              t(`Лучшая оценка в задаче «${t.text(x.title)}»`, `Best score at “${t.text(x.title)}”`), 'hidden px-1.5 text-center md:table-cell', true))}
+              t(`Медианная оценка в задаче «${t.text(x.title)}»`, `Median score at “${t.text(x.title)}”`), 'hidden px-1.5 text-center md:table-cell', true))}
             {head('cost', t('Цена', 'Cost'), t('Средняя цена медианного прогона по прейскуранту модели', 'Average cost of a median run at the model’s list price'), 'hidden text-right sm:table-cell')}
             {head('seconds', t('Время', 'Time'), t('Сколько в среднем работал агент', 'How long the agent worked, on average'), 'hidden pr-4 text-right sm:table-cell')}
           </tr>

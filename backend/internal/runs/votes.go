@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -222,6 +223,8 @@ func (s *Service) VoteShot(ctx context.Context, side, column string) ([]byte, er
 type Reveal struct {
 	A AgentRef `json:"a"`
 	B AgentRef `json:"b"`
+	// CountsAt is when the voter's account is voteAccountAge old and their votes start counting (absent once they do).
+	CountsAt *time.Time `json:"counts_at,omitempty"`
 }
 
 // Vote records userID's pick in the pair they were handed, or in a guest's pair (a guest signs in to vote): winner is
@@ -267,11 +270,13 @@ func (s *Service) Vote(ctx context.Context, userID, pairID, winner string) (Reve
 			winner = "a"
 		}
 	}
+	var countsAt *time.Time
 	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		var blocked bool
 		var own int
-		if err := tx.QueryRow(ctx, `SELECT u.blocked, (SELECT count(*) FROM agents WHERE id IN ($2, $3) AND owner_id = u.id)
-			FROM users u WHERE u.id = $1`, userID, ra.Agent.ID, rb.Agent.ID).Scan(&blocked, &own); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT u.blocked, (SELECT count(*) FROM agents WHERE id IN ($2, $3) AND owner_id = u.id),
+				CASE WHEN u.created_at > now() - $4::interval THEN u.created_at + $4::interval END
+			FROM users u WHERE u.id = $1`, userID, ra.Agent.ID, rb.Agent.ID, voteAccountAge).Scan(&blocked, &own, &countsAt); err != nil {
 			return err
 		}
 		if blocked {
@@ -294,7 +299,11 @@ func (s *Service) Vote(ctx context.Context, userID, pairID, winner string) (Reve
 	if err != nil {
 		return Reveal{}, err
 	}
-	return Reveal{A: ra.Agent, B: rb.Agent}, nil
+	if countsAt != nil {
+		u := countsAt.UTC()
+		countsAt = &u
+	}
+	return Reveal{A: ra.Agent, B: rb.Agent, CountsAt: countsAt}, nil
 }
 
 // CachedRatings is Ratings kept for publicTTL: every run page and task page asks for it.
