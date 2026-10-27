@@ -21,14 +21,17 @@ default habits:
   colours, type and radii from `globals.css`. Only real data: no upvotes, categories or search until the backend
   has them, an empty state instead of placeholders, no blocks that repeat another page.
 - **Throw code away** when the concept changes (code, routes, pages, tests) rather than keeping it compatible.
-- **No deploys or prod work by you**: never run `gh workflow run deploy` or touch the server or DNS (Bunny,
-  Cloudflare; how they fit: `deploy/README.md` → Domains). When a change needs a deploy, give the user the command
-  (`gh workflow run deploy`; `-f ref=<sha>` rolls back; schema changes need no flag, `-f reset_db=true` only wipes). A hand change on
-  the server that must survive goes into `deploy/` (`deploy/README.md`).
-- **Git: PRs merged by you.** `main` is protected. Branch from fresh `origin/main`, push, `gh pr create`, and once
-  it is clean against `main`, test-fast passes and CI is green (`gh pr checks --watch`), `gh pr merge --squash`.
-  Give the PR link. Never push to `main` or weaken the protection. Other sessions merge into `main` all the time:
-  rebase before merging.
+- **One PR per worktree, merged only after the user's ok.** Everything done in a worktree, several features
+  included, goes into its one PR; no PR per small change. Don't commit after each change either: work piles up
+  uncommitted until the user asks to commit. Whenever the frontend changes, bring it up on `make dev`
+  and give the user `http://localhost:$WEB_PORT/...` links to the exact pages, then wait. No merge and no deploy
+  until the user explicitly approves. After approval: rebase on fresh `origin/main` (other sessions merge all the
+  time), test-fast passes, CI green (`gh pr checks --watch`), `gh pr merge --squash`, give the PR link. `main` is
+  protected: never push to it or weaken the protection.
+- **Deploy only when the user okayed prod**, not just the merge: `gh workflow run deploy` (check none is running:
+  `gh run list --workflow deploy`; `-f ref=<sha>` rolls back; schema changes need no flag, `-f reset_db=true` only
+  wipes), watch it, check https://tolerance.cc. Server and DNS (Bunny, Cloudflare): `deploy/README.md` → Domains; a
+  hand change on the server that must survive goes into `deploy/`.
 - **Docs**: `README.md` (Russian) is a short pitch + how to run. Update this file only with what would trip up the
   next session.
 
