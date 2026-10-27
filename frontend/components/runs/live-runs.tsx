@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Square } from 'lucide-react'
 import { SectionTitle } from '@/components/page-header'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { post } from '@/lib/api'
+import { errorText } from '@/lib/errors'
 import { compact, duration, usd, usedTokens } from '@/lib/format'
 import type { T } from '@/lib/i18n'
 import { useT } from '@/lib/i18n-client'
@@ -49,18 +52,64 @@ export function outcome(run: Run, t: T): { text: string; tone: 'good' | 'bad' | 
 }
 
 // What is running right now (each run's stage, clock, tokens and last step) and what just finished, with why.
-export function LiveRuns({ runs, empty }: { runs: Run[]; empty?: string }) {
+// Active runs can be ticked and cancelled together; the API lets only their owner (or an admin) do it.
+export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: string; onChange?: () => void }) {
   const t = useT()
   const now = useNow()
   const active = runs.filter(isActive).sort((a, b) => a.created_at.localeCompare(b.created_at))
   const finished = runs.filter((r) => !isActive(r)).slice(0, 8)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [confirm, setConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  // Runs that finished meanwhile drop out of the selection.
+  const selected = active.filter((r) => picked.has(r.id)).map((r) => r.id)
+  const all = active.length > 0 && selected.length === active.length
+  const toggle = (id: string) => setPicked((p) => {
+    const next = new Set(p)
+    if (!next.delete(id)) next.add(id)
+    return next
+  })
+  async function cancel() {
+    if (!confirm) { setConfirm(true); return }
+    setConfirm(false)
+    setBusy(true)
+    setErr('')
+    const results = await Promise.allSettled(selected.map((id) => post(`/my/runs/${id}/cancel`)))
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+    if (failed) setErr(errorText(failed.reason, t))
+    setPicked(new Set())
+    setBusy(false)
+    onChange?.()
+  }
   return (
     <div className="space-y-10">
       <section>
-        <SectionTitle count={active.length || undefined}>{t('Сейчас идёт', 'Running now')}</SectionTitle>
+        <SectionTitle count={active.length || undefined} aside={active.length > 0 && (
+          <span className="flex items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-ui text-muted-foreground">
+              <input type="checkbox" className="size-4 accent-primary" checked={all}
+                onChange={() => setPicked(all ? new Set() : new Set(active.map((r) => r.id)))} />
+              {t('Выбрать все', 'Select all')}
+            </label>
+            {selected.length > 0 && (
+              <Button variant="destructive" size="sm" disabled={busy} onClick={() => void cancel()} onBlur={() => setConfirm(false)}>
+                <Square /> {confirm ? t(`Отменить ${selected.length}? Нажмите ещё раз`, `Cancel ${selected.length}? Press again`) : t(`Отменить выбранные: ${selected.length}`, `Cancel selected: ${selected.length}`)}
+              </Button>
+            )}
+          </span>
+        )}>{t('Сейчас идёт', 'Running now')}</SectionTitle>
+        {err && <p role="alert" className="mb-3 text-body text-destructive">{err}</p>}
         {active.length === 0 ? <EmptyState>{empty ?? t('Сейчас ничего не идёт. Выберите задачу у агента ниже и нажмите «Запустить».', 'Nothing is running. Pick a task for an agent below and press “Start”.')}</EmptyState> : (
           <ul className="grid gap-3 lg:grid-cols-2">
-            {active.map((r) => <li key={r.id}><LiveCard run={r} now={now} /></li>)}
+            {active.map((r) => (
+              <li key={r.id} className="relative">
+                <LiveCard run={r} now={now} picked={picked.has(r.id)} />
+                {/* Outside the card's link: a checkbox can't sit inside an <a>. */}
+                <input type="checkbox" className="absolute top-[1.4rem] left-4 size-4 cursor-pointer accent-primary" checked={picked.has(r.id)}
+                  onChange={() => toggle(r.id)} aria-label={t(`Выбрать прогон ${r.agent.name}`, `Select run of ${r.agent.name}`)} />
+              </li>
+            ))}
           </ul>
         )}
       </section>
@@ -88,14 +137,14 @@ function RunTitle({ run }: { run: Run }) {
   )
 }
 
-function LiveCard({ run, now }: { run: Run; now: number }) {
+function LiveCard({ run, now, picked }: { run: Run; now: number; picked: boolean }) {
   const t = useT()
   const secs = agentElapsed(run, now) ?? 0
   const pct = run.status === 'agent' ? Math.min(100, (100 * secs) / Math.max(1, run.time_limit_s)) : run.status === 'checking' ? 100 : 0
   const used = usedTokens(run.tokens)
   const step = lastStep(run)
   return (
-    <Link href={`/r/${run.id}`} className="group block rounded-xl border-2 border-border p-4 transition-colors hover:border-border-strong">
+    <Link href={`/r/${run.id}`} className={cn('group block rounded-xl border-2 p-4 pl-11 transition-colors', picked ? 'border-primary' : 'border-border hover:border-border-strong')}>
       <div className="flex items-start gap-3">
         <AgentAvatar name={run.agent.name} size="sm" />
         <RunTitle run={run} />

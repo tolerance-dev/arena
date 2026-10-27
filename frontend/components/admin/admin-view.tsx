@@ -79,7 +79,7 @@ export function AdminView() {
               <Switches settings={o.settings} open={o.queued + o.running} act={act} />
               {tournament.data && <TournamentBlock tour={tournament.data} act={act} />}
               <SpendBlock spend={o.spend} />
-              {live.data && <LiveRuns runs={live.data.items} empty={t('Ничего не запущено.', 'Nothing is running.')} />}
+              {live.data && <LiveRuns runs={live.data.items} empty={t('Ничего не запущено.', 'Nothing is running.')} onChange={reload} />}
               <Users users={o.users} act={act} />
             </div>
           }
