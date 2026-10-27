@@ -9,7 +9,7 @@ import { compact, duration, usd, usedTokens } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import type { Rating, Run } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { AgentAvatar, CheckStrip, exitLabel, RunShot, Score, Stack } from './bits'
+import { AgentAvatar, CheckStrip, exitLabel, RatingValue, RunShot, Score, Stack } from './bits'
 
 type Row = {
   label: string
@@ -39,12 +39,12 @@ export function Compare({ runs, ratings = {} }: { runs: Run[]; ratings?: Record<
       title: t('Результат', 'Result'),
       rows: [
         { label: t('Оценка', 'Score'), cell: (r) => <Score score={r.score} className="text-section" />, value: (r) => r.score, better: 'high' },
-        // People's Elo, once anyone has voted at this task.
+        // People's rating, once anyone has voted at this task.
         ...(Object.keys(ratings).length ? [{
-          label: t('Люди (Elo)', 'People (Elo)'), hint: t('По слепым голосам людей на /vote', 'From people’s blind votes on /vote'),
+          label: t('Люди', 'People'), hint: t('Рейтинг по слепым голосам на /vote, ± — 95% интервал', 'Rating from blind votes on /vote, ± is the 95% interval'),
           cell: (r: Run) => {
             const p = ratings[r.agent.id]
-            return p ? <span><span className="font-semibold tnum">{p.elo}</span><span className="block text-meta text-faint">{t.plural(p.votes, ['{n} голос', '{n} голоса', '{n} голосов'], ['{n} vote', '{n} votes'])}</span></span> : <span className="text-faint">—</span>
+            return p ? <span><RatingValue r={p} /><span className="block text-meta text-faint">{p.provisional ? t('мало голосов', 'few votes') + ' · ' : ''}{t.plural(p.votes, ['{n} голос', '{n} голоса', '{n} голосов'], ['{n} vote', '{n} votes'])}</span></span> : <span className="text-faint">—</span>
           },
           value: (r: Run) => ratings[r.agent.id]?.elo ?? null, better: 'high' as const,
         }] : []),

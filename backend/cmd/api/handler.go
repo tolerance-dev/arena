@@ -19,7 +19,6 @@ import (
 	"tolerance/internal/platform/idgen"
 	"tolerance/internal/platform/ratelimit"
 	"tolerance/internal/runs"
-	"tolerance/internal/sandbox"
 )
 
 type deps struct {
@@ -34,7 +33,7 @@ type deps struct {
 }
 
 // newHandler is ALL the routing. Reads are public; any signed-in user uploads agents and starts runs on their own
-// agents (/api/v1/my/*); admins (ownerEmail + ARENA_ADMIN_EMAILS) may manage everyone's and skip the per-user limits.
+// agents (/api/v1/my/*); admins (identity.OwnerEmail + ARENA_ADMIN_EMAILS) may manage everyone's and skip the per-user limits.
 func newHandler(cfg config, d deps) http.Handler {
 	owner := http.NewServeMux()
 	identity.RegisterMeRoute(owner, d.users, func(ctx context.Context, userID string) (map[string]any, error) {
@@ -45,19 +44,16 @@ func newHandler(cfg config, d deps) http.Handler {
 			if err != nil {
 				return nil, err
 			}
-			subs = strings.EqualFold(u.Email, ownerEmail)
+			subs = identity.IsOwner(u.Email)
 		}
 		return map[string]any{"can_admin": admin, "subscriptions": subs}, nil
 	})
 
 	owner.HandleFunc("DELETE /api/v1/me", func(w http.ResponseWriter, r *http.Request) {
-		ids, err := d.users.DeleteAccount(r.Context(), identity.MustFromContext(r.Context()).UserID)
-		if err != nil {
+		// The runs' snapshots go with the worker's hourly collectImages: the api has no docker.sock.
+		if _, err := d.users.DeleteAccount(r.Context(), identity.MustFromContext(r.Context()).UserID); err != nil {
 			httpx.WriteError(w, r, err)
 			return
-		}
-		for _, id := range ids {
-			go sandbox.RemoveImage(runs.ImageFor(id))
 		}
 		identity.ClearSessionCookie(w, cfg.secureCookies)
 		w.WriteHeader(http.StatusNoContent)

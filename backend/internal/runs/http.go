@@ -7,7 +7,6 @@ import (
 
 	"tolerance/internal/identity"
 	"tolerance/internal/platform/httpx"
-	"tolerance/internal/sandbox"
 	"tolerance/internal/tasks"
 )
 
@@ -26,7 +25,7 @@ type TaskView struct {
 // RegisterPublicRoutes mounts the public reads.
 func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 	mux.HandleFunc("GET /api/v1/tasks", func(w http.ResponseWriter, r *http.Request) {
-		items, err := s.Summaries(r.Context())
+		items, err := memoize(&s.public, "tasks", publicTTL, func() ([]TaskSummary, error) { return s.Summaries(r.Context()) })
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
@@ -39,17 +38,20 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 			httpx.WriteError(w, r, httpx.NotFound())
 			return
 		}
-		v := TaskView{Brief: t.Brief, DataFiles: t.DataNames(), Checks: t.CheckNames()}
-		var err error
-		if v.TaskSummary, err = s.Summary(r.Context(), t); err == nil {
-			v.Recent, err = s.Recent(r.Context(), t.Slug, "", "", 20)
-		}
-		if err == nil {
-			v.Compare, err = s.Compare(r.Context(), t.Slug)
-		}
-		if err == nil {
-			v.Ratings, err = s.Ratings(r.Context(), t.Slug)
-		}
+		v, err := memoize(&s.public, "task\x00"+t.Slug, publicTTL, func() (TaskView, error) {
+			v := TaskView{Brief: t.Brief, DataFiles: t.DataNames(), Checks: t.CheckNames()}
+			var err error
+			if v.TaskSummary, err = s.Summary(r.Context(), t); err == nil {
+				v.Recent, err = s.Recent(r.Context(), t.Slug, "", "", 20)
+			}
+			if err == nil {
+				v.Compare, err = s.Compare(r.Context(), t.Slug)
+			}
+			if err == nil {
+				v.Ratings, err = s.CachedRatings(r.Context(), t.Slug)
+			}
+			return v, err
+		})
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
@@ -76,13 +78,14 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		if limit <= 0 || limit > 100 {
 			limit = 30
 		}
-		var items []Run
-		var err error
-		if r.URL.Query().Get("active") == "1" {
-			items, err = s.Active(r.Context())
-		} else {
-			items, err = s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), r.URL.Query().Get("status"), limit)
-		}
+		q := r.URL.Query()
+		key := "runs\x00" + q.Get("active") + "\x00" + q.Get("task") + "\x00" + q.Get("agent") + "\x00" + q.Get("status") + "\x00" + strconv.Itoa(limit)
+		items, err := memoize(&s.public, key, publicTTL, func() ([]Run, error) {
+			if q.Get("active") == "1" {
+				return s.Active(r.Context())
+			}
+			return s.Recent(r.Context(), q.Get("task"), q.Get("agent"), q.Get("status"), limit)
+		})
 		if err != nil {
 			httpx.WriteError(w, r, err)
 			return
@@ -287,12 +290,11 @@ func RegisterOwnerRoutes(mux *http.ServeMux, s *Service) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("DELETE /api/v1/my/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		if err := s.Delete(r.Context(), identity.OwnerScope(r.Context()), id); err != nil {
+		// The snapshot goes with the worker's hourly collectImages: the api has no docker.sock.
+		if err := s.Delete(r.Context(), identity.OwnerScope(r.Context()), r.PathValue("id")); err != nil {
 			httpx.WriteError(w, r, err)
 			return
 		}
-		go sandbox.RemoveImage(ImageFor(id))
 		w.WriteHeader(http.StatusNoContent)
 	})
 }

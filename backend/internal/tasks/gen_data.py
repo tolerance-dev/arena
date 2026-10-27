@@ -227,7 +227,7 @@ dump("hotels", "rooms.json", rooms)
 hotel_users = users(BROWSER_USER)
 dump("hotels", "users.json", hotel_users)
 bookings = []
-start = datetime.date(2026, 11, 1)
+start = datetime.date(2030, 11, 1)
 for i in range(1, 61):
     r = R.choice(rooms)
     ci = start + datetime.timedelta(days=R.randint(0, 50))
@@ -238,7 +238,7 @@ for i in range(1, 61):
 full = next(r for r in rooms if r["inventory"] == 1)
 for k in range(1):
     bookings.append({"id": "b-full", "room_id": full["id"], "hotel_id": full["hotel_id"], "user_id": "u1",
-                     "check_in": "2026-12-01", "check_out": "2026-12-08", "guests": 1, "status": "confirmed"})
+                     "check_in": "2030-12-01", "check_out": "2030-12-08", "guests": 1, "status": "confirmed"})
 dump("hotels", "bookings.json", bookings)
 
 # ---------- hotels: the API checks ----------
@@ -282,8 +282,8 @@ by_id = {r["id"]: r for r in rooms}
 twin, single, family = by_id["r4"], by_id["r5"], by_id["r6"]
 assert full["id"] == twin["id"] and twin["inventory"] == 1 and single["inventory"] == 1 and family["inventory"] == 2
 anna, boris = hotel_users[0], hotel_users[1]
-S = dict(city="Lisbon", check_in="2026-12-02", check_out="2026-12-05", guests=2)
-found = search_ids("Lisbon", "2026-12-02", "2026-12-05", 2, state)
+S = dict(city="Lisbon", check_in="2030-12-02", check_out="2030-12-05", guests=2)
+found = search_ids("Lisbon", "2030-12-02", "2030-12-05", 2, state)
 assert found.get("h2") == 3 * family["price_per_night"]
 
 # Pages: deep links render the data (in a real browser).
@@ -298,10 +298,10 @@ chk("search: hotels with a free room for the whole stay", "GET", "/api/search" +
     expect=[{"path": "hotels", "ids": sorted(found)}])
 chk("search: the price is the cheapest free room for the whole stay", "GET", "/api/search" + q(**S),
     expect=[{"path": "hotels[id=h2].price_total", "equals": found["h2"]}])
-four = search_ids("Lisbon", "2026-12-02", "2026-12-05", 4, state)
+four = search_ids("Lisbon", "2030-12-02", "2030-12-05", 4, state)
 chk("search: rooms must fit the guests", "GET", "/api/search" + q(**{**S, "guests": 4}),
     expect=[{"path": "hotels", "ids": sorted(four)}])
-wifi = search_ids("Lisbon", "2026-12-02", "2026-12-05", 2, state, ["wifi"])
+wifi = search_ids("Lisbon", "2030-12-02", "2030-12-05", 2, state, ["wifi"])
 assert set(wifi) != set(found)
 chk("search: filter by amenities", "GET", "/api/search" + q(**S, amenities="wifi"),
     expect=[{"path": "hotels", "ids": sorted(wifi)}])
@@ -309,13 +309,13 @@ for key, field in (("price", "price_total"), ("rating", "-rating"), ("stars", "-
     chk(f"search: sort by {key}", "GET", "/api/search" + q(**S, sort=key),
         expect=[{"path": "hotels", "len": len(found)}, {"path": "hotels", "sorted_by": field}])
 chk("search: check-out before check-in is refused", "GET",
-    "/api/search" + q(city="Lisbon", check_in="2026-12-05", check_out="2026-12-02", guests=2), status=400)
+    "/api/search" + q(city="Lisbon", check_in="2030-12-05", check_out="2030-12-02", guests=2), status=400)
 
 # Hotel page.
 chk("hotel: a fully booked room is not available", "GET", "/api/hotels/h2" + q(**S),
     expect=[{"path": "rooms[id=r4].available", "equals": False}, {"path": "rooms[id=r6].available", "equals": True},
             {"path": "rooms[id=r6].price_total", "equals": 3 * family["price_per_night"]}])
-chk("hotel: the check-out day is free", "GET", "/api/hotels/h2" + q(city="Lisbon", check_in="2026-12-08", check_out="2026-12-10", guests=2),
+chk("hotel: the check-out day is free", "GET", "/api/hotels/h2" + q(city="Lisbon", check_in="2030-12-08", check_out="2030-12-10", guests=2),
     expect=[{"path": "rooms[id=r4].available", "equals": True}])
 chk("hotel: an unknown hotel is 404", "GET", "/api/hotels/h999", status=404)
 
@@ -326,7 +326,7 @@ chk("sign in: Anna", "POST", "/api/login", body={"email": anna["email"], "passwo
 chk("sign in: Boris", "POST", "/api/login", body={"email": boris["email"], "password": boris["password"]},
     expect=[{"path": "token", "exists": True}], save={"boris": "token"})
 chk("booking needs a signed-in user", "POST", "/api/bookings",
-    body={"room_id": "r6", "check_in": "2026-12-20", "check_out": "2026-12-22", "guests": 2}, status_in=[401, 403])
+    body={"room_id": "r6", "check_in": "2030-12-20", "check_out": "2030-12-22", "guests": 2}, status_in=[401, 403])
 
 
 def book(name, who, room, ci, co, guests, ok, save=None):
@@ -342,20 +342,20 @@ def book(name, who, room, ci, co, guests, ok, save=None):
 
 
 anna["first"], boris["first"] = "anna", "boris"
-assert not room_free(twin, "2026-12-07", "2026-12-09", state)
-book("availability: the night of the 7th is taken", anna, twin, "2026-12-07", "2026-12-09", 2, False)
-book("availability: booking from the check-out day works", anna, twin, "2026-12-08", "2026-12-10", 2, True, "twin_booking")
+assert not room_free(twin, "2030-12-07", "2030-12-09", state)
+book("availability: the night of the 7th is taken", anna, twin, "2030-12-07", "2030-12-09", 2, False)
+book("availability: booking from the check-out day works", anna, twin, "2030-12-08", "2030-12-10", 2, True, "twin_booking")
 chk("availability: more guests than the room takes are refused", "POST", "/api/bookings", auth="anna",
-    body={"room_id": "r6", "check_in": "2026-12-20", "check_out": "2026-12-22", "guests": 5}, status_in=[400, 422])
-book("availability: Anna books the single room", anna, single, "2026-12-20", "2026-12-22", 1, True, "single_booking")
-book("availability: Boris can't book the same single room", boris, single, "2026-12-21", "2026-12-23", 1, False)
-book("inventory: the first family room", boris, family, "2026-12-20", "2026-12-22", 4, True, "family_1")
-book("inventory: the second family room", boris, family, "2026-12-20", "2026-12-22", 3, True, "family_2")
-book("inventory: no third family room", anna, family, "2026-12-21", "2026-12-22", 2, False)
-after = search_ids("Lisbon", "2026-12-20", "2026-12-22", 4, state)
+    body={"room_id": "r6", "check_in": "2030-12-20", "check_out": "2030-12-22", "guests": 5}, status_in=[400, 422])
+book("availability: Anna books the single room", anna, single, "2030-12-20", "2030-12-22", 1, True, "single_booking")
+book("availability: Boris can't book the same single room", boris, single, "2030-12-21", "2030-12-23", 1, False)
+book("inventory: the first family room", boris, family, "2030-12-20", "2030-12-22", 4, True, "family_1")
+book("inventory: the second family room", boris, family, "2030-12-20", "2030-12-22", 3, True, "family_2")
+book("inventory: no third family room", anna, family, "2030-12-21", "2030-12-22", 2, False)
+after = search_ids("Lisbon", "2030-12-20", "2030-12-22", 4, state)
 assert "h2" not in after
 chk("search: new bookings take rooms out of the results", "GET",
-    "/api/search" + q(city="Lisbon", check_in="2026-12-20", check_out="2026-12-22", guests=4),
+    "/api/search" + q(city="Lisbon", check_in="2030-12-20", check_out="2030-12-22", guests=4),
     expect=[{"path": "hotels", "ids": sorted(after)}])
 
 # Bookings.
@@ -369,7 +369,7 @@ chk("bookings: a signed-out list is refused", "GET", "/api/bookings", status_in=
 chk("cancel: Boris can't cancel Anna's booking", "DELETE", "/api/bookings/{single_booking}", auth="boris", status_in=[403, 404])
 chk("cancel: Anna cancels the single room", "DELETE", "/api/bookings/{single_booking}", auth="anna", status_in=[200, 204])
 state = [b for b in state if b["id"] != "single_booking"]
-book("cancel: the cancelled dates are free again", boris, single, "2026-12-21", "2026-12-23", 1, True)
+book("cancel: the cancelled dates are free again", boris, single, "2030-12-21", "2030-12-23", 1, True)
 chk("cancel: the booking leaves Anna's list", "GET", "/api/bookings", auth="anna",
     expect=[{"path": "bookings[id={single_booking}]", "absent": True}, {"path": "bookings", "len": len(anna_seed) + 1}])
 for u in (anna, boris):
@@ -519,7 +519,7 @@ cchk("watchlist: the removed title is gone", "GET", "/api/watchlist", auth="prem
 # them). Each check is a few steps in one browser context per flow; a check that needs what an earlier one gave
 # (signin, cart …) fails without running when that one failed. The labels they look for are in each TASK.md. They
 # sign in as u9 (BROWSER_USER) and touch only records the hidden checks never do: the product m_a, the Lisbon hotels
-# in January 2027, a cinema user's own list.
+# in January 2031, a cinema user's own list.
 SIGN_IN = r"\b(sign|log)\s*-?\s*in\b"  # a button or link, by its text or aria-label
 SIGN_OUT = r"\b(sign|log)\s*-?\s*out\b"
 
@@ -579,10 +579,10 @@ m_bc = [b_search("the search box finds products", "/", m_word.lower(), [m_a["tit
 ]
 mc += m_bc
 
-# Hotels: the home search form for Lisbon in January 2027 (no bookings then), then u9 books a room of Garden Court and
+# Hotels: the home search form for Lisbon in January 2031 (no bookings then), then u9 books a room of Garden Court and
 # cancels it.
 hu = hotel_users[BROWSER_USER - 1]
-JAN = dict(check_in="2027-01-12", check_out="2027-01-15")
+JAN = dict(check_in="2031-01-12", check_out="2031-01-15")
 assert all(b["check_out"] < JAN["check_in"] for b in state)
 h_found = search_ids("Lisbon", JAN["check_in"], JAN["check_out"], 2, state)
 h_names = {h["id"]: h["name"] for h in hotels}
@@ -727,7 +727,7 @@ def hidden_hotels(HR):
     def add(name, method, path, **kw):
         hc.append({"name": name, "method": method, "path": path, **kw})
     st = list(state)  # after the public checks (all in Lisbon, so other cities are as in the data)
-    day0 = datetime.date(2026, 11, 1)
+    day0 = datetime.date(2030, 11, 1)
     def stay():
         ci = day0 + datetime.timedelta(days=HR.randint(0, 55))
         return ci.isoformat(), (ci + datetime.timedelta(days=HR.randint(2, 5))).isoformat()

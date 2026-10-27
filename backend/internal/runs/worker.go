@@ -273,8 +273,8 @@ func (w *Worker) reap(ctx context.Context) {
 }
 
 // collectImages removes run snapshots nobody needs any more, hourly: everything finished more than a day ago
-// except each agent's best run per task and limits (the leaderboard's run among them, so its live preview keeps
-// working; the leaderboard leaves out runs over the task's limits).
+// (deleted runs' included: the api has no docker.sock) except each agent's median run per task and limits (the
+// leaderboard's run among them, so its live preview keeps working: see medianRuns).
 func (w *Worker) collectImages(ctx context.Context) {
 	for {
 		keep := map[string]bool{}
@@ -282,8 +282,12 @@ func (w *Worker) collectImages(ctx context.Context) {
 			// By id, not the image column: a snapshot exists a moment before the column is set.
 			rows, err := tx.Query(ctx, `SELECT id FROM runs WHERE
 					status IN ('queued', 'agent', 'checking') OR finished_at IS NULL OR finished_at > now() - interval '1 day'
-					OR id IN (SELECT DISTINCT ON (agent_id, task, time_limit_s, token_budget, checks_version) id FROM runs WHERE status = 'done' AND score IS NOT NULL
-						ORDER BY agent_id, task, time_limit_s, token_budget, checks_version, score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST)`)
+					OR id IN (SELECT id FROM (
+						SELECT id, row_number() OVER w AS rn, count(*) OVER a AS n FROM runs
+						WHERE status = 'done' AND score IS NOT NULL AND tokens_in + tokens_out + tokens_cache_write <= token_budget
+						WINDOW a AS (PARTITION BY agent_id, task, time_limit_s, token_budget, checks_version),
+							w AS (a ORDER BY score DESC, tokens_in + tokens_out + tokens_cache_write, agent_seconds NULLS LAST, id)
+					) m WHERE rn = n / 2 + 1)`)
 			if err != nil {
 				return err
 			}

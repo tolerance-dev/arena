@@ -48,8 +48,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # The HTTP API. Runs are the worker's (below), so replacing the api leaves them going. docker.sock: deleting a run
-  # removes its snapshot image.
+  # The HTTP API. Runs are the worker's (below), so replacing the api leaves them going. No docker.sock on purpose:
+  # the public service must not own the host; deleted runs' snapshots go with the worker's hourly cleanup.
   api:
     image: *backend
     restart: unless-stopped
@@ -61,8 +61,10 @@ services:
       ARENA_SECRET_KEY: ${ARENA_SECRET_KEY:?}
       ARENA_SECURE_COOKIES: "true"
       ARENA_TRUST_PROXY: "true"
+      # The site owner (identity.OwnerEmail): always an admin; nobody else may key agents with their Claude / ChatGPT
+      # subscription. Required: without it the owner would silently lose admin.
+      ARENA_OWNER_EMAIL: ${ARENA_OWNER_EMAIL:?}
       ARENA_ADMIN_EMAILS: ${ARENA_ADMIN_EMAILS:-}
-      # The owner (ownerEmail in cmd/api/config.go), nobody else, may key agents with their Claude / ChatGPT subscription.
       ARENA_SUBSCRIPTIONS: "true"
       ARENA_PUBLIC_URL: ${ARENA_PUBLIC_URL:?}
       # Live preview address of a run ({id} = its hex); Caddy sends *.${ARENA_DOMAIN} to the gateway.
@@ -78,10 +80,7 @@ services:
       ARENA_GOOGLE_CLIENT_SECRET: ${ARENA_GOOGLE_CLIENT_SECRET:-}
       # The hidden checks (worker below) only for their count on the task page.
       ARENA_TASKS_HIDDEN_DIR: /tasks-hidden
-    # Group that owns docker.sock on the host.
-    group_add: ["${DOCKER_GID:?}"]
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./tasks-hidden:/tasks-hidden:ro
     ports:
       - "127.0.0.1:8080:8080"
@@ -102,6 +101,8 @@ services:
       ARENA_APP_DATABASE_URL: postgres://arena_app:${ARENA_APP_ROLE_PASSWORD}@postgres:5432/arena?sslmode=disable
       ARENA_RUN_CONCURRENCY: ${ARENA_RUN_CONCURRENCY:-2}
       ARENA_WORKER_DRAIN: 60m
+      # The tournament plays the owner's agents.
+      ARENA_OWNER_EMAIL: ${ARENA_OWNER_EMAIL:?}
       # Sandbox hardening, off until the host has it (deploy/README.md): runsc = gVisor; a disk cap per container.
       ARENA_SANDBOX_RUNTIME: ${ARENA_SANDBOX_RUNTIME:-}
       ARENA_SANDBOX_DISK: ${ARENA_SANDBOX_DISK:-}

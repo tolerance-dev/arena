@@ -23,7 +23,7 @@
   "checks": [
     {
       "name": "search page lists the hotels with the price for the stay",
-      "page": "/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "page": "/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2",
       "text": [
         "Skyline Tower",
         "531"
@@ -31,7 +31,7 @@
     },
     {
       "name": "hotel page shows its rooms with the total",
-      "page": "/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "page": "/hotels/h2?check_in=2030-12-02&check_out=2030-12-05&guests=2",
       "text": [
         "Skyline Tower",
         "family",
@@ -41,7 +41,7 @@
     {
       "name": "search: hotels with a free room for the whole stay",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2",
       "expect": [
         {
           "path": "hotels",
@@ -57,7 +57,7 @@
     {
       "name": "search: the price is the cheapest free room for the whole stay",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2",
       "expect": [
         {
           "path": "hotels[id=h2].price_total",
@@ -68,7 +68,7 @@
     {
       "name": "search: rooms must fit the guests",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=4",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=4",
       "expect": [
         {
           "path": "hotels",
@@ -83,7 +83,7 @@
     {
       "name": "search: filter by amenities",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&amenities=wifi",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2&amenities=wifi",
       "expect": [
         {
           "path": "hotels",
@@ -98,7 +98,7 @@
     {
       "name": "search: sort by price",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=price",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2&sort=price",
       "expect": [
         {
           "path": "hotels",
@@ -113,7 +113,7 @@
     {
       "name": "search: sort by rating",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=rating",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2&sort=rating",
       "expect": [
         {
           "path": "hotels",
@@ -128,7 +128,7 @@
     {
       "name": "search: sort by stars",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=stars",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2&sort=stars",
       "expect": [
         {
           "path": "hotels",
@@ -143,7 +143,7 @@
     {
       "name": "search: sort by distance",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2&sort=distance",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2&sort=distance",
       "expect": [
         {
           "path": "hotels",
@@ -158,13 +158,13 @@
     {
       "name": "search: check-out before check-in is refused",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-05&check_out=2026-12-02&guests=2",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-05&check_out=2030-12-02&guests=2",
       "status": 400
     },
     {
       "name": "hotel: a fully booked room is not available",
       "method": "GET",
-      "path": "/api/hotels/h2?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2",
+      "path": "/api/hotels/h2?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2",
       "expect": [
         {
           "path": "rooms[id=r4].available",
@@ -183,7 +183,7 @@
     {
       "name": "hotel: the check-out day is free",
       "method": "GET",
-      "path": "/api/hotels/h2?city=Lisbon&check_in=2026-12-08&check_out=2026-12-10&guests=2",
+      "path": "/api/hotels/h2?city=Lisbon&check_in=2030-12-08&check_out=2030-12-10&guests=2",
       "expect": [
         {
           "path": "rooms[id=r4].available",
@@ -252,8 +252,8 @@
       "path": "/api/bookings",
       "body": {
         "room_id": "r6",
-        "check_in": "2026-12-20",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-20",
+        "check_out": "2030-12-22",
         "guests": 2
       },
       "status_in": [
@@ -268,8 +268,8 @@
       "auth": "anna",
       "body": {
         "room_id": "r4",
-        "check_in": "2026-12-07",
-        "check_out": "2026-12-09",
+        "check_in": "2030-12-07",
+        "check_out": "2030-12-09",
         "guests": 2
       },
       "status": 409
@@ -281,8 +281,8 @@
       "auth": "anna",
       "body": {
         "room_id": "r4",
-        "check_in": "2026-12-08",
-        "check_out": "2026-12-10",
+        "check_in": "2030-12-08",
+        "check_out": "2030-12-10",
         "guests": 2
       },
       "status_in": [
@@ -306,8 +306,8 @@
       "auth": "anna",
       "body": {
         "room_id": "r6",
-        "check_in": "2026-12-20",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-20",
+        "check_out": "2030-12-22",
         "guests": 5
       },
       "status_in": [
@@ -322,8 +322,8 @@
       "auth": "anna",
       "body": {
         "room_id": "r5",
-        "check_in": "2026-12-20",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-20",
+        "check_out": "2030-12-22",
         "guests": 1
       },
       "status_in": [
@@ -347,8 +347,8 @@
       "auth": "boris",
       "body": {
         "room_id": "r5",
-        "check_in": "2026-12-21",
-        "check_out": "2026-12-23",
+        "check_in": "2030-12-21",
+        "check_out": "2030-12-23",
         "guests": 1
       },
       "status": 409
@@ -360,8 +360,8 @@
       "auth": "boris",
       "body": {
         "room_id": "r6",
-        "check_in": "2026-12-20",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-20",
+        "check_out": "2030-12-22",
         "guests": 4
       },
       "status_in": [
@@ -385,8 +385,8 @@
       "auth": "boris",
       "body": {
         "room_id": "r6",
-        "check_in": "2026-12-20",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-20",
+        "check_out": "2030-12-22",
         "guests": 3
       },
       "status_in": [
@@ -410,8 +410,8 @@
       "auth": "anna",
       "body": {
         "room_id": "r6",
-        "check_in": "2026-12-21",
-        "check_out": "2026-12-22",
+        "check_in": "2030-12-21",
+        "check_out": "2030-12-22",
         "guests": 2
       },
       "status": 409
@@ -419,7 +419,7 @@
     {
       "name": "search: new bookings take rooms out of the results",
       "method": "GET",
-      "path": "/api/search?city=Lisbon&check_in=2026-12-20&check_out=2026-12-22&guests=4",
+      "path": "/api/search?city=Lisbon&check_in=2030-12-20&check_out=2030-12-22&guests=4",
       "expect": [
         {
           "path": "hotels",
@@ -502,8 +502,8 @@
       "auth": "boris",
       "body": {
         "room_id": "r5",
-        "check_in": "2026-12-21",
-        "check_out": "2026-12-23",
+        "check_in": "2030-12-21",
+        "check_out": "2030-12-23",
         "guests": 1
       },
       "status_in": [
@@ -547,11 +547,11 @@
           },
           {
             "fill": "check.?in|arriv",
-            "value": "2027-01-12"
+            "value": "2031-01-12"
           },
           {
             "fill": "check.?out|depart",
-            "value": "2027-01-15"
+            "value": "2031-01-15"
           },
           {
             "fill": "guest|people|adult|travell?er",
@@ -623,7 +623,7 @@
         "flow": "account",
         "steps": [
           {
-            "goto": "/hotels/h3?check_in=2027-01-12&check_out=2027-01-15&guests=2"
+            "goto": "/hotels/h3?check_in=2031-01-12&check_out=2031-01-15&guests=2"
           },
           {
             "click": "^\\W*(book|reserve)\\b"

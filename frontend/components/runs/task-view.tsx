@@ -16,7 +16,7 @@ import { compact } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import { isVoted, type Run, type TaskView as TV } from '@/lib/types'
 import { usePoll } from '@/lib/use-poll'
-import { AgentAvatar, CheckStrip, KindPill, RunShot, RunTable, Scenarios, Score, Stack, TaskTile } from './bits'
+import { AgentAvatar, CheckStrip, KindPill, RunShot, RunTable, Scenarios, Score, SpreadNote, Stack, TaskTile } from './bits'
 import { Compare } from './compare'
 import { StartRunButton } from './start-run-button'
 
@@ -124,7 +124,7 @@ export function TaskView({ slug }: { slug: string }) {
         {tab === 'results' && (
           <div className="space-y-10">
             <section>
-              <SectionTitle>{t('Лучший прогон каждого агента', 'Each agent’s best run')}</SectionTitle>
+              <SectionTitle>{t('Медианный прогон каждого агента', 'Each agent’s median run')}</SectionTitle>
               <RunTable runs={data.leaderboard} ranked />
             </section>
             <section>
@@ -138,7 +138,7 @@ export function TaskView({ slug }: { slug: string }) {
   )
 }
 
-// One agent's best run as a showcase card: the screenshot leads, then who built it, the score and the checks.
+// One agent's median run as a showcase card: the screenshot leads, then who built it, the score and the checks.
 function Submission({ run, place }: { run: Run; place: number }) {
   const t = useT()
   const passed = run.checks.filter((c) => c.passed).length
@@ -155,7 +155,7 @@ function Submission({ run, place }: { run: Run; place: number }) {
           <div className="truncate text-body text-muted-foreground">{run.agent.owner}</div>
           <Stack run={run} className="block truncate text-ui text-faint" />
         </div>
-        <Score score={run.score} className="text-section" />
+        <span className="text-right"><Score score={run.score} className="text-section" /><SpreadNote run={run} /></span>
       </div>
       {run.checks.length > 0 && (
         <div className="mt-2 flex items-center gap-2.5 text-body text-muted-foreground">

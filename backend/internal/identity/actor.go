@@ -1,6 +1,10 @@
 package identity
 
-import "context"
+import (
+	"context"
+	"os"
+	"strings"
+)
 
 // Actor is the signed-in user making the request.
 type Actor struct {
@@ -69,6 +73,10 @@ func OwnerScope(ctx context.Context) string {
 	return a.UserID
 }
 
-// OwnerEmail is the site owner: always an admin, the only one who may key agents with a personal subscription, and
-// whose ready agents play the weekly tournament (internal/runs/tournament.go).
-const OwnerEmail = "alimov.nsm@gmail.com"
+// OwnerEmail is the site owner (ARENA_OWNER_EMAIL): always an admin, the only one who may key agents with a personal
+// subscription, and whose ready agents play the weekly tournament (internal/runs/tournament.go). "" = no owner, as in
+// a fork that hasn't set it: the address isn't in the code, so nobody else's becomes an admin there.
+var OwnerEmail = strings.TrimSpace(os.Getenv("ARENA_OWNER_EMAIL"))
+
+// IsOwner says email is the owner's; never when there is no owner (an account without an email isn't the owner).
+func IsOwner(email string) bool { return OwnerEmail != "" && strings.EqualFold(email, OwnerEmail) }

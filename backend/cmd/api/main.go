@@ -124,7 +124,7 @@ func agentService(pool *db.Pool, box *secretbox.Box, subscriptions bool) *agents
 	// A fake gateway answers LLM calls itself, so any key goes.
 	s.CheckKeys = os.Getenv("ARENA_GATEWAY_FAKE") != "true"
 	if subscriptions {
-		s.SubscriptionEmail = ownerEmail
+		s.SubscriptionEmail = identity.OwnerEmail
 	}
 	return s
 }

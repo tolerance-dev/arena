@@ -12,9 +12,6 @@ import (
 	"tolerance/internal/identity"
 )
 
-// ownerEmail is always an admin (uploads agents, starts runs), on every deployment; ARENA_ADMIN_EMAILS adds more.
-const ownerEmail = identity.OwnerEmail
-
 type config struct {
 	addr             string
 	databaseURL      string
@@ -32,7 +29,7 @@ type config struct {
 	googleID         string
 	googleSecret     string
 	tasksHiddenDir   string // ARENA_TASKS_HIDDEN_DIR: <slug>/checks.json overrides (the private arena-tasks repo)
-	subscriptions    bool   // ARENA_SUBSCRIPTIONS: the owner (ownerEmail, nobody else) may run agents on their Claude/ChatGPT subscription
+	subscriptions    bool   // ARENA_SUBSCRIPTIONS: the owner (identity.OwnerEmail, nobody else) may run agents on their Claude/ChatGPT subscription
 	devLogin         bool   // ARENA_DEV_LOGIN: sign in as any email with no password (local only)
 }
 
@@ -63,7 +60,10 @@ func loadConfig() (config, error) {
 		}
 		cfg.runConcurrency = n
 	}
-	cfg.adminEmails = []string{ownerEmail}
+	// The owner (identity.OwnerEmail, ARENA_OWNER_EMAIL) is always an admin; ARENA_ADMIN_EMAILS adds more.
+	if identity.OwnerEmail != "" {
+		cfg.adminEmails = append(cfg.adminEmails, identity.OwnerEmail)
+	}
 	for _, e := range strings.Split(os.Getenv("ARENA_ADMIN_EMAILS"), ",") {
 		if e = strings.TrimSpace(e); e != "" {
 			cfg.adminEmails = append(cfg.adminEmails, e)

@@ -15,6 +15,7 @@ export function byCode(code: string, t: T): string | undefined {
     case 'runs_closed': return t('Новые агенты и запуски сейчас на паузе. Попробуйте позже.', 'New agents and runs are paused right now. Try again later.')
     case 'blocked': return t('Вашему аккаунту нельзя загружать агентов и запускать прогоны.', 'Your account may not upload agents or start runs.')
     case 'too_many_runs': return t('Достигнут лимит запусков: дождитесь, пока закончатся идущие прогоны, или попробуйте завтра.', 'Run limit reached: wait for your runs in progress to finish, or try again tomorrow.')
+    case 'queue_full': return t('Очередь заполнена: заходите завтра, а пока проголосуйте за уже собранные приложения.', 'The queue is full: come back tomorrow, and meanwhile vote on the apps already built.')
     case 'too_many_agents': return t('Достигнут лимит агентов: удалите одного, чтобы добавить нового.', 'Agent limit reached: delete one to add another.')
     case 'key_rejected': return t('Провайдер не принял ключ: проверьте, что он скопирован целиком, не отозван и подходит выбранному провайдеру.', 'The provider rejected the key: check that it was copied whole, isn’t revoked and belongs to the chosen provider.')
     case 'key_blocked': return t('Google не пускает этот ключ к Gemini API: создайте ключ в AI Studio (aistudio.google.com/apikey) или разрешите ему Generative Language API в Google Cloud Console.', 'Google doesn’t let this key use the Gemini API: create a key in AI Studio (aistudio.google.com/apikey) or allow the Generative Language API for it in the Google Cloud Console.')
@@ -36,7 +37,7 @@ export function errorText(err: unknown, t: T): string {
   if (!(err instanceof ApiError)) return generic
   const { code, message, status } = err
   // Per-user limits answer 429 too, but they are not rate limiting.
-  if (code === 'too_many_runs' || code === 'too_many_agents') return byCode(code, t)!
+  if (code === 'too_many_runs' || code === 'too_many_agents' || code === 'queue_full') return byCode(code, t)!
   if (status === 429) {
     return err.retryAfterSec
       ? t(`Слишком много запросов, повторите через ${err.retryAfterSec} с.`, `Too many requests, try again in ${err.retryAfterSec}s.`)

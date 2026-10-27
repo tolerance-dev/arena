@@ -131,7 +131,7 @@ export function VoteView() {
 
   return (
     <div>
-      <PageHeader title={t('Какое приложение лучше?', 'Which app is better?')}>{t('Два агента сделали одно и то же задание. Их имена скрыты до голоса, а каждый голос двигает Elo агентов в этом задании.', 'Two agents did the same task. Their names are hidden until you vote, and every vote moves the agents’ Elo in this task.')}</PageHeader>
+      <PageHeader title={t('Какое приложение лучше?', 'Which app is better?')}>{t('Два агента сделали одно и то же задание. Их имена скрыты до голоса, а голоса складываются в рейтинг агентов в этом задании.', 'Two agents did the same task. Their names are hidden until you vote, and the votes add up to the agents’ rating in this task.')}</PageHeader>
       {tasks.data && task != null && (
         <PillTabs className="mt-6" value={task} onChange={choose} options={[
           { value: '', label: t('Любое задание', 'Any task') },

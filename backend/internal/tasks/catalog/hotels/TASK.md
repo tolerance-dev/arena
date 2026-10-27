@@ -32,9 +32,9 @@ These addresses open directly (a deep link or a reload works, not only clicking 
 content from the first paint after load:
 
 - `/` — the home page.
-- `/search?city=Lisbon&check_in=2026-12-02&check_out=2026-12-05&guests=2` — the results for those parameters, each
+- `/search?city=Lisbon&check_in=2030-12-02&check_out=2030-12-05&guests=2` — the results for those parameters, each
   hotel with its price for the whole stay.
-- `/hotels/h2?check_in=2026-12-02&check_out=2026-12-05&guests=2` — the hotel `h2` with its rooms for those dates.
+- `/hotels/h2?check_in=2030-12-02&check_out=2030-12-05&guests=2` — the hotel `h2` with its rooms for those dates.
 - `/bookings` — the signed-in user's bookings, each with its hotel's name and a **Cancel** button (a cancelled
   booking leaves the list).
 

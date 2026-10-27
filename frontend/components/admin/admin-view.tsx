@@ -11,6 +11,7 @@ import { usePoll } from '@/lib/use-poll'
 import { LiveRuns } from '@/components/runs/live-runs'
 import { AsideBlock, Columns } from '@/components/ui/columns'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/empty-state'
 import { api, del, post, put } from '@/lib/api'
 import { compact, usd } from '@/lib/format'
@@ -106,7 +107,7 @@ function Switches({ settings, open, act }: { settings: AdminSettings; open: numb
   const [confirm, setConfirm] = useState(false)
   const [stopped, setStopped] = useState<number | null>(null)
   const set = (patch: Partial<AdminSettings>) => act(() => api('/admin/settings', { method: 'PATCH', body: JSON.stringify(patch) }))
-  const rows: { key: keyof AdminSettings; label: string; on: boolean; hint: string }[] = [
+  const rows: { key: 'runs_paused' | 'user_runs'; label: string; on: boolean; hint: string }[] = [
     { key: 'runs_paused', label: t('Очередь', 'Queue'), on: !settings.runs_paused, hint: settings.runs_paused ? t('Пауза: очередь ждёт, идущие запуски доработают.', 'Paused: the queue waits, runs in progress finish.') : t('Воркер берёт запуски из очереди.', 'The worker takes runs from the queue.') },
     { key: 'user_runs', label: t('Запуски для пользователей', 'User runs'), on: settings.user_runs, hint: settings.user_runs ? t('Любой вошедший может загружать агентов и запускать их.', 'Anyone signed in may upload agents and run them.') : t('Закрыто: загружают и запускают только админы.', 'Closed: only admins upload and run.') },
   ]
@@ -129,6 +130,10 @@ function Switches({ settings, open, act }: { settings: AdminSettings; open: numb
             <Toggle on={r.on} label={r.label} onChange={(on) => void set({ [r.key]: r.key === 'runs_paused' ? !on : on })} />
           </li>
         ))}
+        <Limit label={t('Запусков в сутки на пользователя', 'Runs a day per user')} hint={t('Админы без лимита.', 'Admins have no limit.')}
+          value={settings.daily_runs_per_user} onSave={(n) => set({ daily_runs_per_user: n })} />
+        <Limit label={t('Потолок очереди', 'Queue cap')} hint={t('Запусков пользователей в очереди, дальше «очередь полна». 0 — без потолка.', 'User runs waiting in the queue before “queue full”. 0 = no cap.')}
+          value={settings.user_queue_cap} onSave={(n) => set({ user_queue_cap: n })} />
         <li className="flex items-center gap-4 px-4 py-3">
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{t('Остановить все запуски', 'Stop all runs')}</span>
@@ -140,6 +145,26 @@ function Switches({ settings, open, act }: { settings: AdminSettings; open: numb
         </li>
       </ul>
     </section>
+  )
+}
+
+// A number setting, saved on blur or Enter when it changed.
+function Limit({ label, hint, value, onSave }: { label: string; hint: string; value: number; onSave: (n: number) => void }) {
+  const [draft, setDraft] = useState(String(value))
+  const save = () => {
+    const n = Number(draft)
+    if (Number.isInteger(n) && n >= 0 && n !== value) onSave(n)
+    else setDraft(String(value))
+  }
+  return (
+    <li className="flex items-center gap-4 px-4 py-3">
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">{label}</span>
+        <span className="block text-ui text-muted-foreground">{hint}</span>
+      </span>
+      <Input type="number" min={0} inputMode="numeric" aria-label={label} className="w-20 text-right tnum" value={draft}
+        onChange={(e) => setDraft(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }} />
+    </li>
   )
 }
 

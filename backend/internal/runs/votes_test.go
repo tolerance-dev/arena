@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -133,8 +135,8 @@ func TestVoteGuestPair(t *testing.T) {
 	}
 }
 
-// Elo moves 16 points between equals on one vote; votes of blocked accounts never count, of accounts under a day old
-// not yet, and a settled account's first-day votes do.
+// Votes of blocked accounts never count, of accounts under a day old not yet, and a settled account's first-day votes
+// do: two counted wins of x over y.
 func TestRatings(t *testing.T) {
 	pool := dbtest.New(t)
 	f := fixture{t, pool}
@@ -165,16 +167,72 @@ func TestRatings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 1000 → 1016 on the first win, then +14.5 against a 984 (expected score 0.546).
-	if got := r[x]; got.Elo != 1031 || got.Votes != 2 || got.Wins != 2 {
-		t.Errorf("winner: %+v, want elo 1031 after two counted wins", got)
+	if got := r[x]; got.Votes != 2 || got.Wins != 2 || got.Elo <= 1000 || !got.Provisional {
+		t.Errorf("winner: %+v, want two counted wins, above 1000, provisional", got)
 	}
-	if got := r[y]; got.Elo != 969 || got.Votes != 2 || got.Losses != 2 {
-		t.Errorf("loser: %+v, want elo 969 after two counted losses", got)
+	if got := r[y]; got.Votes != 2 || got.Losses != 2 || got.Elo != 2000-r[x].Elo {
+		t.Errorf("loser: %+v, want two counted losses, as far below 1000 as the winner is above", got)
 	}
 }
 
 func isStatus(err error, status int) bool {
 	var p *httpx.Problem
 	return errors.As(err, &p) && p.Status == status
+}
+
+func games(a, b string, wins, losses, ties int) []game {
+	var g []game
+	for range wins {
+		g = append(g, game{a, b, 1})
+	}
+	for range losses {
+		g = append(g, game{a, b, 0})
+	}
+	for range ties {
+		g = append(g, game{a, b, 0.5})
+	}
+	return g
+}
+
+// Bradley–Terry rates from all the votes at once: the order doesn't matter, an even record is a tie at 1000, more
+// votes narrow the interval, an unbeaten agent stays finite, and a beats c through b without ever meeting it.
+func TestBradleyTerry(t *testing.T) {
+	near := func(x, y float64) bool { return math.Abs(x-y) < 1e-6 }
+
+	g := append(games("a", "b", 7, 3, 0), games("b", "c", 6, 4, 2)...)
+	r1, ci1 := bradleyTerry(g)
+	slices.Reverse(g)
+	r2, _ := bradleyTerry(g)
+	for id := range r1 {
+		if !near(r1[id], r2[id]) {
+			t.Errorf("%s: %v, then %v with the votes reversed", id, r1[id], r2[id])
+		}
+	}
+	if !(r1["a"] > r1["b"] && r1["b"] > r1["c"]) {
+		t.Errorf("want a > b > c: %v", r1)
+	}
+	if ci1["b"] >= ci1["a"] {
+		t.Errorf("b has the most votes, want its interval narrowest: %v", ci1)
+	}
+
+	even, _ := bradleyTerry(games("a", "b", 5, 5, 3))
+	if !near(even["a"], 1000) || !near(even["b"], 1000) {
+		t.Errorf("even record: %v, want 1000 each", even)
+	}
+
+	_, few := bradleyTerry(games("a", "b", 3, 2, 0))
+	_, many := bradleyTerry(games("a", "b", 300, 200, 0))
+	if !(many["a"] < few["a"]/3) {
+		t.Errorf("interval: %v with 5 votes, %v with 500: want much narrower", few["a"], many["a"])
+	}
+
+	unbeaten, ci := bradleyTerry(games("a", "b", 20, 0, 0))
+	if math.IsInf(unbeaten["a"], 0) || math.IsNaN(unbeaten["a"]) || unbeaten["a"] <= 1000 || math.IsNaN(ci["a"]) {
+		t.Errorf("unbeaten: %v ± %v", unbeaten["a"], ci["a"])
+	}
+	// 1000 votes at 60%: the prior hardly matters, the gap is the observed log-odds, ln 1.5 (≈ 70 Elo points).
+	big, _ := bradleyTerry(games("a", "b", 600, 400, 0))
+	if d := big["a"] - big["b"]; math.Abs(d-eloUnit*math.Log(1.5)) > 2 {
+		t.Errorf("gap at 60%% of 1000 votes: %.1f, want ≈ %.1f", d, eloUnit*math.Log(1.5))
+	}
 }
