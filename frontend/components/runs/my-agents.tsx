@@ -67,7 +67,7 @@ export function MyAgents() {
         <SectionTitle aside={!showForm && (
           <Button variant="outline" size="sm" onClick={() => setAdding(true)}><Plus /> {t('Новый агент', 'New agent')}</Button>
         )}>{t('Ваши агенты', 'Your agents')}</SectionTitle>
-        {showForm && <NewAgent onDone={(a) => { setAdding(false); setFresh(a.id); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
+        {showForm && <NewAgent existing={agents.data?.items ?? []} onDone={(a) => { setAdding(false); setFresh(a.id); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
         {none && !showForm && <EmptyState>{t('Агентов пока нет. Загрузите первого выше.', 'No agents yet. Upload the first one above.')}</EmptyState>}
         {!!agents.data?.items.length && (
           <div className={cn('space-y-6', showForm && 'mt-6')}>
@@ -138,11 +138,11 @@ function DeleteAccount() {
 
 const EXAMPLES_URL = 'https://github.com/tolerance-dev/arena/tree/main/backend/internal/agents/examples'
 
-function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean }) {
+function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean }) {
   const t = useT()
   const catalog = usePoll<{ items: ExampleAgent[]; models: ExampleModel[] }>('/agents/examples', 3_600_000).data
   const examples = catalog?.items ?? []
-  const [source, setSource] = useState<'example' | 'file'>('example')
+  const [source, setSource] = useState<'example' | 'standard' | 'file'>('example')
   const [slug, setSlug] = useState('')
   const example = source === 'example' ? (examples.find((e) => e.slug === slug) ?? examples[0]) : undefined
   const usable = (p: string) => subscriptions || !p.endsWith('-sub')
@@ -183,11 +183,15 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
         <h2 className="heading text-title">{t('Новый агент', 'New agent')}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('Ключ хранится зашифрованным и не попадает в песочницу: агент получает токен прогона, который принимает только наш шлюз.', 'The key is stored encrypted and never enters the sandbox: the agent gets a run token that only our gateway accepts.')}</p>
       </div>
+      <div className="space-y-5">
+      <Segmented label={t('Откуда агент', 'Agent source')} value={source} onChange={setSource} options={[
+        { value: 'example', label: t('Готовый агент', 'Ready agent') },
+        { value: 'standard', label: t('Все стандартные', 'All standard') },
+        { value: 'file', label: t('Свой файл', 'Own file') },
+      ]} />
+      {source === 'standard' ? <StandardAgents examples={examples} models={catalog?.models ?? []} existing={existing} onDone={onDone} onCancel={onCancel} /> : (
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Segmented label={t('Откуда агент', 'Agent source')} value={source} onChange={setSource} options={[
-            { value: 'example', label: t('Готовый агент', 'Ready agent') }, { value: 'file', label: t('Свой файл', 'Own file') },
-          ]} />
           {source === 'example' ? (
             <div className="space-y-1.5">
               <Label htmlFor="example">{t('Агент', 'Agent')}</Label>
@@ -249,7 +253,106 @@ function NewAgent({ onDone, onCancel, subscriptions }: { onDone: (agent: Agent) 
           {err && <span className="text-sm text-destructive">{err}</span>}
         </div>
       </form>
+      )}
+      </div>
     </section>
+  )
+}
+
+const STANDARD_KEYS = ['orcarouter', 'anthropic', 'openai', 'google'] as const
+
+// Every ready agent with its native model in one go. Each takes the first key kind it speaks that was filled in, in
+// its own order (its vendor's key before OrcaRouter, see agents.Examples), so one OrcaRouter key creates them all.
+// The ones the user already has (same CLI and model) start unticked; each is a separate upload, so one bad key fails
+// only its agents.
+function StandardAgents({ examples, models, existing, onDone, onCancel }: {
+  examples: ExampleAgent[]; models: ExampleModel[]; existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void
+}) {
+  const t = useT()
+  const [keys, setKeys] = useState<Record<string, string>>({})
+  const [off, setOff] = useState<Record<string, boolean>>({})
+  const [result, setResult] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+  const rows = examples.map((e) => {
+    const model = models.find((m) => m.slug === e.model)
+    const provider = e.providers.find((p) => keys[p]?.trim() && model?.ids[p])
+    const has = existing.some((a) => a.example === e.slug && a.model === e.model)
+    return { e, model, provider, has, on: (off[e.slug] ?? has) === false }
+  })
+  const picked = rows.filter((r) => r.on && r.provider && result[r.e.slug] !== 'ok')
+  async function submit(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault()
+    setBusy(true)
+    let first: Agent | undefined
+    let failed = false
+    for (const r of picked) {
+      const data = new FormData()
+      data.set('example', r.e.slug)
+      data.set('model', r.e.model)
+      data.set('provider', r.provider!)
+      data.set('api_key', keys[r.provider!].trim())
+      data.set('name', `${r.e.name} · ${r.model?.name.replace(' (free)', '') ?? r.e.model}`)
+      try {
+        const agent = await upload<Agent>('/my/agents', data)
+        first ??= agent
+        setResult((x) => ({ ...x, [r.e.slug]: 'ok' }))
+      } catch (e) {
+        failed = true
+        setResult((x) => ({ ...x, [r.e.slug]: errorText(e, t) }))
+      }
+    }
+    setBusy(false)
+    // All went in: close the form on the first new agent. Any failed: stay, with each row's error, to fix and retry.
+    if (first && !failed) onDone(first)
+  }
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {STANDARD_KEYS.map((p) => (
+          <div key={p} className="space-y-1.5">
+            <Label htmlFor={`key-${p}`}>{t(`Ключ ${providerLabel(p, t)}`, `${providerLabel(p, t)} key`)}</Label>
+            <Input id={`key-${p}`} type="password" {...noAutofill} placeholder={p === 'orcarouter' ? 'sk-orca-…' : 'sk-…'}
+              value={keys[p] ?? ''} onChange={(e) => setKeys((k) => ({ ...k, [p]: e.target.value }))} />
+          </div>
+        ))}
+        <p className="text-xs text-muted-foreground sm:col-span-2">
+          {t('Хватит одного ключа OrcaRouter: он запускает всех. Ключ вендора, если введён, берётся вместо него для агентов этого вендора.', 'One OrcaRouter key is enough: it runs them all. A vendor key, when given, is used instead for that vendor’s agents.')}{' '}
+          {Object.entries(KEY_PAGES).map(([p, [label, href]], i) => <span key={p}>{i > 0 && ', '}<a href={href} target="_blank" rel="noreferrer" className="font-medium text-foreground underline underline-offset-2">{label}</a></span>)}.{' '}
+          <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">{t('Как хранятся ключи', 'How keys are stored')}</Link>
+        </p>
+      </div>
+      <ul className="divide-y divide-border overflow-hidden rounded-xl border-2 border-border">
+        {rows.map((r) => {
+          const res = result[r.e.slug]
+          return (
+            <li key={r.e.slug}>
+              <label className="flex items-center gap-3 px-4 py-2.5 text-body">
+                <input type="checkbox" className="size-4 accent-primary" checked={r.on} disabled={busy || res === 'ok'}
+                  onChange={(ev) => setOff((o) => ({ ...o, [r.e.slug]: !ev.target.checked }))} />
+                <AgentAvatar name={r.e.name} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{r.e.name}</span>
+                  <span className="block truncate text-meta text-muted-foreground">{r.model?.name ?? r.e.model}</span>
+                </span>
+                <span className={cn('shrink-0 text-right text-meta', res && res !== 'ok' ? 'text-destructive' : 'text-muted-foreground')}>
+                  {res === 'ok' ? <span className="inline-flex items-center gap-1 text-foreground"><Check className="size-3.5" />{t('Создан', 'Created')}</span>
+                    : res ? res
+                    : r.has && !r.on ? t('Уже есть', 'Already there')
+                    : r.provider ? providerLabel(r.provider, t)
+                    : t(`Нужен ключ: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' или ')}`, `Needs a key: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' or ')}`)}
+                </span>
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={busy || !picked.length}>
+          <Layers /> {busy ? t('Проверяем ключи…', 'Checking the keys…') : t.plural(picked.length, ['Создать {n} агента', 'Создать {n} агентов', 'Создать {n} агентов'], ['Create {n} agent', 'Create {n} agents'])}
+        </Button>
+        {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('Отмена', 'Cancel')}</Button>}
+      </div>
+    </form>
   )
 }
 
