@@ -2,8 +2,8 @@ import { ApiError } from './api'
 import type { T } from './i18n'
 
 // API errors: the server answers {code, message} in English; known codes get a text in the reader's language,
-// anything else falls back to the server's text.
-function byCode(code: string, t: T): string | undefined {
+// anything else falls back to the server's text. Exported for per-field codes (ApiError.fields).
+export function byCode(code: string, t: T): string | undefined {
   switch (code) {
     case 'network': return t('Нет связи с сервером.', 'Cannot reach the server.')
     case 'unauthenticated': return t('Нужно войти.', 'Please sign in.')
@@ -18,6 +18,8 @@ function byCode(code: string, t: T): string | undefined {
     case 'too_many_agents': return t('Достигнут лимит агентов: удалите одного, чтобы добавить нового.', 'Agent limit reached: delete one to add another.')
     case 'key_rejected': return t('Провайдер не принял ключ: проверьте, что он скопирован целиком, не отозван и подходит выбранному провайдеру.', 'The provider rejected the key: check that it was copied whole, isn’t revoked and belongs to the chosen provider.')
     case 'key_blocked': return t('Google не пускает этот ключ к Gemini API: создайте ключ в AI Studio (aistudio.google.com/apikey) или разрешите ему Generative Language API в Google Cloud Console.', 'Google doesn’t let this key use the Gemini API: create a key in AI Studio (aistudio.google.com/apikey) or allow the Generative Language API for it in the Google Cloud Console.')
+    case 'key_malformed': return t('Не похоже на API-ключ: проверьте, что он скопирован целиком, без пробелов.', 'That doesn’t look like an API key: check that it was copied whole, without spaces.')
+    case 'keys_rejected': return t('Не все ключи прошли проверку, ни один агент не создан.', 'Not every key passed the check: no agent was created.')
     case 'key_is_subscription': return t('Это токен подписки Claude: выберите провайдера «Подписка Claude».', 'This is a Claude subscription token: choose the “Claude subscription” provider.')
     case 'key_is_api_key': return t('Это API-ключ Anthropic: выберите провайдера «Anthropic».', 'This is an Anthropic API key: choose the “Anthropic” provider.')
     case 'tournament_running': return t('Прошлый турнир ещё идёт: новый можно запустить, когда закончатся его прогоны.', 'The last tournament is still going: a new one can start once its runs finish.')

@@ -12,7 +12,9 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -120,7 +122,7 @@ func (s *Service) sealKey(provider, key string, subscriptionOK bool) (sealed []b
 		hint = "…" + auth.Tokens.AccessToken[len(auth.Tokens.AccessToken)-4:]
 	} else {
 		if len(key) < 20 || strings.ContainsAny(key, " \n\t") {
-			return nil, "", invalid("That doesn't look like an API key")
+			return nil, "", httpx.New(http.StatusBadRequest, "key_malformed", "That doesn't look like an API key")
 		}
 		if err := keyKind(provider, key); err != nil {
 			return nil, "", err
@@ -201,49 +203,93 @@ type CreateInput struct {
 
 // Create stores a new agent of ownerID; limited is false for admins (no cap on the number of agents).
 func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in CreateInput) (Agent, error) {
-	in.Name = strings.TrimSpace(in.Name)
-	in.Description = strings.TrimSpace(in.Description)
-	in.APIKey = strings.TrimSpace(in.APIKey)
-	if !httpx.ValidText(in.Name, 2, 60) {
-		return Agent{}, invalid("The name must be 2–60 characters")
-	}
-	if len([]rune(in.Description)) > 500 {
-		return Agent{}, invalid("The description is longer than 500 characters")
-	}
-	sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
+	items, err := s.CreateMany(ctx, ownerID, limited, []CreateInput{in})
 	if err != nil {
+		var p *httpx.Problem
+		if errors.As(err, &p) && len(p.Fields) == 1 {
+			// One agent: its key's error as it is, not as a batch.
+			return Agent{}, httpx.New(p.Status, p.Fields[0].Code, keyProblems[p.Fields[0].Code])
+		}
 		return Agent{}, err
 	}
-	if err := s.checkKey(ctx, in.Provider, in.APIKey); err != nil {
-		return Agent{}, err
+	return items[0], nil
+}
+
+// CreateMany stores several agents of ownerID all or nothing: every key is checked with its provider first (each
+// distinct key once, in parallel), and if any is refused none is created. A refused key answers 400 keys_rejected
+// with a field per provider, path = provider and code = why (key_rejected, key_blocked, key_malformed, ...).
+func (s *Service) CreateMany(ctx context.Context, ownerID string, limited bool, ins []CreateInput) ([]Agent, error) {
+	if len(ins) == 0 || len(ins) > maxAgentsPerUser {
+		return nil, invalid("Send 1–10 agents")
 	}
-	if !bytes.HasPrefix(in.Bundle, []byte("PK")) {
-		// A bare run.sh is a one-file bundle.
-		if !bytes.HasPrefix(in.Bundle, []byte("#!")) {
-			return Agent{}, invalid("Upload a zip with run.sh at its root, or run.sh itself (starting with #!)")
+	type row struct {
+		in     CreateInput
+		sealed []byte
+		hint   string
+		files  int
+	}
+	rows := make([]row, len(ins))
+	refused := map[string]string{} // provider → error code
+	keys := map[[2]string]bool{}   // {provider, key} to check with the provider
+	for i, in := range ins {
+		in.Name = strings.TrimSpace(in.Name)
+		in.Description = strings.TrimSpace(in.Description)
+		in.APIKey = strings.TrimSpace(in.APIKey)
+		if !httpx.ValidText(in.Name, 2, 60) {
+			return nil, invalid("The name must be 2–60 characters")
 		}
-		var buf bytes.Buffer
-		zw := zip.NewWriter(&buf)
-		h := &zip.FileHeader{Name: "run.sh", Method: zip.Deflate}
-		h.SetMode(0o755)
-		w, err := zw.CreateHeader(h)
-		if err == nil {
-			_, err = w.Write(in.Bundle)
+		if len([]rune(in.Description)) > 500 {
+			return nil, invalid("The description is longer than 500 characters")
 		}
-		if err == nil {
-			err = zw.Close()
-		}
+		sealed, hint, err := s.sealKey(in.Provider, in.APIKey, pricing.Subscription(in.Provider) && s.subscriber(ctx, ownerID))
 		if err != nil {
-			return Agent{}, err
+			// A key that is wrong in itself is reported with the others; anything else (the provider) fails now.
+			if p := (*httpx.Problem)(nil); errors.As(err, &p) && keyProblems[p.Code] != "" {
+				refused[in.Provider] = p.Code
+				continue
+			}
+			return nil, err
 		}
-		in.Bundle = buf.Bytes()
+		bundle, files, err := normalizeBundle(in.Bundle)
+		if err != nil {
+			return nil, err
+		}
+		in.Bundle = bundle
+		rows[i] = row{in: in, sealed: sealed, hint: hint, files: files}
+		keys[[2]string{in.Provider, in.APIKey}] = true
 	}
-	files, err := BundleFiles(in.Bundle)
-	if err != nil {
-		return Agent{}, err
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for k := range keys {
+		if _, ok := refused[k[0]]; ok {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.checkKey(ctx, k[0], k[1]); err != nil {
+				code := "key_rejected"
+				var p *httpx.Problem
+				if errors.As(err, &p) {
+					code = p.Code
+				}
+				mu.Lock()
+				refused[k[0]] = code
+				mu.Unlock()
+			}
+		}()
 	}
-	id := idgen.New("agent")
-	err = s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+	wg.Wait()
+	if len(refused) > 0 {
+		p := httpx.New(http.StatusBadRequest, "keys_rejected", "Some keys were refused: no agent was created")
+		for provider, code := range refused {
+			p.Fields = append(p.Fields, httpx.FieldError{Path: provider, Code: code})
+		}
+		slices.SortFunc(p.Fields, func(a, b httpx.FieldError) int { return strings.Compare(a.Path, b.Path) })
+		return nil, p
+	}
+	ids := make([]string, len(rows))
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		if limited {
 			if err := admin.CanCreate(ctx, tx, ownerID); err != nil {
 				return err
@@ -252,18 +298,65 @@ func (s *Service) Create(ctx context.Context, ownerID string, limited bool, in C
 			if err := tx.QueryRow(ctx, `SELECT count(*) FROM agents WHERE owner_id = $1`, ownerID).Scan(&n); err != nil {
 				return err
 			}
-			if n >= maxAgentsPerUser {
-				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "You already have 10 agents: delete one first")
+			if n+len(rows) > maxAgentsPerUser {
+				return httpx.New(http.StatusTooManyRequests, "too_many_agents", "That would be more than 10 agents: delete some first")
 			}
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, id, ownerID, in.Name, in.Description, in.Bundle, len(files), in.Provider, sealed, hint, in.Model, in.Example)
-		return err
+		for i, r := range rows {
+			ids[i] = idgen.New("agent")
+			if _, err := tx.Exec(ctx, `INSERT INTO agents (id, owner_id, name, description, bundle, bundle_files, provider, api_key, key_hint, model, example)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, ids[i], ownerID, r.in.Name, r.in.Description, r.in.Bundle, r.files,
+				r.in.Provider, r.sealed, r.hint, r.in.Model, r.in.Example); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
-		return Agent{}, err
+		return nil, err
 	}
-	return s.Get(ctx, id, true)
+	out := make([]Agent, len(ids))
+	for i, id := range ids {
+		if out[i], err = s.Get(ctx, id, true); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// keyProblems are the messages of the key errors a batch reports by code only.
+var keyProblems = map[string]string{
+	"key_rejected":        "The provider rejected this key",
+	"key_blocked":         "Google doesn't let this key use the Gemini API",
+	"key_malformed":       "That doesn't look like an API key",
+	"key_is_subscription": "That's a Claude subscription token: pick the Claude subscription as the provider",
+	"key_is_api_key":      "That's an Anthropic API key: pick Anthropic as the provider",
+}
+
+// normalizeBundle turns a bare run.sh into a one-file zip and counts the bundle's files.
+func normalizeBundle(bundle []byte) ([]byte, int, error) {
+	if !bytes.HasPrefix(bundle, []byte("PK")) {
+		if !bytes.HasPrefix(bundle, []byte("#!")) {
+			return nil, 0, invalid("Upload a zip with run.sh at its root, or run.sh itself (starting with #!)")
+		}
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		h := &zip.FileHeader{Name: "run.sh", Method: zip.Deflate}
+		h.SetMode(0o755)
+		w, err := zw.CreateHeader(h)
+		if err == nil {
+			_, err = w.Write(bundle)
+		}
+		if err == nil {
+			err = zw.Close()
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+		bundle = buf.Bytes()
+	}
+	files, err := BundleFiles(bundle)
+	return bundle, len(files), err
 }
 
 const agentSelect = `SELECT a.id, a.name, a.description, a.provider, a.example, a.model, a.key_hint, a.bundle_files, u.handle, a.created_at,
