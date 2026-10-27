@@ -189,7 +189,7 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
         { value: 'standard', label: t('Все стандартные', 'All standard') },
         { value: 'file', label: t('Свой файл', 'Own file') },
       ]} />
-      {source === 'standard' ? <StandardAgents examples={examples} models={catalog?.models ?? []} existing={existing} onDone={onDone} onCancel={onCancel} /> : (
+      {source === 'standard' ? <StandardAgents examples={examples} models={catalog?.models ?? []} existing={existing} onDone={onDone} onCancel={onCancel} subscriptions={subscriptions} /> : (
       <form onSubmit={submit} className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           {source === 'example' ? (
@@ -260,13 +260,15 @@ function NewAgent({ existing, onDone, onCancel, subscriptions }: { existing: Age
 }
 
 const STANDARD_KEYS = ['orcarouter', 'anthropic', 'openai', 'google'] as const
+const SUBSCRIPTION_KEYS = ['claude-sub', 'chatgpt-sub'] as const
 
-// Every ready agent with its native model in one go. Each takes the first key kind it speaks that was filled in, in
-// its own order (its vendor's key before OrcaRouter, see agents.Examples), so one OrcaRouter key creates them all.
+// Every ready agent with its native model in one go. Each takes the first key kind it speaks that was filled in: a
+// subscription (offered to the site owner only) first, then in its own order (its vendor's key before OrcaRouter, see
+// agents.Examples), so one OrcaRouter key creates them all.
 // The ones the user already has (same CLI and model) start unticked. One request, all or nothing: the server checks
 // every key first and creates none while any is refused (agents.CreateMany).
-function StandardAgents({ examples, models, existing, onDone, onCancel }: {
-  examples: ExampleAgent[]; models: ExampleModel[]; existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void
+function StandardAgents({ examples, models, existing, onDone, onCancel, subscriptions }: {
+  examples: ExampleAgent[]; models: ExampleModel[]; existing: Agent[]; onDone: (agent: Agent) => void; onCancel?: () => void; subscriptions: boolean
 }) {
   const t = useT()
   const [keys, setKeys] = useState<Record<string, string>>({})
@@ -277,9 +279,10 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
   const [busy, setBusy] = useState(false)
   const rows = examples.map((e) => {
     const model = models.find((m) => m.slug === e.model)
-    const provider = e.providers.find((p) => keys[p]?.trim() && model?.ids[p])
+    const kinds = e.providers.filter((p) => (subscriptions || !p.endsWith('-sub')) && model?.ids[p])
+    const provider = [...kinds.filter((p) => p.endsWith('-sub')), ...kinds.filter((p) => !p.endsWith('-sub'))].find((p) => keys[p]?.trim())
     const has = existing.some((a) => a.example === e.slug && a.model === e.model)
-    return { e, model, provider, has, on: (off[e.slug] ?? has) === false }
+    return { e, model, kinds, provider, has, on: (off[e.slug] ?? has) === false }
   })
   const picked = rows.filter((r) => r.on && r.provider)
   async function submit(ev: React.FormEvent<HTMLFormElement>) {
@@ -314,6 +317,21 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
             {keyErr[p] && <p className="text-xs text-destructive">{keyErr[p]}</p>}
           </div>
         ))}
+        {subscriptions && SUBSCRIPTION_KEYS.map((p) => (
+          <div key={p} className="space-y-1.5">
+            <Label htmlFor={`key-${p}`}>{providerLabel(p, t)}</Label>
+            {p === 'chatgpt-sub' ? (
+              <textarea id={`key-${p}`} rows={3} autoComplete="off" spellCheck={false} placeholder='{"auth_mode": "chatgpt", "tokens": {…}}'
+                className={cn(field, 'h-auto py-2 font-mono text-xs', keyErr[p] && 'border-destructive')} aria-invalid={!!keyErr[p]} value={keys[p] ?? ''}
+                onChange={(e) => { setKeys((k) => ({ ...k, [p]: e.target.value })); setKeyErr(({ [p]: _, ...rest }) => rest) }} />
+            ) : (
+              <Input id={`key-${p}`} {...keyField} className={cn('font-mono', keyErr[p] && 'border-destructive')} placeholder="sk-ant-oat…"
+                aria-invalid={!!keyErr[p]} value={keys[p] ?? ''}
+                onChange={(e) => { setKeys((k) => ({ ...k, [p]: e.target.value })); setKeyErr(({ [p]: _, ...rest }) => rest) }} />
+            )}
+            {keyErr[p] ? <p className="text-xs text-destructive">{keyErr[p]}</p> : <KeyHint provider={p} />}
+          </div>
+        ))}
         <p className="text-xs text-muted-foreground sm:col-span-2">
           {t('Хватит одного ключа OrcaRouter: он запускает всех. Ключ вендора, если введён, берётся вместо него для агентов этого вендора.', 'One OrcaRouter key is enough: it runs them all. A vendor key, when given, is used instead for that vendor’s agents.')}{' '}
           {Object.entries(KEY_PAGES).map(([p, [label, href]], i) => <span key={p}>{i > 0 && ', '}<a href={href} target="_blank" rel="noreferrer" className="font-medium text-foreground underline underline-offset-2">{label}</a></span>)}.{' '}
@@ -337,7 +355,7 @@ function StandardAgents({ examples, models, existing, onDone, onCancel }: {
                   {bad ? t(`Ключ ${providerLabel(r.provider!, t)} не принят`, `${providerLabel(r.provider!, t)} key refused`)
                     : r.has && !r.on ? t('Уже есть', 'Already there')
                     : r.provider ? providerLabel(r.provider, t)
-                    : t(`Нужен ключ: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' или ')}`, `Needs a key: ${r.e.providers.filter((p) => !p.endsWith('-sub') && r.model?.ids[p]).map((p) => providerLabel(p, t)).join(' or ')}`)}
+                    : t(`Нужен ключ: ${r.kinds.map((p) => providerLabel(p, t)).join(' или ')}`, `Needs a key: ${r.kinds.map((p) => providerLabel(p, t)).join(' or ')}`)}
                 </span>
               </label>
             </li>
