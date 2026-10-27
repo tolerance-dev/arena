@@ -70,14 +70,44 @@ export function MyAgents() {
         {showForm && <NewAgent onDone={(a) => { setAdding(false); setFresh(a.id); refresh() }} onCancel={none ? undefined : () => setAdding(false)} subscriptions={!!me.subscriptions} />}
         {none && !showForm && <EmptyState>{t('Агентов пока нет. Загрузите первого выше.', 'No agents yet. Upload the first one above.')}</EmptyState>}
         {!!agents.data?.items.length && (
-          <ul className={cn('divide-y divide-border rounded-xl border-2 border-border', showForm && 'mt-6')}>
-            {agents.data.items.map((a) => <li key={a.id}><AgentRow agent={a} fresh={a.id === fresh} tasks={tasks.data?.items ?? []} preset={preset} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>)}
-          </ul>
+          <div className={cn('space-y-6', showForm && 'mt-6')}>
+            {groupAgents(agents.data.items).map((g) => (
+              <div key={g.example}>
+                <h3 className="mb-2 font-semibold">
+                  {g.name || t('Другие', 'Other')}
+                  <span className="ml-2 font-normal text-faint tnum">{g.count}</span>
+                </h3>
+                <ul className="divide-y divide-border overflow-hidden rounded-xl border-2 border-border">
+                  {g.models.map((m) => [
+                    g.example ? <li key={m.model} className="bg-muted px-4 py-1.5 text-meta font-medium text-muted-foreground">{m.name || t('Модель неизвестна', 'Unknown model')}</li> : null,
+                    ...m.agents.map((a) => <li key={a.id}><AgentRow agent={a} fresh={a.id === fresh} tasks={tasks.data?.items ?? []} preset={preset} onChange={refresh} onStarted={started} subscriptions={!!me.subscriptions} /></li>),
+                  ])}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
       </section>
       {!me.can_admin && <DeleteAccount />}
     </div>
   )
+}
+
+// The agents by the CLI they were made from (uploaded ones last), then by model, both by name; newest first inside.
+function groupAgents(items: Agent[]) {
+  const groups = new Map<string, { example: string; name: string; count: number; models: Map<string, { model: string; name: string; agents: Agent[] }> }>()
+  for (const a of items) {
+    const ex = a.example ?? ''
+    const g = groups.get(ex) ?? groups.set(ex, { example: ex, name: a.example_name ?? ex, count: 0, models: new Map() }).get(ex)!
+    const model = a.model ?? ''
+    const m = g.models.get(model) ?? g.models.set(model, { model, name: a.model_name ?? model, agents: [] }).get(model)!
+    m.agents.push(a)
+    g.count++
+  }
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name)
+  return [...groups.values()]
+    .sort((a, b) => Number(!a.example) - Number(!b.example) || byName(a, b))
+    .map((g) => ({ ...g, models: [...g.models.values()].sort(byName) }))
 }
 
 // Deleting the account takes everything with it (agents and their keys, runs, votes); two clicks, like an agent.
