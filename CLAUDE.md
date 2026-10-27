@@ -101,8 +101,10 @@ make test-fast   # gofmt + go vet + go test (starts postgres for the DB tests) +
 ```
 
 - Each checkout has its own DB volume (compose project = dir name), empty at first and removed with the
-  workspace (`.superset/teardown.sh`): new workspaces load the shared snapshot in setup when there is one, else
-  `make seed` fills it. Don't share one volume between checkouts. The snapshot holds real agents' keys: never commit
+  workspace (`.superset/teardown.sh`, which first dumps a DB with runs to `~/.local/share/tolerance/teardown/`;
+  `make snapshot-load SNAPSHOT=<file>` brings it back): new workspaces load the shared snapshot in setup when there
+  is one, else `make seed` fills it. A deleted checkout's run snapshots (`arena-run:*`, labelled with its stack) stay
+  in Docker: nothing cleans them up, and Recheck can score them again from a restored row. Don't share one volume between checkouts. The snapshot holds real agents' keys: never commit
   or upload it; a loaded copy has its open runs cancelled and the weekly tournament off. Real-model data is made
   once in the main checkout and shared this way (README → «Настоящие прогоны»): in a worktree, load the snapshot
   rather than start real runs, which spend the owner's keys.
