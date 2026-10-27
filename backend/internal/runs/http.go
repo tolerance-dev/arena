@@ -42,7 +42,7 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		v := TaskView{Brief: t.Brief, DataFiles: t.DataNames(), Checks: t.CheckNames()}
 		var err error
 		if v.TaskSummary, err = s.Summary(r.Context(), t); err == nil {
-			v.Recent, err = s.Recent(r.Context(), t.Slug, "", 20)
+			v.Recent, err = s.Recent(r.Context(), t.Slug, "", "", 20)
 		}
 		if err == nil {
 			v.Compare, err = s.Compare(r.Context(), t.Slug)
@@ -81,7 +81,7 @@ func RegisterPublicRoutes(mux *http.ServeMux, s *Service) {
 		if r.URL.Query().Get("active") == "1" {
 			items, err = s.Active(r.Context())
 		} else {
-			items, err = s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), limit)
+			items, err = s.Recent(r.Context(), r.URL.Query().Get("task"), r.URL.Query().Get("agent"), r.URL.Query().Get("status"), limit)
 		}
 		if err != nil {
 			httpx.WriteError(w, r, err)
