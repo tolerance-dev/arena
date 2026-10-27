@@ -171,6 +171,7 @@ export function VoteView() {
               )}
             </div>
             {err && <p className="mt-3 text-center text-body text-destructive">{err}</p>}
+            {picked?.reveal.counts_at && <p className="mt-3 text-center text-body text-muted-foreground">{t('Голос засчитается через сутки после регистрации: так мы защищаемся от накрутки.', 'Your vote counts a day after you sign up: that’s how we guard against vote stuffing.')}</p>}
             {!me && !picked && <p className="mt-3 text-center text-body text-muted-foreground">{t('Голос засчитается после входа: один человек — один голос за пару. Имена агентов откроются сразу.', 'Your vote counts after you sign in: one person, one vote per pair. The agents’ names show right away.')}</p>}
             <p className="mt-4 text-center text-body text-muted-foreground">
               {(picked ? pair.left - 1 : pair.left) > 0 && <>{t.plural(picked ? pair.left - 1 : pair.left, ['В этом задании осталась {n} пара', 'В этом задании осталось {n} пары', 'В этом задании осталось {n} пар'], ['{n} pair left in this task', '{n} pairs left in this task'])}<span className="max-sm:hidden"> · </span></>}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Play, Square } from 'lucide-react'
+import { Play, RotateCcw, Square } from 'lucide-react'
 import Link from 'next/link'
 import { useSignIn } from '@/components/auth/sign-in-dialog'
 import { PageHeader, SectionTitle } from '@/components/page-header'
@@ -18,7 +18,7 @@ import { compact, usd } from '@/lib/format'
 import type { T } from '@/lib/i18n'
 import { useT } from '@/lib/i18n-client'
 import { errorText } from '@/lib/errors'
-import type { AdminOverview, AdminSettings, AdminSpend, AdminUser, Run, Tournament } from '@/lib/types'
+import type { AdminOverview, AdminSettings, AdminSpend, AdminUser, RecheckState, Run, Tournament } from '@/lib/types'
 import { useMe } from '@/lib/use-me'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +43,7 @@ export function AdminView() {
   const overview = usePoll<AdminOverview>(admin ? '/admin/overview' : null, 10_000)
   const live = usePoll<{ items: Run[] }>(admin ? '/runs?active=1' : null, 3_000)
   const tournament = usePoll<Tournament>(admin ? '/admin/tournament' : null, 10_000)
+  const rechecks = usePoll<RecheckState>(admin ? '/admin/rechecks' : null, 10_000)
   const [err, setErr] = useState('')
 
   if (loading) return <Skeleton className="h-96" />
@@ -56,7 +57,7 @@ export function AdminView() {
     )
   }
   const o = overview.data
-  const reload = () => { void overview.reload(); void live.reload(); void tournament.reload() }
+  const reload = () => { void overview.reload(); void live.reload(); void tournament.reload(); void rechecks.reload() }
   async function act(fn: () => Promise<unknown>) {
     setErr('')
     try {
@@ -79,6 +80,7 @@ export function AdminView() {
             <div className="space-y-12">
               <Switches settings={o.settings} open={o.queued + o.running} act={act} />
               {tournament.data && <TournamentBlock tour={tournament.data} act={act} />}
+              {rechecks.data && <RecheckBlock state={rechecks.data} act={act} />}
               <SpendBlock spend={o.spend} />
               {live.data && <LiveRuns runs={live.data.items} empty={t('Ничего не запущено.', 'Nothing is running.')} onChange={reload} />}
               <Users users={o.users} act={act} />
@@ -239,6 +241,36 @@ function TournamentBlock({ tour, act }: { tour: Tournament; act: (fn: () => Prom
           </li>
         ))}
       </ul>
+    </section>
+  )
+}
+
+// Runs scored by older checks come back into the rankings by checking their kept snapshot again: no agent, no tokens.
+function RecheckBlock({ state, act }: { state: RecheckState; act: (fn: () => Promise<unknown>) => Promise<void> }) {
+  const t = useT()
+  const runs = (n: number) => t.plural(n, ['{n} прогон', '{n} прогона', '{n} прогонов'], ['{n} run', '{n} runs'])
+  const status = [
+    state.queued ? t(`проверяется ${runs(state.queued)}`, `checking ${runs(state.queued)}`) : null,
+    state.stale ? t(`на старых проверках ${runs(state.stale)}`, `${runs(state.stale)} on older checks`) : null,
+    state.failed ? t(`ошибок ${state.failed}`, `${state.failed} errors`) : null,
+  ].filter(Boolean).join(' · ')
+  return (
+    <section>
+      <SectionTitle>{t('Перепроверка', 'Recheck')}</SectionTitle>
+      <ul className="divide-y divide-border rounded-xl border-2 border-border">
+        <li className="flex items-center gap-4 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{t('Перепроверить всё на старых проверках', 'Recheck everything on older checks')}</span>
+            <span className="block text-ui text-muted-foreground tnum">
+              {status || t('Перепроверять нечего.', 'Nothing to recheck.')}
+            </span>
+          </span>
+          <Button size="sm" variant="outline" disabled={state.stale === 0} onClick={() => void act(() => post('/admin/rechecks'))}>
+            <RotateCcw /> {t('Перепроверить', 'Recheck')}
+          </Button>
+        </li>
+      </ul>
+      <p className="mt-2 text-meta text-faint">{t('Тот же код из снимка, текущие проверки, без агента и токенов. Только прогоны со снимком, собранные по нынешнему ТЗ: после правки TASK.md нужны новые прогоны.', 'The same code from the snapshot, the current checks, no agent and no tokens. Only runs with a snapshot built from today’s brief: after a TASK.md change, new runs are needed.')}</p>
     </section>
   )
 }

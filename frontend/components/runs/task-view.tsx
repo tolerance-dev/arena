@@ -71,7 +71,7 @@ export function TaskView({ slug }: { slug: string }) {
 
       <PillTabs className="mt-6" value={tab} onChange={setTab} options={[
         { value: 'compare', label: t('Сравнение', 'Compare'), count: data.compare.length },
-        { value: 'submissions', label: t('Решения', 'Submissions'), count: data.compare.length },
+        { value: 'submissions', label: t('Решения', 'Submissions') },
         { value: 'brief', label: t('Задание', 'Brief') },
         { value: 'results', label: t('Результаты', 'Results'), count: data.recent.length },
       ]} />

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"tolerance/internal/platform/db/dbtest"
+	"tolerance/internal/tasks"
 )
 
 // A recheck needs the kept snapshot, runs once at a time, and the worker takes it straight to checking: the agent
@@ -47,5 +48,40 @@ func TestRecheck(t *testing.T) {
 	}
 	if status != "checking" || !restarted.Equal(started) || rechecks != 1 {
 		t.Fatalf("claimed recheck: status %s, started %v (was %v), rechecks %d", status, restarted, started, rechecks)
+	}
+}
+
+// Rechecking everything takes only the runs the current checks would rank, built from the current brief, that kept
+// their snapshot; and the rechecks of a user's runs don't hold the user's own runs back.
+func TestRecheckStale(t *testing.T) {
+	f := newQuotaFixture(t)
+	ctx := context.Background()
+	f.sql(`UPDATE settings SET user_queue_cap = 1, daily_runs_per_user = 100`)
+	var stale []string
+	for i := 0; i < maxOpenRunsPerUser; i++ {
+		stale = append(stale, f.startDone(1)[0])
+	}
+	current, gone, long, brief := f.startDone(1)[0], f.startDone(1)[0], f.startDone(1)[0], f.startDone(1)[0]
+	f.sql(`UPDATE runs SET image = 'img', agent_exit = 'ok', checks_version = 'old' WHERE id <> $1`, gone)
+	f.sql(`UPDATE runs SET checks_version = $2 WHERE id = $1`, current, checksVersion(tasks.BySlug("marketplace")))
+	f.sql(`UPDATE runs SET time_limit_s = time_limit_s + 60 WHERE id = $1`, long)
+	f.sql(`UPDATE runs SET manifest = manifest || '{"task_md_sha256": "older"}' WHERE id = $1`, brief)
+
+	st, err := f.s.RecheckState(ctx)
+	if err != nil || st.Stale != len(stale) || st.Queued != 0 {
+		t.Fatalf("before: %+v, %v; want %d stale", st, err, len(stale))
+	}
+	n, err := f.s.RecheckStale(ctx)
+	if err != nil || n != len(stale) {
+		t.Fatalf("queued %d, %v; want %d", n, err, len(stale))
+	}
+	if q := f.count(`SELECT count(*) FROM runs WHERE status = 'queued' AND recheck AND id = ANY($1)`, stale); q != len(stale) {
+		t.Fatalf("%d of the stale runs queued", q)
+	}
+	if st, _ := f.s.RecheckState(ctx); st.Stale != 0 || st.Queued != len(stale) {
+		t.Fatalf("after: %+v", st)
+	}
+	if _, err := f.create(f.user); err != nil {
+		t.Fatalf("the user's rechecks held their run back: %v", err)
 	}
 }

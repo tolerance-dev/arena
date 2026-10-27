@@ -188,6 +188,22 @@ func RegisterAdminRoutes(mux *http.ServeMux, s *Service) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+	mux.HandleFunc("GET /api/v1/admin/rechecks", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.RecheckState(r.Context())
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("POST /api/v1/admin/rechecks", func(w http.ResponseWriter, r *http.Request) {
+		n, err := s.RecheckStale(r.Context())
+		if err != nil {
+			httpx.WriteError(w, r, err)
+			return
+		}
+		httpx.Respond(w, http.StatusCreated, map[string]int{"runs": n})
+	})
 	mux.HandleFunc("POST /api/v1/admin/runs/{id}/recheck", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Recheck(r.Context(), r.PathValue("id")); err != nil {
 			httpx.WriteError(w, r, err)

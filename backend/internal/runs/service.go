@@ -491,7 +491,7 @@ func invalid(msg string) error { return httpx.New(http.StatusBadRequest, "invali
 // /admin) counts run_quota rows, which stay when a run or its agent is deleted. Only the worker's infra_error (the
 // platform's fault) gives the quota back (refundQuota); a cancel doesn't, whoever made it: the run took a slot and
 // may have spent tokens. The queue cap counts non-admins' queued runs (those with a run_quota row): the owner's
-// tournament doesn't fill it.
+// tournament doesn't fill it. Neither counts an admin's recheck of a user's run: the user didn't start it.
 const maxOpenRunsPerUser = 3
 
 // refundQuota wraps an UPDATE of runs to infra_error ending in RETURNING id: it also gives those runs' daily quota
@@ -544,9 +544,9 @@ func (s *Service) Create(ctx context.Context, ownerID, agentID, task string, tim
 			var open, day, queued int
 			if err := tx.QueryRow(ctx, `SELECT
 					(SELECT count(*) FROM runs r JOIN agents a ON a.id = r.agent_id
-						WHERE a.owner_id = $1 AND r.status IN ('queued', 'agent', 'checking')),
+						WHERE a.owner_id = $1 AND r.status IN ('queued', 'agent', 'checking') AND NOT r.recheck),
 					(SELECT count(*) FROM run_quota WHERE user_id = $1 AND NOT refunded AND created_at > now() - interval '1 day'),
-					(SELECT count(*) FROM runs r JOIN run_quota q ON q.run_id = r.id WHERE r.status = 'queued')`,
+					(SELECT count(*) FROM runs r JOIN run_quota q ON q.run_id = r.id WHERE r.status = 'queued' AND NOT r.recheck)`,
 				ownerID).Scan(&open, &day, &queued); err != nil {
 				return err
 			}
@@ -631,6 +631,61 @@ func (s *Service) Recheck(ctx context.Context, id string) error {
 			finished_at = NULL, updated_at = now() WHERE id = $1`, id)
 		return err
 	})
+}
+
+// staleRun picks the finished runs of task $1 that the current checks ($4) would rank but haven't scored: within the
+// task's limits, their snapshot kept, scored by older checks (or a recheck of them failed on the platform's side).
+// Only runs built from the brief and data the task has now ($5, $6): an app built from an older TASK.md (one that
+// didn't name the labels the browser checks click, say) would score low for what it wasn't asked.
+const staleRun = `task = $1 AND image IS NOT NULL AND agent_exit IS NOT NULL
+	AND manifest->>'task_md_sha256' = $5 AND manifest->>'data_sha256' = $6
+	AND (status = 'done' OR (status = 'infra_error' AND recheck AND failure_reason IS DISTINCT FROM 'cancelled'))
+	AND time_limit_s <= $2 AND token_budget <= $3 AND checks_version IS DISTINCT FROM $4
+	AND tokens_in + tokens_out + tokens_cache_write <= token_budget`
+
+func staleArgs(t *tasks.Task) []any {
+	return []any{t.Slug, t.TimeLimitS, t.TokenBudget, checksVersion(t), t.TaskMDHash, t.DataHash}
+}
+
+// RecheckState is how far bringing runs scored by older checks back into the rankings has got.
+type RecheckState struct {
+	Stale  int `json:"stale"`  // runs a recheck would bring back (staleRun)
+	Queued int `json:"queued"` // rechecks waiting or being checked
+	Failed int `json:"failed"` // rechecks that ended in a platform error (counted in Stale too: they are tried again)
+}
+
+func (s *Service) RecheckState(ctx context.Context) (RecheckState, error) {
+	var out RecheckState
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		for _, t := range tasks.All() {
+			var n int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM runs WHERE `+staleRun, staleArgs(t)...).Scan(&n); err != nil {
+				return err
+			}
+			out.Stale += n
+		}
+		return tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE status IN ('queued', 'checking')), count(*) FILTER (WHERE status = 'infra_error'
+			AND failure_reason IS DISTINCT FROM 'cancelled') FROM runs WHERE recheck`).Scan(&out.Queued, &out.Failed)
+	})
+	return out, err
+}
+
+// RecheckStale queues a recheck (Recheck) of every run scored by older checks that the current ones would rank, and
+// returns how many: after a change to the checks, it brings the kept snapshots back without spending tokens.
+func (s *Service) RecheckStale(ctx context.Context) (int, error) {
+	n := 0
+	err := s.pool.Tx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		for _, t := range tasks.All() {
+			tag, err := tx.Exec(ctx, `UPDATE runs SET status = 'queued', recheck = true, rechecks = rechecks + 1, failure_reason = NULL,
+				finished_at = NULL, updated_at = now() WHERE `+staleRun, staleArgs(t)...)
+			if err != nil {
+				return err
+			}
+			n += int(tag.RowsAffected())
+		}
+		return nil
+	})
+	return n, err
 }
 
 // Delete removes a run (and, best effort, its image: the caller does that).

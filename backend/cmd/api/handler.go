@@ -71,6 +71,7 @@ func newHandler(cfg config, d deps) http.Handler {
 	agents.RegisterPublicRoutes(public, d.agents)
 	runs.RegisterPublicRoutes(public, d.runs)
 	runs.RegisterLiveRoutes(public, d.runs)
+	runs.RegisterExportRoutes(public, d.runs)
 
 	session := identity.RequireSession(d.users)
 	api := http.NewServeMux()
@@ -88,6 +89,7 @@ func newHandler(cfg config, d deps) http.Handler {
 	api.Handle("/api/v1/agents/", public)
 	api.Handle("/api/v1/vote", public)
 	api.Handle("/api/v1/vote/", public)
+	api.Handle("/api/v1/export/", public)
 
 	top := http.NewServeMux()
 	top.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {

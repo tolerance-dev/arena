@@ -11,6 +11,7 @@ import { RECENT_RUNS } from '@/lib/api'
 import { compact, usd } from '@/lib/format'
 import { useT } from '@/lib/i18n-client'
 import { isVoted, type Run, type TaskSummary } from '@/lib/types'
+import { providerLabel } from '@/lib/providers'
 import { usePoll } from '@/lib/use-poll'
 import { AgentAvatar, KindPill, RunShot, Score, TaskTile } from './bits'
 import { RunRow } from './run-row'
@@ -114,7 +115,9 @@ function Showcase({ tasks }: { tasks: TaskSummary[] }) {
               </div>
               <div className="mt-2 flex items-baseline justify-between gap-2">
                 <span><Score score={run.score} className="text-section" /><span className="text-meta text-faint"> / 100</span></span>
-                <span className="text-body font-semibold tnum" title={t('По прайсу модели', 'At the model’s list price')}>{usd(run.cost_usd)}</span>
+                {run.agent.provider.endsWith('-sub') ? (
+                  <span className="inline-flex h-6 items-center rounded-full bg-secondary px-2 text-meta font-medium text-muted-foreground" title={providerLabel(run.agent.provider, t)}>{t('подписка', 'subscription')}</span>
+                ) : <span className="text-body font-semibold tnum" title={t('По прайсу модели', 'At the model’s list price')}>{usd(run.cost_usd)}</span>}
               </div>
             </Link>
           </li>

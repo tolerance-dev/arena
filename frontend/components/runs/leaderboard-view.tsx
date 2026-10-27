@@ -41,6 +41,13 @@ export function LeaderboardView({ initialTasks, initialAgents }: { initialTasks?
             {list && rows ? <StandingsTable tasks={list} rows={rows} /> : <Skeleton className="h-64" />}
           </div>
           {rows && <CostChart rows={rows} />}
+          {rows && rows.length > 0 && (
+            <p className="mt-4 text-ui text-muted-foreground">
+              {t('Все прогоны рейтинга: ', 'Every ranked run: ')}
+              <a href="/api/v1/export/runs.csv" className="font-medium text-primary hover:underline">CSV</a>{' · '}
+              <a href="/api/v1/export/runs.json" className="font-medium text-primary hover:underline">JSON</a>
+            </p>
+          )}
         </section>
       }
       aside={
