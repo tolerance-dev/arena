@@ -33,7 +33,8 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     fi
   fi
 
-  $COMPOSE down -v --remove-orphans
+  # --rmi local: this checkout's own gateway image (<project>-gateway) goes too.
+  $COMPOSE down -v --remove-orphans --rmi local
 else
   echo "  Docker not available, nothing to stop" >&2
 fi

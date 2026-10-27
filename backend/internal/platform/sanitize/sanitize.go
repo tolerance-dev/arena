@@ -24,8 +24,8 @@ var (
 		regexp.MustCompile(`\b(?:AKIA|ASIA)[A-Z0-9]{16}\b`),
 		// Authorization headers.
 		regexp.MustCompile(`(?i)\bbearer\s+\S+`),
-		// key=value and key: value where the key names a secret.
-		regexp.MustCompile(`(?i)\b[a-z0-9_]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|private[_-]?key)[a-z0-9_]*\s*[:=]\s*\S+`),
+		// key=value and key: value where the key names a secret, quoted too ("apiKey": "…" in printed JSON).
+		regexp.MustCompile(`(?i)\b[a-z0-9_]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|private[_-]?key)[a-z0-9_]*["']?\s*[:=]\s*\S+`),
 		// PEM blocks: the header and everything after it.
 		regexp.MustCompile(`-----BEGIN [A-Z ]+-----.*`),
 	}
