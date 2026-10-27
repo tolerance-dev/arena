@@ -3,7 +3,7 @@
 Read this for deploys and ops work (Claude may do both, see CLAUDE.md).
 
 - **Deploy** = Actions → deploy → Run workflow (`gh workflow run deploy`; `-f ref=<sha>` rolls back,
-  `-f reset_db=true` wipes the DB — only to start over: schema changes are migrations, applied by every deploy). It builds backend, web and
+  `-f reset_db=true` wipes the DB, `-f wipe_people=true` with it drops users and agents too — only to start over: schema changes are migrations, applied by every deploy). It builds backend, web and
   `tolerance-runtime` (= `arena-runtime:1`) into `ghcr.io/tolerance-dev` and runs `server.sh` on the host over SSH
   (secrets in the `production` environment).
 - **Host**: UpCloud `STARTER-4xCPU-16GB` (pl-waw1, 3 GB swap, ~$34/month for the plan plus disk and IP; was
