@@ -53,11 +53,12 @@ export function outcome(run: Run, t: T): { text: string; tone: 'good' | 'bad' | 
 
 // What is running right now (each run's stage, clock, tokens and last step) and what just finished, with why.
 // Active runs can be ticked and cancelled together; the API lets only their owner (or an admin) do it.
-export function LiveRuns({ runs, empty, onChange }: { runs: Run[]; empty?: string; onChange?: () => void }) {
+export function LiveRuns({ runs, empty, onChange, recent = true }: { runs: Run[]; empty?: string; onChange?: () => void; recent?: boolean }) {
   const t = useT()
   const now = useNow()
   const active = runs.filter(isActive).sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const finished = runs.filter((r) => !isActive(r)).slice(0, 8)
+  // "Recently finished" under them, unless the page has its own history (My agents).
+  const finished = recent ? runs.filter((r) => !isActive(r)).slice(0, 8) : []
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
